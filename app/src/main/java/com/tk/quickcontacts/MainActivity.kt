@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +74,15 @@ fun QuickContactsApp() {
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
+    
+    var hasCallLogPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_CALL_LOG
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
     // Multiple permissions launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -80,6 +90,7 @@ fun QuickContactsApp() {
     ) { permissions ->
         hasCallPermission = permissions[Manifest.permission.CALL_PHONE] ?: false
         hasContactsPermission = permissions[Manifest.permission.READ_CONTACTS] ?: false
+        hasCallLogPermission = permissions[Manifest.permission.READ_CALL_LOG] ?: false
     }
 
     // Contact picker launcher
@@ -97,7 +108,15 @@ fun QuickContactsApp() {
 
     // Contact states
     val selectedContacts by viewModel.selectedContacts.collectAsState()
+    val recentCalls by viewModel.recentCalls.collectAsState()
     var editMode by remember { mutableStateOf(false) }
+    
+    // Load recent calls when permissions are available or selected contacts change
+    LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts) {
+        if (hasCallLogPermission && hasContactsPermission) {
+            viewModel.loadRecentCalls(context)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -110,7 +129,7 @@ fun QuickContactsApp() {
                     )
                 },
                 actions = {
-                    if (hasCallPermission && hasContactsPermission) {
+                    if (hasCallPermission && hasContactsPermission && hasCallLogPermission) {
                         if (selectedContacts.isNotEmpty()) {
                             IconButton(onClick = { editMode = !editMode }) {
                                 Icon(
@@ -145,13 +164,14 @@ fun QuickContactsApp() {
                 .padding(innerPadding)
         ) {
             when {
-                !hasCallPermission || !hasContactsPermission -> {
+                !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
                     PermissionRequestScreen(
                         onRequestPermissions = {
                             permissionLauncher.launch(
                                 arrayOf(
                                     Manifest.permission.CALL_PHONE,
-                                    Manifest.permission.READ_CONTACTS
+                                    Manifest.permission.READ_CONTACTS,
+                                    Manifest.permission.READ_CALL_LOG
                                 )
                             )
                         }
@@ -159,32 +179,58 @@ fun QuickContactsApp() {
                 }
                 
                 selectedContacts.isEmpty() -> {
-                    EmptyContactsScreen(
-                        onAddContact = {
-                            if (hasCallPermission && hasContactsPermission) {
-                                val intent = Intent(Intent.ACTION_PICK).apply {
-                                    type = ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE
-                                }
-                                contactPickerLauncher.launch(intent)
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // Show recent calls section even when no quick contacts are selected
+                        RecentCallsSection(
+                            recentCalls = recentCalls,
+                            onContactClick = { contact ->
+                                viewModel.makePhoneCall(context, contact.phoneNumber)
                             }
-                        }
-                    )
+                        )
+                        
+                        // Empty contacts screen
+                        EmptyContactsScreen(
+                            onAddContact = {
+                                if (hasCallPermission && hasContactsPermission && hasCallLogPermission) {
+                                    val intent = Intent(Intent.ACTION_PICK).apply {
+                                        type = ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE
+                                    }
+                                    contactPickerLauncher.launch(intent)
+                                }
+                            }
+                        )
+                    }
                 }
                 
                 else -> {
-                    ContactList(
-                        contacts = selectedContacts,
-                        onContactClick = { contact ->
-                            viewModel.makePhoneCall(context, contact.phoneNumber)
-                        },
-                        editMode = editMode,
-                        onDeleteContact = { contact ->
-                            viewModel.removeContact(contact)
-                        },
-                        onMove = { from, to ->
-                            viewModel.moveContact(from, to)
-                        }
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // Recent calls section at the top
+                        RecentCallsSection(
+                            recentCalls = recentCalls,
+                            onContactClick = { contact ->
+                                viewModel.makePhoneCall(context, contact.phoneNumber)
+                            }
+                        )
+                        
+                        // Quick contacts list
+                        ContactList(
+                            contacts = selectedContacts,
+                            onContactClick = { contact ->
+                                viewModel.makePhoneCall(context, contact.phoneNumber)
+                            },
+                            editMode = editMode,
+                            onDeleteContact = { contact ->
+                                viewModel.removeContact(contact)
+                            },
+                            onMove = { from, to ->
+                                viewModel.moveContact(from, to)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -216,20 +262,22 @@ private fun parseContactFromUri(context: android.content.Context, contactUri: Ur
                 val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
 
-                val id = it.getString(idColumn)
-                val name = it.getString(nameColumn)
-                val number = it.getString(numberColumn)
+                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
+                    val id = it.getString(idColumn)
+                    val name = it.getString(nameColumn)
+                    val number = it.getString(numberColumn)
 
-                if (name != null && number != null) {
-                    // Get the contact photo URI using the contact ID
-                    val photoUri = getContactPhotoUri(context, id)
-                    
-                    return Contact(
-                        id = id,
-                        name = name,
-                        phoneNumber = number,
-                        photoUri = photoUri
-                    )
+                    if (name != null && number != null) {
+                        // Get the contact photo URI using the contact ID
+                        val photoUri = getContactPhotoUri(context, id)
+                        
+                        return Contact(
+                            id = id,
+                            name = name,
+                            phoneNumber = number,
+                            photoUri = photoUri
+                        )
+                    }
                 }
             }
         }
@@ -292,7 +340,7 @@ fun PermissionRequestScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "This app needs phone and contacts permissions to make calls and display contact photos.",
+            text = "This app needs phone, contacts, and call log permissions to make calls, display contact photos, and show recent call history.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
