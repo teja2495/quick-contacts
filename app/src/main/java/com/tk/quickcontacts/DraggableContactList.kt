@@ -17,8 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +38,73 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.rotate
+
+@Composable
+fun PhoneNumberSelectionDialog(
+    contact: Contact,
+    onPhoneNumberSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Select Phone Number",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Choose a phone number for ${contact.name}:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                contact.phoneNumbers.forEach { phoneNumber ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onPhoneNumberSelected(phoneNumber) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Text(
+                                text = phoneNumber,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
 
 @Composable
 fun ContactList(
@@ -86,6 +153,7 @@ fun ContactList(
 fun RecentCallsSection(
     recentCalls: List<Contact>,
     onContactClick: (Contact) -> Unit,
+    onWhatsAppClick: (Contact) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (recentCalls.isNotEmpty()) {
@@ -151,6 +219,7 @@ fun RecentCallsSection(
                         RecentCallVerticalItem(
                             contact = contact,
                             onContactClick = onContactClick,
+                            onWhatsAppClick = onWhatsAppClick,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -164,10 +233,12 @@ fun RecentCallsSection(
 fun RecentCallVerticalItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
+    onWhatsAppClick: (Contact) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
+    var dialogAction by remember { mutableStateOf<String?>(null) }
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -175,11 +246,16 @@ fun RecentCallVerticalItem(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
                 val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber)
-                onContactClick(contactWithSelectedNumber)
+                when (dialogAction) {
+                    "call" -> onContactClick(contactWithSelectedNumber)
+                    "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
+                }
                 showPhoneNumberDialog = false
+                dialogAction = null
             },
             onDismiss = {
                 showPhoneNumberDialog = false
+                dialogAction = null
             }
         )
     }
@@ -189,6 +265,7 @@ fun RecentCallVerticalItem(
             .fillMaxWidth()
             .clickable { 
                 if (contact.phoneNumbers.size > 1) {
+                    dialogAction = "call"
                     showPhoneNumberDialog = true
                 } else {
                     onContactClick(contact)
@@ -243,13 +320,20 @@ fun RecentCallVerticalItem(
         
         // WhatsApp button
         IconButton(
-            onClick = { onContactClick(contact) },
+            onClick = { 
+                if (contact.phoneNumbers.size > 1) {
+                    dialogAction = "whatsapp"
+                    showPhoneNumberDialog = true
+                } else {
+                    onWhatsAppClick(contact)
+                }
+            },
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Send,
                 contentDescription = "WhatsApp ${contact.name}",
-                tint = MaterialTheme.colorScheme.primary,
+                tint = Color(0xFF25D366), // WhatsApp green color
                 modifier = Modifier.size(16.dp)
             )
         }

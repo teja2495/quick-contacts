@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Done
@@ -72,6 +73,7 @@ fun QuickContactsApp() {
     
     // Navigation state
     var currentScreen by remember { mutableStateOf("home") }
+    var isSearchScreenOpen by remember { mutableStateOf(false) }
     
     // Permission states
     var hasCallPermission by remember {
@@ -144,30 +146,27 @@ fun QuickContactsApp() {
                         text = "Quick Contacts",
                         fontWeight = FontWeight.Bold
                     )
-                },
-                actions = {
-                    if (hasCallPermission && hasContactsPermission && hasCallLogPermission) {
-                        if (selectedContacts.isNotEmpty()) {
-                            IconButton(onClick = { editMode = !editMode }) {
-                                Icon(
-                                    imageVector = if (editMode) Icons.Default.Done else Icons.Default.Edit,
-                                    contentDescription = if (editMode) "Done" else "Edit Contacts"
-                                )
-                            }
-                        }
-                    }
                 }
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Remove always-visible search bar
-            
-            when {
+        if (isSearchScreenOpen) {
+            SearchScreen(
+                viewModel = viewModel,
+                onBackPressed = { isSearchScreenOpen = false },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                // Remove always-visible search bar
+                
+                when {
                 !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
                     PermissionRequestScreen(
                         onRequestPermissions = {
@@ -191,6 +190,9 @@ fun QuickContactsApp() {
                             recentCalls = filteredRecentCalls,
                             onContactClick = { contact ->
                                 viewModel.makePhoneCall(context, contact.phoneNumber)
+                            },
+                            onWhatsAppClick = { contact ->
+                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
                             }
                         )
                         
@@ -199,31 +201,13 @@ fun QuickContactsApp() {
                         
                         Spacer(modifier = Modifier.weight(1f))
                         
-                        // Search button
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            OutlinedButton(
-                                onClick = { /* TODO: Navigate to search */ },
-                                modifier = Modifier
-                                    .wrapContentWidth()
-                                    .padding(top = 24.dp, bottom = 32.dp),
-                                shape = MaterialTheme.shapes.large,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    "Search",
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                        // Clickable search bar at bottom
+                        FakeSearchBar(
+                            onClick = { isSearchScreenOpen = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 16.dp)
+                        )
                     }
                 }
                 
@@ -236,8 +220,37 @@ fun QuickContactsApp() {
                             recentCalls = filteredRecentCalls,
                             onContactClick = { contact ->
                                 viewModel.makePhoneCall(context, contact.phoneNumber)
+                            },
+                            onWhatsAppClick = { contact ->
+                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
                             }
                         )
+                        
+                        // Favourite header with edit functionality
+                        if (selectedContacts.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Favourite",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                
+                                Text(
+                                    text = if (editMode) "Done" else "Edit",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { editMode = !editMode }
+                                )
+                            }
+                        }
                         
                         // Quick contacts list
                         ContactList(
@@ -259,104 +272,177 @@ fun QuickContactsApp() {
                         
                         Spacer(modifier = Modifier.weight(1f))
                         
-                        // Search button beneath quick contacts list
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            OutlinedButton(
-                                onClick = { /* TODO: Navigate to search */ },
-                                modifier = Modifier
-                                    .wrapContentWidth()
-                                    .padding(top = 24.dp, bottom = 32.dp),
-                                shape = MaterialTheme.shapes.large,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    "Search",
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                        // Clickable search bar at bottom
+                        FakeSearchBar(
+                            onClick = { isSearchScreenOpen = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 16.dp)
+                        )
                     }
                 }
             }
         }
     }
 }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PhoneNumberSelectionDialog(
-    contact: Contact,
-    onPhoneNumberSelected: (String) -> Unit,
-    onDismiss: () -> Unit
+fun SearchScreen(
+    viewModel: ContactsViewModel,
+    onBackPressed: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Select Phone Number",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column {
-                Text(
-                    text = "Choose a phone number for ${contact.name}:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                contact.phoneNumbers.forEach { phoneNumber ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable { onPhoneNumberSelected(phoneNumber) },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Text(
-                                text = phoneNumber,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
+    val context = LocalContext.current
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    
+    // Search all contacts when search query changes
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotEmpty()) {
+            viewModel.searchAllContacts(context, searchQuery)
+        }
+    }
+    
+    // Clear search when entering the screen
+    LaunchedEffect(Unit) {
+        viewModel.updateSearchQuery("")
+    }
+    
+    Column(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // Top search bar
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBackPressed) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = viewModel::updateSearchQuery,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                )
             }
         }
-    )
+        
+        // Search results
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            if (searchQuery.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Search Contacts",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Type a name to search through all your contacts",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else if (searchResults.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "No Results Found",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Try a different search term",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                items(searchResults) { contact ->
+                    SearchResultItem(
+                        contact = contact,
+                        onContactClick = { contact ->
+                            viewModel.makePhoneCall(context, contact.phoneNumber)
+                        },
+                        onToggleContact = { contact ->
+                            val selectedContacts = viewModel.selectedContacts.value
+                            val isSelected = selectedContacts.any { it.id == contact.id }
+                            if (isSelected) {
+                                viewModel.removeContact(contact)
+                            } else {
+                                viewModel.addContact(contact)
+                            }
+                        },
+                        selectedContacts = viewModel.selectedContacts.collectAsState().value,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
 }
+
 
 @Composable
 fun SearchBar(
@@ -398,59 +484,95 @@ fun SearchBar(
 }
 
 @Composable
+fun FakeSearchBar(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Text(
+                text = "Search contacts...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 fun SearchResultsSection(
     searchResults: List<Contact>,
     onContactClick: (Contact) -> Unit,
-    onAddContact: (Contact) -> Unit,
+    onToggleContact: (Contact) -> Unit,
+    selectedContacts: List<Contact>,
     modifier: Modifier = Modifier
 ) {
     if (searchResults.isNotEmpty()) {
-        Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        Column(
+            modifier = modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Search Results",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
-                // Display up to 5 search results
-                searchResults.take(5).forEach { contact ->
-                    SearchResultItem(
-                        contact = contact,
-                        onContactClick = onContactClick,
-                        onAddContact = onAddContact,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                if (searchResults.size > 5) {
-                    Text(
-                        text = "+${searchResults.size - 5} more results",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Search Results",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            // Display up to 5 search results
+            searchResults.take(5).forEach { contact ->
+                SearchResultItem(
+                    contact = contact,
+                    onContactClick = onContactClick,
+                    onToggleContact = onToggleContact,
+                    selectedContacts = selectedContacts,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            
+            if (searchResults.size > 5) {
+                Text(
+                    text = "+${searchResults.size - 5} more results",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
         }
     }
@@ -460,19 +582,22 @@ fun SearchResultsSection(
 fun SearchResultItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
-    onAddContact: (Contact) -> Unit,
+    onToggleContact: (Contact) -> Unit,
+    selectedContacts: List<Contact>,
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
+    val isSelected = selectedContacts.any { it.id == contact.id }
     
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = MaterialTheme.shapes.large
     ) {
         Row(
             modifier = Modifier
@@ -520,7 +645,7 @@ fun SearchResultItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = contact.name,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
@@ -547,15 +672,21 @@ fun SearchResultItem(
                     )
                 }
                 
-                // Add to quick contacts button
+                // Toggle quick contacts button
                 IconButton(
-                    onClick = { onAddContact(contact) },
+                    onClick = { onToggleContact(contact) },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add ${contact.name} to quick contacts",
-                        tint = MaterialTheme.colorScheme.secondary,
+                        imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
+                        contentDescription = if (isSelected) 
+                            "Remove ${contact.name} from quick contacts" 
+                        else 
+                            "Add ${contact.name} to quick contacts",
+                        tint = if (isSelected) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -686,7 +817,7 @@ fun PermissionRequestScreen(
 fun EmptyContactsScreen() {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -710,7 +841,7 @@ fun EmptyContactsScreen() {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Search contacts above and add them to your quick list for easy calling access.",
+            text = "Search contacts below and add them to your quick list for easy calling access.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
