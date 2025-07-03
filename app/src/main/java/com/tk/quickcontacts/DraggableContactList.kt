@@ -111,7 +111,7 @@ fun RecentCallsSection(
                 }
                 
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
                     items(recentCalls) { contact ->
@@ -183,7 +183,7 @@ fun RecentCallItem(
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(72.dp)
+            modifier = Modifier.width(84.dp)
         )
     }
 }

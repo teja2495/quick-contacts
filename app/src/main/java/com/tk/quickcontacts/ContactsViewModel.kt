@@ -163,9 +163,13 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                         // Get contact photo URI
                         val photoUri = getContactPhotoUri(context, contactId)
                         
+                        val finalName = displayName?.takeIf { it.isNotBlank() }
+                            ?: cachedName?.takeIf { it.isNotBlank() }
+                            ?: formatPhoneNumber(phoneNumber)
+                        
                         return Contact(
                             id = "call_history_$contactId",
-                            name = displayName ?: cachedName ?: "Unknown",
+                            name = finalName,
                             phoneNumber = number ?: phoneNumber,
                             photoUri = photoUri
                         )
@@ -176,10 +180,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             e.printStackTrace()
         }
         
-        // Fallback: create contact with cached name or unknown
+        // Fallback: create contact with cached name or formatted phone number
+        val finalName = cachedName?.takeIf { it.isNotBlank() } ?: formatPhoneNumber(phoneNumber)
+        
         return Contact(
             id = "call_history_${phoneNumber.hashCode()}",
-            name = cachedName ?: "Unknown",
+            name = finalName,
             phoneNumber = phoneNumber,
             photoUri = null
         )
@@ -216,5 +222,38 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     else -> cleaned // Local number
                 }
             }
+    }
+    
+    private fun formatPhoneNumber(phoneNumber: String): String {
+        val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
+        
+        return when {
+            // US/Canada number with +1 country code
+            cleaned.startsWith("+1") && cleaned.length == 12 -> {
+                val digits = cleaned.substring(2)
+                "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
+            }
+            // US/Canada number without country code (10 digits)
+            !cleaned.startsWith("+") && cleaned.length == 10 -> {
+                "(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6)}"
+            }
+            // US/Canada number with country code but no +
+            cleaned.startsWith("1") && cleaned.length == 11 -> {
+                val digits = cleaned.substring(1)
+                "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
+            }
+            // International number with country code
+            cleaned.startsWith("+") && cleaned.length > 7 -> {
+                val countryCode = cleaned.substring(0, cleaned.length - 10)
+                val localNumber = cleaned.substring(cleaned.length - 10)
+                if (localNumber.length == 10) {
+                    "$countryCode (${localNumber.substring(0, 3)}) ${localNumber.substring(3, 6)}-${localNumber.substring(6)}"
+                } else {
+                    cleaned // Fallback to cleaned number
+                }
+            }
+            // Other formats - just return cleaned
+            else -> cleaned
+        }
     }
 } 
