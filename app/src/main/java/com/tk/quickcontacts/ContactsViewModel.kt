@@ -121,6 +121,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 normalizePhoneNumber(it.phoneNumber) 
             }.toSet()
             
+            // Debug logging
+            android.util.Log.d("QuickContacts", "Selected contact numbers (normalized): $selectedContactNumbers")
+            
             val projection = arrayOf(
                 CallLog.Calls.NUMBER,
                 CallLog.Calls.CACHED_NAME,
@@ -140,12 +143,16 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
                 
                 if (numberColumn >= 0 && nameColumn >= 0) {
-                    while (it.moveToNext() && recentCallsList.size < 3) {
+                    while (it.moveToNext() && recentCallsList.size < 6) {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
                         
                         if (number != null && !seenNumbers.contains(number)) {
                             val normalizedNumber = normalizePhoneNumber(number)
+                            
+                            // Debug logging
+                            android.util.Log.d("QuickContacts", "Call log number: $number -> normalized: $normalizedNumber")
+                            android.util.Log.d("QuickContacts", "Is excluded: ${selectedContactNumbers.contains(normalizedNumber)}")
                             
                             // Skip if this number is already in selected contacts
                             if (!selectedContactNumbers.contains(normalizedNumber)) {
@@ -153,7 +160,21 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                                 
                                 // Try to get contact details from contacts provider
                                 val contact = getContactByPhoneNumber(context, number, cachedName)
-                                contact?.let { recentCallsList.add(it) }
+                                contact?.let { 
+                                    // Double-check: also exclude by name if it matches a selected contact
+                                    val isNameDuplicate = _selectedContacts.value.any { selectedContact ->
+                                        selectedContact.name.equals(it.name, ignoreCase = true)
+                                    }
+                                    
+                                    if (!isNameDuplicate) {
+                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${it.name} - ${it.phoneNumber}")
+                                        recentCallsList.add(it)
+                                    } else {
+                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${it.name}")
+                                    }
+                                }
+                            } else {
+                                android.util.Log.d("QuickContacts", "Skipping duplicate contact: $cachedName - $number")
                             }
                         }
                     }
@@ -202,7 +223,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                         return Contact(
                             id = "call_history_$contactId",
                             name = finalName,
-                            phoneNumber = number ?: phoneNumber,
+                            phoneNumber = phoneNumber, // Use original call log number for consistency
                             photoUri = photoUri
                         )
                     }
@@ -244,16 +265,32 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     private fun normalizePhoneNumber(phoneNumber: String): String {
-        // Remove all non-digit characters except '+'
-        return phoneNumber.replace(Regex("[^+\\d]"), "")
-            .let { cleaned ->
-                // If number starts with country code, keep it; otherwise just return the digits
-                when {
-                    cleaned.startsWith("+") -> cleaned
-                    cleaned.length > 10 -> cleaned // Assume it includes country code
-                    else -> cleaned // Local number
-                }
+        // Remove all non-digit characters
+        val digitsOnly = phoneNumber.replace(Regex("[^\\d]"), "")
+        
+        return when {
+            // Empty or too short
+            digitsOnly.length < 7 -> digitsOnly
+            
+            // US/Canada numbers: 11 digits starting with 1, or 10 digits
+            digitsOnly.length == 11 && digitsOnly.startsWith("1") -> {
+                // Remove leading 1 for US/Canada numbers to normalize to 10 digits
+                digitsOnly.substring(1)
             }
+            digitsOnly.length == 10 -> {
+                // Already 10 digits, likely US/Canada without country code
+                digitsOnly
+            }
+            
+            // International numbers: keep as is but remove leading country codes for comparison
+            digitsOnly.length > 11 -> {
+                // Take last 10 digits for comparison (assumes international format)
+                digitsOnly.takeLast(10)
+            }
+            
+            // Other cases: return as is
+            else -> digitsOnly
+        }
     }
     
     private fun formatPhoneNumber(phoneNumber: String): String {

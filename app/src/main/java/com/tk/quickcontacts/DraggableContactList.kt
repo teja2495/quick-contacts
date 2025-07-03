@@ -34,6 +34,9 @@ import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlin.math.ceil
 
 @Composable
 fun ContactList(
@@ -86,6 +89,12 @@ fun RecentCallsSection(
     modifier: Modifier = Modifier
 ) {
     if (recentCalls.isNotEmpty()) {
+        val itemsPerPage = 3
+        val pageCount = ceil(recentCalls.size.toDouble() / itemsPerPage).toInt()
+        val pagerState = rememberPagerState(
+            pageCount = { pageCount }
+        )
+        
         Card(
             modifier = modifier
                 .fillMaxWidth()
@@ -114,15 +123,31 @@ fun RecentCallsSection(
                     )
                 }
                 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
-                ) {
-                    items(recentCalls) { contact ->
-                        RecentCallItem(
-                            contact = contact,
-                            onContactClick = onContactClick
-                        )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth()
+                ) { page ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        val startIndex = page * itemsPerPage
+                        val endIndex = minOf(startIndex + itemsPerPage, recentCalls.size)
+                        
+                        for (i in startIndex until endIndex) {
+                            RecentCallItem(
+                                contact = recentCalls[i],
+                                onContactClick = onContactClick,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        
+                        // Add empty spaces to maintain consistent layout if fewer than 3 items
+                        repeat(itemsPerPage - (endIndex - startIndex)) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
