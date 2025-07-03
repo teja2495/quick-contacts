@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -68,6 +69,9 @@ fun QuickContactsApp() {
     val viewModel: ContactsViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
     )
+    
+    // Navigation state
+    var currentScreen by remember { mutableStateOf("home") }
     
     // Permission states
     var hasCallPermission by remember {
@@ -161,16 +165,7 @@ fun QuickContactsApp() {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Search bar - only show when permissions are granted
-            if (hasCallPermission && hasContactsPermission && hasCallLogPermission) {
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = { viewModel.updateSearchQuery(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+            // Remove always-visible search bar
             
             when {
                 !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
@@ -191,30 +186,43 @@ fun QuickContactsApp() {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Show search results when searching
-                        if (searchQuery.isNotEmpty() && searchResults.isNotEmpty()) {
-                            SearchResultsSection(
-                                searchResults = searchResults,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                onAddContact = { contact ->
-                                    viewModel.addContact(contact)
-                                }
-                            )
-                        }
+                        // Recent calls section
+                        RecentCallsSection(
+                            recentCalls = filteredRecentCalls,
+                            onContactClick = { contact ->
+                                viewModel.makePhoneCall(context, contact.phoneNumber)
+                            }
+                        )
                         
-                        // Show recent calls section only when not searching
-                        if (searchQuery.isEmpty()) {
-                            RecentCallsSection(
-                                recentCalls = filteredRecentCalls,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                }
-                            )
-                            
-                            // Empty contacts screen
-                            EmptyContactsScreen()
+                        // Empty contacts screen
+                        EmptyContactsScreen()
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // Search button
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            OutlinedButton(
+                                onClick = { /* TODO: Navigate to search */ },
+                                modifier = Modifier
+                                    .wrapContentWidth()
+                                    .padding(top = 24.dp, bottom = 32.dp),
+                                shape = MaterialTheme.shapes.large,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Search",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     }
                 }
@@ -223,52 +231,131 @@ fun QuickContactsApp() {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Show search results when searching
-                        if (searchQuery.isNotEmpty() && searchResults.isNotEmpty()) {
-                            SearchResultsSection(
-                                searchResults = searchResults,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                onAddContact = { contact ->
-                                    viewModel.addContact(contact)
-                                }
-                            )
-                        }
+                        // Recent calls section
+                        RecentCallsSection(
+                            recentCalls = filteredRecentCalls,
+                            onContactClick = { contact ->
+                                viewModel.makePhoneCall(context, contact.phoneNumber)
+                            }
+                        )
                         
-                        // Show recent calls and quick contacts only when not searching
-                        if (searchQuery.isEmpty()) {
-                            // Recent calls section
-                            RecentCallsSection(
-                                recentCalls = filteredRecentCalls,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                }
-                            )
-                            
-                            // Quick contacts list
-                            ContactList(
-                                contacts = filteredSelectedContacts,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                editMode = editMode,
-                                onDeleteContact = { contact ->
-                                    viewModel.removeContact(contact)
-                                },
-                                onMove = { from, to ->
-                                    viewModel.moveContact(from, to)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                                }
-                            )
+                        // Quick contacts list
+                        ContactList(
+                            contacts = filteredSelectedContacts,
+                            onContactClick = { contact ->
+                                viewModel.makePhoneCall(context, contact.phoneNumber)
+                            },
+                            editMode = editMode,
+                            onDeleteContact = { contact ->
+                                viewModel.removeContact(contact)
+                            },
+                            onMove = { from, to ->
+                                viewModel.moveContact(from, to)
+                            },
+                            onWhatsAppClick = { contact ->
+                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                            }
+                        )
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // Search button beneath quick contacts list
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            OutlinedButton(
+                                onClick = { /* TODO: Navigate to search */ },
+                                modifier = Modifier
+                                    .wrapContentWidth()
+                                    .padding(top = 24.dp, bottom = 32.dp),
+                                shape = MaterialTheme.shapes.large,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Search",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun PhoneNumberSelectionDialog(
+    contact: Contact,
+    onPhoneNumberSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Select Phone Number",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Choose a phone number for ${contact.name}:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                contact.phoneNumbers.forEach { phoneNumber ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onPhoneNumberSelected(phoneNumber) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Text(
+                                text = phoneNumber,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

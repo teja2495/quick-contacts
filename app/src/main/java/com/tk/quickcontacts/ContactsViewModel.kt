@@ -57,14 +57,13 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             _filteredRecentCalls.value = _recentCalls.value
             _searchResults.value = emptyList()
         } else {
+            // Filter only by name, not phone number
             _filteredSelectedContacts.value = _selectedContacts.value.filter { contact ->
-                contact.name.lowercase().contains(query) || 
-                contact.phoneNumber.replace(Regex("[^\\d]"), "").contains(query.replace(Regex("[^\\d]"), ""))
+                contact.name.lowercase().contains(query)
             }
             
             _filteredRecentCalls.value = _recentCalls.value.filter { contact ->
-                contact.name.lowercase().contains(query) || 
-                contact.phoneNumber.replace(Regex("[^\\d]"), "").contains(query.replace(Regex("[^\\d]"), ""))
+                contact.name.lowercase().contains(query)
             }
         }
     }
@@ -77,8 +76,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         
         try {
             val searchResultsList = mutableListOf<Contact>()
-            val seenIds = mutableSetOf<String>()
-            val selectedContactIds = _selectedContacts.value.map { it.id }.toSet()
+            val seenContactsMap = mutableMapOf<String, Contact>()
             
             val projection = arrayOf(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -86,8 +84,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 ContactsContract.CommonDataKinds.Phone.NUMBER
             )
             
-            val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?"
-            val selectionArgs = arrayOf("%$query%", "%$query%")
+            // Search only by name, not phone number
+            val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
+            val selectionArgs = arrayOf("%$query%")
             
             val cursor: Cursor? = context.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -103,31 +102,46 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                 
                 if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
-                    while (it.moveToNext() && searchResultsList.size < 20) {
+                    while (it.moveToNext()) {
                         val id = it.getString(idColumn)
                         val name = it.getString(nameColumn)
                         val number = it.getString(numberColumn)
                         
-                        if (id != null && name != null && number != null && 
-                            !seenIds.contains(id) && !selectedContactIds.contains(id)) {
-                            seenIds.add(id)
+                        if (id != null && name != null && number != null) {
                             
-                            // Get contact photo URI
-                            val photoUri = getContactPhotoUri(context, id)
-                            
-                            val contact = Contact(
-                                id = id,
-                                name = name,
-                                phoneNumber = number,
-                                photoUri = photoUri
-                            )
-                            searchResultsList.add(contact)
+                            if (seenContactsMap.containsKey(id)) {
+                                // Add phone number to existing contact (normalize to avoid duplicates)
+                                val existingContact = seenContactsMap[id]!!
+                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
+                                val normalizedNewNumber = normalizePhoneNumber(number)
+                                
+                                // Check if this normalized number already exists
+                                val alreadyExists = updatedPhoneNumbers.any { 
+                                    normalizePhoneNumber(it) == normalizedNewNumber 
+                                }
+                                
+                                if (!alreadyExists) {
+                                    updatedPhoneNumbers.add(number)
+                                    seenContactsMap[id] = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                }
+                            } else {
+                                // Create new contact
+                                val contact = Contact(
+                                    id = id,
+                                    name = name,
+                                    phoneNumber = number, // Primary phone number
+                                    phoneNumbers = listOf(number),
+                                    photoUri = null // Not using photos in search results
+                                )
+                                seenContactsMap[id] = contact
+                            }
                         }
                     }
                 }
             }
             
-            _searchResults.value = searchResultsList
+            // Convert map to list and limit results
+            _searchResults.value = seenContactsMap.values.take(20)
         } catch (e: Exception) {
             e.printStackTrace()
             _searchResults.value = emptyList()
@@ -334,6 +348,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                             id = "call_history_$contactId",
                             name = finalName,
                             phoneNumber = phoneNumber, // Use original call log number for consistency
+                            phoneNumbers = listOf(phoneNumber),
                             photoUri = photoUri
                         )
                     }
@@ -350,6 +365,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             id = "call_history_${phoneNumber.hashCode()}",
             name = finalName,
             phoneNumber = phoneNumber,
+            phoneNumbers = listOf(phoneNumber),
             photoUri = null
         )
     }
