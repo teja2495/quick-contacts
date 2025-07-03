@@ -20,6 +20,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     private val _recentCalls = MutableStateFlow<List<Contact>>(emptyList())
     val recentCalls: StateFlow<List<Contact>> = _recentCalls
+    
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+    
+    private val _filteredSelectedContacts = MutableStateFlow<List<Contact>>(emptyList())
+    val filteredSelectedContacts: StateFlow<List<Contact>> = _filteredSelectedContacts
+    
+    private val _filteredRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
+    val filteredRecentCalls: StateFlow<List<Contact>> = _filteredRecentCalls
+    
+    private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
+    val searchResults: StateFlow<List<Contact>> = _searchResults
 
     private val sharedPreferences: SharedPreferences
     private val gson = Gson()
@@ -27,6 +39,99 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     init {
         sharedPreferences = application.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
         loadContacts()
+        // Initialize filtered lists
+        _filteredSelectedContacts.value = _selectedContacts.value
+        _filteredRecentCalls.value = _recentCalls.value
+    }
+    
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+        filterContacts()
+    }
+    
+    private fun filterContacts() {
+        val query = _searchQuery.value.lowercase().trim()
+        
+        if (query.isEmpty()) {
+            _filteredSelectedContacts.value = _selectedContacts.value
+            _filteredRecentCalls.value = _recentCalls.value
+            _searchResults.value = emptyList()
+        } else {
+            _filteredSelectedContacts.value = _selectedContacts.value.filter { contact ->
+                contact.name.lowercase().contains(query) || 
+                contact.phoneNumber.replace(Regex("[^\\d]"), "").contains(query.replace(Regex("[^\\d]"), ""))
+            }
+            
+            _filteredRecentCalls.value = _recentCalls.value.filter { contact ->
+                contact.name.lowercase().contains(query) || 
+                contact.phoneNumber.replace(Regex("[^\\d]"), "").contains(query.replace(Regex("[^\\d]"), ""))
+            }
+        }
+    }
+    
+    fun searchAllContacts(context: Context, query: String) {
+        if (query.trim().isEmpty()) {
+            _searchResults.value = emptyList()
+            return
+        }
+        
+        try {
+            val searchResultsList = mutableListOf<Contact>()
+            val seenIds = mutableSetOf<String>()
+            val selectedContactIds = _selectedContacts.value.map { it.id }.toSet()
+            
+            val projection = arrayOf(
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            
+            val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?"
+            val selectionArgs = arrayOf("%$query%", "%$query%")
+            
+            val cursor: Cursor? = context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+            )
+            
+            cursor?.use {
+                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                
+                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
+                    while (it.moveToNext() && searchResultsList.size < 20) {
+                        val id = it.getString(idColumn)
+                        val name = it.getString(nameColumn)
+                        val number = it.getString(numberColumn)
+                        
+                        if (id != null && name != null && number != null && 
+                            !seenIds.contains(id) && !selectedContactIds.contains(id)) {
+                            seenIds.add(id)
+                            
+                            // Get contact photo URI
+                            val photoUri = getContactPhotoUri(context, id)
+                            
+                            val contact = Contact(
+                                id = id,
+                                name = name,
+                                phoneNumber = number,
+                                photoUri = photoUri
+                            )
+                            searchResultsList.add(contact)
+                        }
+                    }
+                }
+            }
+            
+            _searchResults.value = searchResultsList
+        } catch (e: Exception) {
+            e.printStackTrace()
+            _searchResults.value = emptyList()
+        }
     }
 
     private fun loadContacts() {
@@ -34,6 +139,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         if (json != null) {
             val type = object : TypeToken<List<Contact>>() {}.type
             _selectedContacts.value = gson.fromJson(json, type)
+            filterContacts()
         }
     }
 
@@ -48,6 +154,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             currentList.add(contact)
             _selectedContacts.value = currentList
             saveContacts()
+            filterContacts()
         }
     }
 
@@ -56,6 +163,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         currentList.removeAll { it.id == contact.id }
         _selectedContacts.value = currentList
         saveContacts()
+        filterContacts()
     }
 
     fun moveContact(fromIndex: Int, toIndex: Int) {
@@ -65,6 +173,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             currentList.add(toIndex, contact)
             _selectedContacts.value = currentList
             saveContacts()
+            filterContacts()
         }
     }
 
@@ -182,6 +291,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
             
             _recentCalls.value = recentCallsList
+            filterContacts()
         } catch (e: Exception) {
             e.printStackTrace()
         }
