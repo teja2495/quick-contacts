@@ -228,6 +228,9 @@ fun QuickContactsApp() {
                             },
                             onMove = { from, to ->
                                 viewModel.moveContact(from, to)
+                            },
+                            onWhatsAppClick = { contact ->
+                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
                             }
                         )
                     }

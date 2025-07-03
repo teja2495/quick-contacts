@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Menu
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -40,7 +42,8 @@ fun ContactList(
     modifier: Modifier = Modifier,
     editMode: Boolean,
     onDeleteContact: (Contact) -> Unit,
-    onMove: (Int, Int) -> Unit = { _, _ -> }
+    onMove: (Int, Int) -> Unit = { _, _ -> },
+    onWhatsAppClick: (Contact) -> Unit = {}
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -68,7 +71,8 @@ fun ContactList(
                         .fillMaxWidth()
                         .shadow(elevation.value),
                     editMode = editMode,
-                    onDeleteContact = onDeleteContact
+                    onDeleteContact = onDeleteContact,
+                    onWhatsAppClick = onWhatsAppClick
                 )
             }
         }
@@ -194,7 +198,8 @@ fun ContactItem(
     onContactClick: (Contact) -> Unit,
     modifier: Modifier = Modifier,
     editMode: Boolean,
-    onDeleteContact: (Contact) -> Unit
+    onDeleteContact: (Contact) -> Unit,
+    onWhatsAppClick: (Contact) -> Unit = {}
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     
@@ -276,6 +281,15 @@ fun ContactItem(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Contact",
                         tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else {
+                // WhatsApp icon when not in edit mode
+                IconButton(onClick = { onWhatsAppClick(contact) }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Open WhatsApp Chat",
+                        tint = Color(0xFF25D366) // WhatsApp green color
                     )
                 }
             }

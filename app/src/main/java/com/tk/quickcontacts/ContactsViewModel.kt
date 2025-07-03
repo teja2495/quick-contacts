@@ -78,6 +78,38 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             e.printStackTrace()
         }
     }
+    
+    fun openWhatsAppChat(context: Context, phoneNumber: String) {
+        try {
+            // Format phone number for WhatsApp (remove all non-digits and ensure country code)
+            val cleanNumber = phoneNumber.replace(Regex("[^\\d]"), "")
+            val formattedNumber = if (cleanNumber.startsWith("1") && cleanNumber.length == 11) {
+                cleanNumber // US/Canada number with country code
+            } else if (cleanNumber.length == 10) {
+                "1$cleanNumber" // Add US country code
+            } else {
+                cleanNumber // International number
+            }
+            
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("https://wa.me/$formattedNumber")
+                setPackage("com.whatsapp")
+            }
+            
+            // Try to open WhatsApp, fall back to web if not installed
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                // WhatsApp not installed, open in browser
+                val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse("https://wa.me/$formattedNumber")
+                }
+                context.startActivity(webIntent)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     fun loadRecentCalls(context: Context) {
         try {
