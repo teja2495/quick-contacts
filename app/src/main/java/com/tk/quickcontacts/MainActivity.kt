@@ -17,6 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -686,6 +688,7 @@ fun SearchResultsSection(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchResultItem(
     contact: Contact,
@@ -777,18 +780,23 @@ fun SearchResultItem(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { 
-                        if (contact.phoneNumbers.size > 1) {
-                            dialogAction = if (isInternational) "whatsapp" else "call"
-                            showPhoneNumberDialog = true
-                        } else {
-                            if (isInternational) {
-                                onWhatsAppClick(contact)
+                    .combinedClickable(
+                        onClick = { 
+                            if (contact.phoneNumbers.size > 1) {
+                                dialogAction = if (isInternational) "whatsapp" else "call"
+                                showPhoneNumberDialog = true
                             } else {
-                                onContactClick(contact)
+                                if (isInternational) {
+                                    onWhatsAppClick(contact)
+                                } else {
+                                    onContactClick(contact)
+                                }
                             }
+                        },
+                        onLongClick = {
+                            onContactImageClick(contact)
                         }
-                    }
+                    )
                     .padding(vertical = 8.dp)
             ) {
                 Text(
