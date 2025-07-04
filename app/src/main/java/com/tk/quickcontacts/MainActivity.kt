@@ -192,7 +192,7 @@ fun QuickContactsApp() {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Quick Contacts",
+                        text = if (isSearching) "Search" else "Quick Contacts",
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 8.dp) // Align with Recent Calls text
                     )
@@ -664,7 +664,24 @@ fun SearchResultItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .combinedClickable(
+                onClick = { 
+                    if (contact.phoneNumbers.size > 1) {
+                        dialogAction = if (isInternational) "whatsapp" else "call"
+                        showPhoneNumberDialog = true
+                    } else {
+                        if (isInternational) {
+                            onWhatsAppClick(contact)
+                        } else {
+                            onContactClick(contact)
+                        }
+                    }
+                },
+                onLongClick = {
+                    onContactImageClick(contact)
+                }
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -714,23 +731,6 @@ fun SearchResultItem(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .combinedClickable(
-                        onClick = { 
-                            if (contact.phoneNumbers.size > 1) {
-                                dialogAction = if (isInternational) "whatsapp" else "call"
-                                showPhoneNumberDialog = true
-                            } else {
-                                if (isInternational) {
-                                    onWhatsAppClick(contact)
-                                } else {
-                                    onContactClick(contact)
-                                }
-                            }
-                        },
-                        onLongClick = {
-                            onContactImageClick(contact)
-                        }
-                    )
                     .padding(vertical = 8.dp)
             ) {
                 Text(

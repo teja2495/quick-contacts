@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -191,7 +192,8 @@ fun RecentCallsSection(
         Card(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 0.dp),
+                .padding(horizontal = 16.dp, vertical = 0.dp)
+                .offset(y = (-8).dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.0f)
@@ -199,7 +201,7 @@ fun RecentCallsSection(
             shape = MaterialTheme.shapes.medium
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
