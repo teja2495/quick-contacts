@@ -69,6 +69,9 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,6 +101,13 @@ fun QuickContactsApp() {
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
     val isKeyboardOpen = imeBottom > 0
+    
+    // Animate padding change when keyboard opens/closes
+    val searchBarBottomPadding by animateDpAsState(
+        targetValue = if (isKeyboardOpen) 0.dp else 40.dp,
+        animationSpec = tween(durationMillis = 300),
+        label = "searchBarBottomPadding"
+    )
     
     // Permission states
     var hasCallPermission by remember {
@@ -250,7 +260,7 @@ fun QuickContactsApp() {
                                     start = 16.dp, 
                                     top = 8.dp, 
                                     end = 16.dp, 
-                                    bottom = if (isKeyboardOpen) 0.dp else 40.dp
+                                    bottom = searchBarBottomPadding
                                 )
                                 .imePadding()
                         )
@@ -578,7 +588,7 @@ fun SearchResultsContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 0.dp)
+                        .padding(start = 24.dp, top = 10.dp, end = 24.dp, bottom = 0.dp)
                 )
             }
             
