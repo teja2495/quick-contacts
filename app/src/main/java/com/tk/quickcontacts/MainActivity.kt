@@ -157,7 +157,10 @@ fun QuickContactsApp() {
         if (isSearchScreenOpen) {
             SearchScreen(
                 viewModel = viewModel,
-                onBackPressed = { isSearchScreenOpen = false },
+                onBackPressed = { 
+                    viewModel.updateSearchQuery("") // Clear search query when going back
+                    isSearchScreenOpen = false 
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
@@ -189,23 +192,26 @@ fun QuickContactsApp() {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Recent calls section
-                        RecentCallsSection(
-                            recentCalls = filteredRecentCalls,
-                            onContactClick = { contact ->
-                                viewModel.makePhoneCall(context, contact.phoneNumber)
-                            },
-                            onWhatsAppClick = { contact ->
-                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                            }
-                        )
+                        // Scrollable content
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // Recent calls section
+                            RecentCallsSection(
+                                recentCalls = filteredRecentCalls,
+                                onContactClick = { contact ->
+                                    viewModel.makePhoneCall(context, contact.phoneNumber)
+                                },
+                                onWhatsAppClick = { contact ->
+                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                }
+                            )
+                            
+                            // Empty contacts screen
+                            EmptyContactsScreen()
+                        }
                         
-                        // Empty contacts screen
-                        EmptyContactsScreen()
-                        
-                        Spacer(modifier = Modifier.weight(1f))
-                        
-                        // Clickable search bar at bottom
+                        // Fixed search bar at bottom
                         FakeSearchBar(
                             onClick = { isSearchScreenOpen = true },
                             modifier = Modifier
@@ -219,64 +225,67 @@ fun QuickContactsApp() {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Recent calls section
-                        RecentCallsSection(
-                            recentCalls = filteredRecentCalls,
-                            onContactClick = { contact ->
-                                viewModel.makePhoneCall(context, contact.phoneNumber)
-                            },
-                            onWhatsAppClick = { contact ->
-                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                        // Scrollable content
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // Recent calls section
+                            RecentCallsSection(
+                                recentCalls = filteredRecentCalls,
+                                onContactClick = { contact ->
+                                    viewModel.makePhoneCall(context, contact.phoneNumber)
+                                },
+                                onWhatsAppClick = { contact ->
+                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                }
+                            )
+                            
+                            // Favourite header with edit functionality
+                            if (selectedContacts.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Favourites",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    
+                                    Text(
+                                        text = if (editMode) "Done" else "Edit",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable { editMode = !editMode }
+                                    )
+                                }
                             }
-                        )
-                        
-                        // Favourite header with edit functionality
-                        if (selectedContacts.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Favourite",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Text(
-                                    text = if (editMode) "Done" else "Edit",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable { editMode = !editMode }
-                                )
-                            }
+                            
+                            // Quick contacts list
+                            ContactList(
+                                contacts = filteredSelectedContacts,
+                                onContactClick = { contact ->
+                                    viewModel.makePhoneCall(context, contact.phoneNumber)
+                                },
+                                editMode = editMode,
+                                onDeleteContact = { contact ->
+                                    viewModel.removeContact(contact)
+                                },
+                                onMove = { from, to ->
+                                    viewModel.moveContact(from, to)
+                                },
+                                onWhatsAppClick = { contact ->
+                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                }
+                            )
                         }
                         
-                        // Quick contacts list
-                        ContactList(
-                            contacts = filteredSelectedContacts,
-                            onContactClick = { contact ->
-                                viewModel.makePhoneCall(context, contact.phoneNumber)
-                            },
-                            editMode = editMode,
-                            onDeleteContact = { contact ->
-                                viewModel.removeContact(contact)
-                            },
-                            onMove = { from, to ->
-                                viewModel.moveContact(from, to)
-                            },
-                            onWhatsAppClick = { contact ->
-                                viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                            }
-                        )
-                        
-                        Spacer(modifier = Modifier.weight(1f))
-                        
-                        // Clickable search bar at bottom
+                        // Fixed search bar at bottom
                         FakeSearchBar(
                             onClick = { isSearchScreenOpen = true },
                             modifier = Modifier
