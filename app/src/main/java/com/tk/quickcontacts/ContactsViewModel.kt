@@ -192,45 +192,64 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun makePhoneCall(context: Context, phoneNumber: String) {
-        try {
-            val intent = Intent(Intent.ACTION_CALL).apply {
-                data = Uri.parse("tel:$phoneNumber")
-            }
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        val intent = Intent(Intent.ACTION_CALL).apply {
+            data = Uri.parse("tel:$phoneNumber")
         }
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
     }
     
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
+        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber")
+        }
         try {
-            // Format phone number for WhatsApp (remove all non-digits and ensure country code)
-            val cleanNumber = phoneNumber.replace(Regex("[^\\d]"), "")
-            val formattedNumber = if (cleanNumber.startsWith("1") && cleanNumber.length == 11) {
-                cleanNumber // US/Canada number with country code
-            } else if (cleanNumber.length == 10) {
-                "1$cleanNumber" // Add US country code
-            } else {
-                cleanNumber // International number
-            }
-            
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("https://wa.me/$formattedNumber")
-                setPackage("com.whatsapp")
-            }
-            
-            // Try to open WhatsApp, fall back to web if not installed
-            try {
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                // WhatsApp not installed, open in browser
-                val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("https://wa.me/$formattedNumber")
-                }
-                context.startActivity(webIntent)
-            }
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(intent)
         } catch (e: Exception) {
-            e.printStackTrace()
+            // WhatsApp not installed, handle gracefully
+        }
+    }
+
+    fun openContactInContactsApp(context: Context, contact: Contact) {
+        try {
+            // Extract actual contact ID for recent calls contacts
+            val actualContactId = if (contact.id.startsWith("call_history_")) {
+                val extractedId = contact.id.substringAfter("call_history_")
+                // Check if it's a valid numeric contact ID (not a hashcode)
+                if (extractedId.all { it.isDigit() } || extractedId.contains("-")) {
+                    extractedId
+                } else {
+                    // It's likely a hashcode, so skip to phone number fallback
+                    throw Exception("Invalid contact ID - likely a hashcode")
+                }
+            } else {
+                contact.id
+            }
+            
+            // Try to open the specific contact using contact ID
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, actualContactId)
+            }
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                // Fallback: search for contact by phone number
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(contact.phoneNumber))
+                }
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
+            } catch (e2: Exception) {
+                // Final fallback: just open contacts app
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = ContactsContract.Contacts.CONTENT_URI
+                }
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
+            }
         }
     }
 

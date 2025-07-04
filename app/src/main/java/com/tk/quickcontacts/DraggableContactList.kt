@@ -118,7 +118,8 @@ fun ContactList(
     editMode: Boolean,
     onDeleteContact: (Contact) -> Unit,
     onMove: (Int, Int) -> Unit = { _, _ -> },
-    onWhatsAppClick: (Contact) -> Unit = {}
+    onWhatsAppClick: (Contact) -> Unit = {},
+    onContactImageClick: (Contact) -> Unit = {}
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -146,7 +147,8 @@ fun ContactList(
                         .shadow(elevation.value),
                     editMode = editMode,
                     onDeleteContact = onDeleteContact,
-                    onWhatsAppClick = onWhatsAppClick
+                    onWhatsAppClick = onWhatsAppClick,
+                    onContactImageClick = onContactImageClick
                 )
             }
         }
@@ -158,6 +160,7 @@ fun RecentCallsSection(
     recentCalls: List<Contact>,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
+    onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -225,6 +228,7 @@ fun RecentCallsSection(
                             contact = contact,
                             onContactClick = onContactClick,
                             onWhatsAppClick = onWhatsAppClick,
+                            onContactImageClick = onContactImageClick,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -242,6 +246,7 @@ fun RecentCallsSection(
                                 contact = contact,
                                 onContactClick = onContactClick,
                                 onWhatsAppClick = onWhatsAppClick,
+                                onContactImageClick = onContactImageClick,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -257,6 +262,7 @@ fun RecentCallVerticalItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
+    onContactImageClick: (Contact) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
@@ -286,18 +292,10 @@ fun RecentCallVerticalItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { 
-                if (contact.phoneNumbers.size > 1) {
-                    dialogAction = "call"
-                    showPhoneNumberDialog = true
-                } else {
-                    onContactClick(contact)
-                }
-            }
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Contact Photo
+        // Contact Photo - clickable to open in contacts app
         if (contact.photoUri != null && !imageLoadFailed) {
             Image(
                 painter = rememberAsyncImagePainter(
@@ -310,16 +308,18 @@ fun RecentCallVerticalItem(
                 contentDescription = "Contact photo",
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .clickable { onContactImageClick(contact) },
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Default avatar
+            // Default avatar - clickable to open in contacts app
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable { onContactImageClick(contact) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -333,12 +333,22 @@ fun RecentCallVerticalItem(
         
         Spacer(modifier = Modifier.width(12.dp))
         
-        // Contact Name
+        // Contact Name - clickable to call
         Text(
             text = contact.name,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { 
+                    if (contact.phoneNumbers.size > 1) {
+                        dialogAction = "call"
+                        showPhoneNumberDialog = true
+                    } else {
+                        onContactClick(contact)
+                    }
+                }
+                .padding(vertical = 4.dp)
         )
         
         // WhatsApp button
@@ -432,7 +442,8 @@ fun ContactItem(
     modifier: Modifier = Modifier,
     editMode: Boolean,
     onDeleteContact: (Contact) -> Unit,
-    onWhatsAppClick: (Contact) -> Unit = {}
+    onWhatsAppClick: (Contact) -> Unit = {},
+    onContactImageClick: (Contact) -> Unit = {}
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -493,7 +504,7 @@ fun ContactItem(
                 )
             }
 
-            // Contact Photo (hidden in edit mode)
+            // Contact Photo (hidden in edit mode) - clickable to open in contacts app
             if (!editMode) {
                 if (contact.photoUri != null && !imageLoadFailed) {
                     Image(
@@ -507,16 +518,18 @@ fun ContactItem(
                         contentDescription = "Contact photo",
                         modifier = Modifier
                             .size(48.dp)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable { onContactImageClick(contact) },
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Default avatar
+                    // Default avatar - clickable to open in contacts app
                     Box(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(MaterialTheme.colorScheme.primary)
+                            .clickable { onContactImageClick(contact) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

@@ -228,6 +228,9 @@ fun QuickContactsApp() {
                                     onWhatsAppClick = { contact ->
                                         viewModel.openWhatsAppChat(context, contact.phoneNumber)
                                     },
+                                    onContactImageClick = { contact ->
+                                        viewModel.openContactInContactsApp(context, contact)
+                                    },
                                     onExpandedChange = { expanded ->
                                         isRecentCallsExpanded = expanded
                                         // Reset edit mode when expanding recent calls
@@ -269,6 +272,9 @@ fun QuickContactsApp() {
                                     },
                                     onWhatsAppClick = { contact ->
                                         viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                    },
+                                    onContactImageClick = { contact ->
+                                        viewModel.openContactInContactsApp(context, contact)
                                     },
                                     onExpandedChange = { expanded ->
                                         isRecentCallsExpanded = expanded
@@ -321,6 +327,9 @@ fun QuickContactsApp() {
                                         },
                                         onWhatsAppClick = { contact ->
                                             viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                        },
+                                        onContactImageClick = { contact ->
+                                            viewModel.openContactInContactsApp(context, contact)
                                         }
                                     )
                                 }
@@ -521,6 +530,9 @@ fun SearchScreen(
                         onWhatsAppClick = { contact ->
                             viewModel.openWhatsAppChat(context, contact.phoneNumber)
                         },
+                        onContactImageClick = { contact ->
+                            viewModel.openContactInContactsApp(context, contact)
+                        },
                         selectedContacts = viewModel.selectedContacts.collectAsState().value,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -618,6 +630,7 @@ fun SearchResultsSection(
     onContactClick: (Contact) -> Unit,
     onToggleContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit,
+    onContactImageClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
     modifier: Modifier = Modifier
 ) {
@@ -652,6 +665,7 @@ fun SearchResultsSection(
                     onContactClick = onContactClick,
                     onToggleContact = onToggleContact,
                     onWhatsAppClick = onWhatsAppClick,
+                    onContactImageClick = onContactImageClick,
                     selectedContacts = selectedContacts,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -675,6 +689,7 @@ fun SearchResultItem(
     onContactClick: (Contact) -> Unit,
     onToggleContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit,
+    onContactImageClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
     modifier: Modifier = Modifier
 ) {
