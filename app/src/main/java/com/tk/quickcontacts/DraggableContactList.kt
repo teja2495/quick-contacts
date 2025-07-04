@@ -32,12 +32,16 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 
 @Composable
 fun PhoneNumberSelectionDialog(
@@ -165,9 +169,6 @@ fun RecentCallsSection(
             label = "arrow_rotation"
         )
         
-        // Show 2 items by default, all when expanded
-        val itemsToShow = if (isExpanded) recentCalls else recentCalls.take(2)
-        
         Card(
             modifier = modifier
                 .fillMaxWidth()
@@ -219,13 +220,31 @@ fun RecentCallsSection(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    itemsToShow.forEach { contact ->
+                    recentCalls.take(2).forEach { contact ->
                         RecentCallVerticalItem(
                             contact = contact,
                             onContactClick = onContactClick,
                             onWhatsAppClick = onWhatsAppClick,
                             modifier = Modifier.fillMaxWidth()
                         )
+                    }
+                }
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = expandVertically(animationSpec = tween(300)),
+                    exit = shrinkVertically(animationSpec = tween(300))
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        recentCalls.drop(2).forEach { contact ->
+                            RecentCallVerticalItem(
+                                contact = contact,
+                                onContactClick = onContactClick,
+                                onWhatsAppClick = onWhatsAppClick,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -460,6 +479,7 @@ fun ContactItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize(animationSpec = tween(300))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

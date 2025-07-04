@@ -34,7 +34,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +54,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tk.quickcontacts.ui.theme.QuickContactsTheme
 import android.app.Application
 import androidx.lifecycle.ViewModelProvider
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -158,162 +164,176 @@ fun QuickContactsApp() {
             }
         }
     ) { innerPadding ->
-        if (isSearchScreenOpen) {
-            SearchScreen(
-                viewModel = viewModel,
-                onBackPressed = { 
-                    viewModel.updateSearchQuery("") // Clear search query when going back
-                    isSearchScreenOpen = false 
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            )
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // Remove always-visible search bar
-                
-                when {
-                !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
-                    PermissionRequestScreen(
-                        onRequestPermissions = {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.CALL_PHONE,
-                                    Manifest.permission.READ_CONTACTS,
-                                    Manifest.permission.READ_CALL_LOG
-                                )
-                            )
-                        }
-                    )
+        AnimatedContent(
+            targetState = isSearchScreenOpen,
+            transitionSpec = {
+                if (targetState) {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) togetherWith
+                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+                } else {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) togetherWith
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
                 }
-                
-                selectedContacts.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Scrollable content
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            // Recent calls section
-                            RecentCallsSection(
-                                recentCalls = filteredRecentCalls,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                                },
-                                onExpandedChange = { expanded ->
-                                    isRecentCallsExpanded = expanded
-                                    // Reset edit mode when expanding recent calls
-                                    if (expanded) {
-                                        editMode = false
-                                    }
-                                }
-                            )
-                            
-                            // Empty contacts screen (hide when recent calls are expanded)
-                            if (!isRecentCallsExpanded) {
-                                EmptyContactsScreen()
+            },
+            label = "search_screen_transition"
+        ) { isSearchOpen ->
+            if (isSearchOpen) {
+                SearchScreen(
+                    viewModel = viewModel,
+                    onBackPressed = {
+                        viewModel.updateSearchQuery("") // Clear search query when going back
+                        isSearchScreenOpen = false
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    // Remove always-visible search bar
+                    
+                    when {
+                    !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
+                        PermissionRequestScreen(
+                            onRequestPermissions = {
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.CALL_PHONE,
+                                        Manifest.permission.READ_CONTACTS,
+                                        Manifest.permission.READ_CALL_LOG
+                                    )
+                                )
                             }
-                        }
-                        
-                        // Fixed search bar at bottom
-                        FakeSearchBar(
-                            onClick = { isSearchScreenOpen = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
                         )
                     }
-                }
-                
-                else -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Scrollable content
+                    
+                    selectedContacts.isEmpty() -> {
                         Column(
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            // Recent calls section
-                            RecentCallsSection(
-                                recentCalls = filteredRecentCalls,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                                },
-                                onExpandedChange = { expanded ->
-                                    isRecentCallsExpanded = expanded
-                                    // Reset edit mode when expanding recent calls
-                                    if (expanded) {
-                                        editMode = false
-                                    }
-                                }
-                            )
-                            
-                            // Favourite header with edit functionality (hide when recent calls are expanded)
-                            if (selectedContacts.isNotEmpty() && !isRecentCallsExpanded) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Favourites",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    
-                                    Text(
-                                        text = if (editMode) "Done" else "Edit",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { editMode = !editMode }
-                                    )
-                                }
-                            }
-                            
-                            // Quick contacts list (hide when recent calls are expanded)
-                            if (!isRecentCallsExpanded) {
-                                ContactList(
-                                    contacts = filteredSelectedContacts,
+                            // Scrollable content
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                // Recent calls section
+                                RecentCallsSection(
+                                    recentCalls = filteredRecentCalls,
                                     onContactClick = { contact ->
                                         viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
-                                    editMode = editMode,
-                                    onDeleteContact = { contact ->
-                                        viewModel.removeContact(contact)
+                                    onWhatsAppClick = { contact ->
+                                        viewModel.openWhatsAppChat(context, contact.phoneNumber)
                                     },
-                                    onMove = { from, to ->
-                                        viewModel.moveContact(from, to)
+                                    onExpandedChange = { expanded ->
+                                        isRecentCallsExpanded = expanded
+                                        // Reset edit mode when expanding recent calls
+                                        if (expanded) {
+                                            editMode = false
+                                        }
+                                    }
+                                )
+                                
+                                // Empty contacts screen (hide when recent calls are expanded)
+                                if (!isRecentCallsExpanded) {
+                                    EmptyContactsScreen()
+                                }
+                            }
+                            
+                            // Fixed search bar at bottom
+                            FakeSearchBar(
+                                onClick = { isSearchScreenOpen = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                            )
+                        }
+                    }
+                    
+                    else -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            // Scrollable content
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                // Recent calls section
+                                RecentCallsSection(
+                                    recentCalls = filteredRecentCalls,
+                                    onContactClick = { contact ->
+                                        viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
                                     onWhatsAppClick = { contact ->
                                         viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                    },
+                                    onExpandedChange = { expanded ->
+                                        isRecentCallsExpanded = expanded
+                                        // Reset edit mode when expanding recent calls
+                                        if (expanded) {
+                                            editMode = false
+                                        }
                                     }
                                 )
+                                
+                                // Favourite header with edit functionality (hide when recent calls are expanded)
+                                if (selectedContacts.isNotEmpty() && !isRecentCallsExpanded) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Favourites",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        
+                                        Text(
+                                            text = if (editMode) "Done" else "Edit",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.clickable { editMode = !editMode }
+                                        )
+                                    }
+                                }
+                                
+                                // Quick contacts list (hide when recent calls are expanded)
+                                if (!isRecentCallsExpanded) {
+                                    ContactList(
+                                        contacts = filteredSelectedContacts,
+                                        onContactClick = { contact ->
+                                            viewModel.makePhoneCall(context, contact.phoneNumber)
+                                        },
+                                        editMode = editMode,
+                                        onDeleteContact = { contact ->
+                                            viewModel.removeContact(contact)
+                                        },
+                                        onMove = { from, to ->
+                                            viewModel.moveContact(from, to)
+                                        },
+                                        onWhatsAppClick = { contact ->
+                                            viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                        }
+                                    )
+                                }
                             }
+                            
+                            // Fixed search bar at bottom
+                            FakeSearchBar(
+                                onClick = { isSearchScreenOpen = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                            )
                         }
-                        
-                        // Fixed search bar at bottom
-                        FakeSearchBar(
-                            onClick = { isSearchScreenOpen = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
-                        )
                     }
                 }
             }
@@ -714,7 +734,7 @@ fun SearchResultItem(
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send WhatsApp message to ${contact.name}",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
