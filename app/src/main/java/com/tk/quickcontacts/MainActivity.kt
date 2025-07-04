@@ -8,6 +8,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tk.quickcontacts.ui.theme.QuickContactsTheme
 import android.app.Application
@@ -137,6 +140,44 @@ fun QuickContactsApp() {
         )
     }
 
+    // Track if we've requested permissions before
+    var hasRequestedPermissions by remember { mutableStateOf(false) }
+    
+    // Track if we're currently requesting permissions
+    var isRequestingPermissions by remember { mutableStateOf(false) }
+
+    // Check if permissions are permanently denied
+    fun arePermissionsPermanentlyDenied(): Boolean {
+        val activity = context as? Activity ?: return false
+        
+        // Only check for permanent denial if we've already requested permissions
+        if (!hasRequestedPermissions) return false
+        
+        // Don't check while we're actively requesting permissions
+        if (isRequestingPermissions) return false
+        
+        // A permission is permanently denied if it's not granted AND we shouldn't show rationale
+        // This happens when user denies with "Don't ask again" or denies multiple times
+        val callPermissionDenied = !hasCallPermission && 
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CALL_PHONE)
+            
+        val contactsPermissionDenied = !hasContactsPermission && 
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CONTACTS)
+            
+        val callLogPermissionDenied = !hasCallLogPermission && 
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CALL_LOG)
+        
+        return callPermissionDenied || contactsPermissionDenied || callLogPermissionDenied
+    }
+
+    // Function to open app settings
+    fun openAppSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+        }
+        context.startActivity(intent)
+    }
+
     // Multiple permissions launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -144,6 +185,8 @@ fun QuickContactsApp() {
         hasCallPermission = permissions[Manifest.permission.CALL_PHONE] ?: false
         hasContactsPermission = permissions[Manifest.permission.READ_CONTACTS] ?: false
         hasCallLogPermission = permissions[Manifest.permission.READ_CALL_LOG] ?: false
+        hasRequestedPermissions = true // Mark that we've requested permissions
+        isRequestingPermissions = false // We're no longer requesting permissions
     }
 
     // Contact states
@@ -185,6 +228,18 @@ fun QuickContactsApp() {
             focusRequester.requestFocus()
         }
     }
+    
+    // Auto-open settings when permissions are permanently denied after being requested
+    LaunchedEffect(arePermissionsPermanentlyDenied(), hasRequestedPermissions, isRequestingPermissions) {
+        if (arePermissionsPermanentlyDenied() && hasRequestedPermissions && !isRequestingPermissions) {
+            // Add a small delay to ensure permission dialog has closed
+            delay(500)
+            // Double-check the condition after delay
+            if (arePermissionsPermanentlyDenied() && !isRequestingPermissions) {
+                openAppSettings()
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -223,14 +278,24 @@ fun QuickContactsApp() {
             when {
                 !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
                     PermissionRequestScreen(
+                        hasCallPermission = hasCallPermission,
+                        hasContactsPermission = hasContactsPermission,
+                        hasCallLogPermission = hasCallLogPermission,
+                        arePermissionsPermanentlyDenied = arePermissionsPermanentlyDenied(),
                         onRequestPermissions = {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.CALL_PHONE,
-                                    Manifest.permission.READ_CONTACTS,
-                                    Manifest.permission.READ_CALL_LOG
+                            if (arePermissionsPermanentlyDenied()) {
+                                openAppSettings()
+                            } else {
+                                hasRequestedPermissions = true
+                                isRequestingPermissions = true
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.CALL_PHONE,
+                                        Manifest.permission.READ_CONTACTS,
+                                        Manifest.permission.READ_CALL_LOG
+                                    )
                                 )
-                            )
+                            }
                         }
                     )
                 }
@@ -849,6 +914,10 @@ private fun getContactPhotoUri(context: android.content.Context, contactId: Stri
 
 @Composable
 fun PermissionRequestScreen(
+    hasCallPermission: Boolean,
+    hasContactsPermission: Boolean,
+    hasCallLogPermission: Boolean,
+    arePermissionsPermanentlyDenied: Boolean,
     onRequestPermissions: () -> Unit
 ) {
     val spacing = 16.dp
@@ -917,26 +986,32 @@ fun PermissionRequestScreen(
             Spacer(modifier = Modifier.height(spacing))
             // Permission cards list
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 PermissionCard(
                     icon = Icons.Default.Phone,
                     title = "Phone Access",
-                    description = "Make calls directly from the app when you tap on a contact"
+                    description = "Make calls directly from the app when you tap on a contact",
+                    isGranted = hasCallPermission
                 )
                 PermissionCard(
                     icon = Icons.Default.Person,
                     title = "Contacts Access",
-                    description = "Search and display your contacts with their names and photos"
+                    description = "Search and display your contacts with their names and photos",
+                    isGranted = hasContactsPermission
                 )
                 PermissionCard(
                     icon = Icons.Default.History,
                     title = "Call History Access",
-                    description = "Show your recent calls for quick redial and easy access"
+                    description = "Show your recent calls for quick redial and easy access",
+                    isGranted = hasCallLogPermission
                 )
             }
             Spacer(modifier = Modifier.height(spacing))
+            Spacer(modifier = Modifier.height(12.dp))
             // Grant permissions button
             Button(
                 onClick = onRequestPermissions,
@@ -951,14 +1026,6 @@ fun PermissionRequestScreen(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "All permissions are required for the app to function properly",
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
@@ -967,7 +1034,8 @@ fun PermissionRequestScreen(
 fun PermissionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-    description: String
+    description: String,
+    isGranted: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -978,7 +1046,10 @@ fun PermissionCard(
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            color = if (isGranted) 
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
+            else 
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
         )
     ) {
         Row(
@@ -988,11 +1059,16 @@ fun PermissionCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (isGranted) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
@@ -1003,6 +1079,18 @@ fun PermissionCard(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Show checkmark when permission is granted
+            if (isGranted) {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = "Permission granted",
+                    tint = androidx.compose.ui.graphics.Color(0xFF4CAF50), // Green tint
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(start = 8.dp)
                 )
             }
         }
