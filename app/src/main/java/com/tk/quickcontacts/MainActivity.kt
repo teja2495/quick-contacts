@@ -197,6 +197,7 @@ fun QuickContactsApp() {
     val filteredRecentCalls by viewModel.filteredRecentCalls.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val actionPreferences by viewModel.actionPreferences.collectAsState()
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
     
@@ -413,27 +414,41 @@ fun QuickContactsApp() {
                             
                             // Favourite header with edit functionality (hide when recent calls are expanded)
                             if (selectedContacts.isNotEmpty() && !isRecentCallsExpanded) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Quick List",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                Column {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Quick List",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        
+                                        Text(
+                                            text = if (editMode) "Done" else "Edit",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .clickable { editMode = !editMode }
+                                                .padding(end = 8.dp)
+                                        )
+                                    }
                                     
-                                    Text(
-                                        text = if (editMode) "Done" else "Edit",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { editMode = !editMode }
-                                    )
+                                    // Show hint text in edit mode
+                                    if (editMode) {
+                                        Text(
+                                            text = "Long press to switch actions",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                                        )
+                                    }
                                 }
                             }
                             
@@ -456,7 +471,11 @@ fun QuickContactsApp() {
                                     },
                                     onContactImageClick = { contact ->
                                         viewModel.openContactInContactsApp(context, contact)
-                                    }
+                                    },
+                                    onLongClick = { contact ->
+                                        viewModel.toggleActionPreference(contact.id)
+                                    },
+                                    actionPreferences = actionPreferences
                                 )
                             }
                         }

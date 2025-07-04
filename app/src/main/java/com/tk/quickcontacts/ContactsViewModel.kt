@@ -33,12 +33,17 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
     val searchResults: StateFlow<List<Contact>> = _searchResults
 
+    // Action preferences: Map<ContactId, Boolean> where true means actions are swapped
+    private val _actionPreferences = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences
+
     private val sharedPreferences: SharedPreferences
     private val gson = Gson()
 
     init {
         sharedPreferences = application.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
         loadContacts()
+        loadActionPreferences()
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
@@ -160,6 +165,26 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private fun saveContacts() {
         val json = gson.toJson(_selectedContacts.value)
         sharedPreferences.edit().putString("selected_contacts", json).apply()
+    }
+
+    private fun loadActionPreferences() {
+        val json = sharedPreferences.getString("action_preferences", null)
+        if (json != null) {
+            val type = object : TypeToken<Map<String, Boolean>>() {}.type
+            _actionPreferences.value = gson.fromJson(json, type)
+        }
+    }
+
+    private fun saveActionPreferences() {
+        val json = gson.toJson(_actionPreferences.value)
+        sharedPreferences.edit().putString("action_preferences", json).apply()
+    }
+
+    fun toggleActionPreference(contactId: String) {
+        val currentPreferences = _actionPreferences.value.toMutableMap()
+        currentPreferences[contactId] = !currentPreferences.getOrDefault(contactId, false)
+        _actionPreferences.value = currentPreferences
+        saveActionPreferences()
     }
 
     fun addContact(contact: Contact) {

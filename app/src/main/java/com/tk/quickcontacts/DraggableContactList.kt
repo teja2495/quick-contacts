@@ -3,6 +3,8 @@ package com.tk.quickcontacts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,6 +117,182 @@ fun PhoneNumberSelectionDialog(
 }
 
 @Composable
+fun ActionToggleDialog(
+    contact: Contact,
+    isInternational: Boolean,
+    isCurrentlySwapped: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val currentPrimary = if (isCurrentlySwapped) {
+        if (isInternational) "Call" else "WhatsApp"
+    } else {
+        if (isInternational) "WhatsApp" else "Call"
+    }
+    
+    val currentSecondary = if (isCurrentlySwapped) {
+        if (isInternational) "WhatsApp" else "Call"
+    } else {
+        if (isInternational) "Call" else "WhatsApp"
+    }
+    
+    val newPrimary = if (!isCurrentlySwapped) {
+        if (isInternational) "Call" else "WhatsApp"
+    } else {
+        if (isInternational) "WhatsApp" else "Call"
+    }
+    
+    val newSecondary = if (!isCurrentlySwapped) {
+        if (isInternational) "WhatsApp" else "Call"
+    } else {
+        if (isInternational) "Call" else "WhatsApp"
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Switch Actions",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Change the tap actions for ${contact.name}?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+                
+                // Current actions section
+                Column {
+                    Text(
+                        text = "Current:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Tap card: $currentPrimary",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Tap icon: $currentSecondary",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                
+                // New actions section
+                Column {
+                    Text(
+                        text = "Changing to:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Tap card: $newPrimary",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Tap icon: $newSecondary",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Switch")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
 fun ContactList(
     contacts: List<Contact>,
     onContactClick: (Contact) -> Unit,
@@ -122,7 +301,9 @@ fun ContactList(
     onDeleteContact: (Contact) -> Unit,
     onMove: (Int, Int) -> Unit = { _, _ -> },
     onWhatsAppClick: (Contact) -> Unit = {},
-    onContactImageClick: (Contact) -> Unit = {}
+    onContactImageClick: (Contact) -> Unit = {},
+    onLongClick: (Contact) -> Unit = {},
+    actionPreferences: Map<String, Boolean> = emptyMap()
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -154,7 +335,9 @@ fun ContactList(
                         onDeleteContact = onDeleteContact,
                         onWhatsAppClick = onWhatsAppClick,
                         onContactImageClick = onContactImageClick,
-                        reorderState = reorderState
+                        reorderState = reorderState,
+                        onLongClick = onLongClick,
+                        isActionSwapped = actionPreferences[contact.id] ?: false
                     )
                 }
             } else {
@@ -166,7 +349,9 @@ fun ContactList(
                     onDeleteContact = onDeleteContact,
                     onWhatsAppClick = onWhatsAppClick,
                     onContactImageClick = onContactImageClick,
-                    reorderState = null
+                    reorderState = null,
+                    onLongClick = onLongClick,
+                    isActionSwapped = actionPreferences[contact.id] ?: false
                 )
             }
         }
@@ -484,6 +669,7 @@ fun RecentCallItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContactItem(
     contact: Contact,
@@ -493,10 +679,13 @@ fun ContactItem(
     onDeleteContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
-    reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null
+    reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
+    onLongClick: (Contact) -> Unit = {},
+    isActionSwapped: Boolean = false
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
+    var showActionToggleDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
@@ -522,22 +711,58 @@ fun ContactItem(
         )
     }
     
+    // Action toggle dialog
+    if (showActionToggleDialog) {
+        ActionToggleDialog(
+            contact = contact,
+            isInternational = isInternational,
+            isCurrentlySwapped = isActionSwapped,
+            onConfirm = {
+                onLongClick(contact)
+                showActionToggleDialog = false
+            },
+            onDismiss = {
+                showActionToggleDialog = false
+            }
+        )
+    }
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
-            .clickable(enabled = !editMode) { 
-                if (contact.phoneNumbers.size > 1) {
-                    dialogAction = if (isInternational) "whatsapp" else "call"
-                    showPhoneNumberDialog = true
-                } else {
-                    if (isInternational) {
-                        onWhatsAppClick(contact)
-                    } else {
-                        onContactClick(contact)
+            .combinedClickable(
+                enabled = true, // Always enabled to handle both edit and normal mode
+                onClick = { 
+                    if (!editMode) {
+                        // Normal mode: perform contact action
+                        // Determine primary action based on international status and swap preference
+                        val primaryActionIsWhatsApp = if (isActionSwapped) {
+                            !isInternational  // Swapped: domestic -> WhatsApp primary
+                        } else {
+                            isInternational   // Normal: international -> WhatsApp primary
+                        }
+                        
+                        if (contact.phoneNumbers.size > 1) {
+                            dialogAction = if (primaryActionIsWhatsApp) "whatsapp" else "call"
+                            showPhoneNumberDialog = true
+                        } else {
+                            if (primaryActionIsWhatsApp) {
+                                onWhatsAppClick(contact)
+                            } else {
+                                onContactClick(contact)
+                            }
+                        }
+                    }
+                    // In edit mode, clicks are disabled for contact actions
+                },
+                onLongClick = {
+                    if (editMode) {
+                        // Only show action toggle dialog in edit mode
+                        showActionToggleDialog = true
                     }
                 }
-            },
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -629,34 +854,48 @@ fun ContactItem(
                     )
                 }
             } else {
-                // For international: Phone button (to call), for domestic: WhatsApp button
+                // Secondary action button - opposite of primary action
                 IconButton(
                     onClick = { 
+                        // Determine secondary action based on international status and swap preference
+                        val secondaryActionIsWhatsApp = if (isActionSwapped) {
+                            isInternational  // Swapped: international -> WhatsApp secondary
+                        } else {
+                            !isInternational  // Normal: domestic -> WhatsApp secondary
+                        }
+                        
                         if (contact.phoneNumbers.size > 1) {
-                            dialogAction = if (isInternational) "call" else "whatsapp"
+                            dialogAction = if (secondaryActionIsWhatsApp) "whatsapp" else "call"
                             showPhoneNumberDialog = true
                         } else {
-                            if (isInternational) {
-                                onContactClick(contact)
-                            } else {
+                            if (secondaryActionIsWhatsApp) {
                                 onWhatsAppClick(contact)
+                            } else {
+                                onContactClick(contact)
                             }
                         }
                     },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    if (isInternational) {
+                    // Show secondary action icon
+                    val secondaryActionIsWhatsApp = if (isActionSwapped) {
+                        isInternational  // Swapped: international -> WhatsApp secondary
+                    } else {
+                        !isInternational  // Normal: domestic -> WhatsApp secondary
+                    }
+                    
+                    if (secondaryActionIsWhatsApp) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.whatsapp_icon),
+                            contentDescription = "WhatsApp ${contact.name}",
+                            tint = Color(0xFF25D366),
+                            modifier = Modifier.size(30.dp)
+                        )
+                    } else {
                         Icon(
                             imageVector = Icons.Default.Phone,
                             contentDescription = "Call ${contact.name}",
                             tint = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(id = R.drawable.whatsapp_icon),
-                            contentDescription = "Open WhatsApp Chat",
-                            tint = Color(0xFF25D366),
-                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
