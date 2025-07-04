@@ -298,7 +298,7 @@ fun QuickContactsApp() {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Favourites",
+                                            text = "Quick List",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.primary
@@ -432,7 +432,7 @@ fun SearchScreen(
             // Instruction text (only show when there are search results)
             if (searchQuery.isNotEmpty() && searchResults.isNotEmpty()) {
                 Text(
-                    text = "Tap + to add to quick contacts",
+                    text = "Tap + to add to your quick list",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -757,18 +757,18 @@ fun SearchResultItem(
                 },
                 modifier = Modifier.size(40.dp)
             ) {
-                Icon(
-                    imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
-                    contentDescription = if (isSelected) 
-                        "Remove ${contact.name} from quick contacts" 
-                    else 
-                        "Add ${contact.name} to quick contacts",
-                    tint = if (isSelected) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
-                        MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp)
-                )
+                            Icon(
+                imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
+                contentDescription = if (isSelected) 
+                    "Remove ${contact.name} from quick contacts" 
+                else 
+                    "Add ${contact.name} to quick contacts",
+                tint = if (isSelected) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(24.dp)
+            )
             }
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -1087,7 +1087,7 @@ fun EmptyContactsScreen() {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "No Quick Contacts",
+            text = "Empty Quick List",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
