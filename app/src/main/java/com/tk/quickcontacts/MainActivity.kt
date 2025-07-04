@@ -696,6 +696,9 @@ fun SearchResultItem(
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -767,16 +770,20 @@ fun SearchResultItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Contact Info - clickable to call
+            // Contact Info - for international: open WhatsApp, for domestic: call
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .clickable { 
                         if (contact.phoneNumbers.size > 1) {
-                            dialogAction = "call"
+                            dialogAction = if (isInternational) "whatsapp" else "call"
                             showPhoneNumberDialog = true
                         } else {
-                            onContactClick(contact)
+                            if (isInternational) {
+                                onWhatsAppClick(contact)
+                            } else {
+                                onContactClick(contact)
+                            }
                         }
                     }
                     .padding(vertical = 8.dp)
@@ -797,22 +804,26 @@ fun SearchResultItem(
                 }
             }
             
-            // WhatsApp send button
+            // For international: Phone button (to call), for domestic: WhatsApp button
             IconButton(
                 onClick = { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = "whatsapp"
+                        dialogAction = if (isInternational) "call" else "whatsapp"
                         showPhoneNumberDialog = true
                     } else {
-                        onWhatsAppClick(contact)
+                        if (isInternational) {
+                            onContactClick(contact)
+                        } else {
+                            onWhatsAppClick(contact)
+                        }
                     }
                 },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send WhatsApp message to ${contact.name}",
-                    tint = androidx.compose.ui.graphics.Color(0xFF25D366),
+                    imageVector = if (isInternational) Icons.Default.Phone else Icons.AutoMirrored.Filled.Send,
+                    contentDescription = if (isInternational) "Call ${contact.name}" else "Send WhatsApp message to ${contact.name}",
+                    tint = if (isInternational) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color(0xFF25D366),
                     modifier = Modifier.size(20.dp)
                 )
             }

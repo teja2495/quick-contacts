@@ -268,6 +268,9 @@ fun RecentCallVerticalItem(
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -333,7 +336,7 @@ fun RecentCallVerticalItem(
         
         Spacer(modifier = Modifier.width(12.dp))
         
-        // Contact Name - clickable to call
+        // Contact Name - for international: open WhatsApp, for domestic: call
         Text(
             text = contact.name,
             style = MaterialTheme.typography.bodyMedium,
@@ -342,31 +345,39 @@ fun RecentCallVerticalItem(
                 .weight(1f)
                 .clickable { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = "call"
+                        dialogAction = if (isInternational) "whatsapp" else "call"
                         showPhoneNumberDialog = true
                     } else {
-                        onContactClick(contact)
+                        if (isInternational) {
+                            onWhatsAppClick(contact)
+                        } else {
+                            onContactClick(contact)
+                        }
                     }
                 }
                 .padding(vertical = 4.dp)
         )
         
-        // WhatsApp button
+        // For international: Phone button (to call), for domestic: WhatsApp button
         IconButton(
             onClick = { 
                 if (contact.phoneNumbers.size > 1) {
-                    dialogAction = "whatsapp"
+                    dialogAction = if (isInternational) "call" else "whatsapp"
                     showPhoneNumberDialog = true
                 } else {
-                    onWhatsAppClick(contact)
+                    if (isInternational) {
+                        onContactClick(contact)
+                    } else {
+                        onWhatsAppClick(contact)
+                    }
                 }
             },
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = "WhatsApp ${contact.name}",
-                tint = MaterialTheme.colorScheme.primary,
+                imageVector = if (isInternational) Icons.Default.Phone else Icons.AutoMirrored.Filled.Send,
+                contentDescription = if (isInternational) "Call ${contact.name}" else "WhatsApp ${contact.name}",
+                tint = if (isInternational) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -377,13 +388,22 @@ fun RecentCallVerticalItem(
 fun RecentCallItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
+    onWhatsAppClick: (Contact) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
     
     Column(
         modifier = modifier
-            .clickable { onContactClick(contact) }
+            .clickable { 
+                if (isInternational) {
+                    onWhatsAppClick(contact)
+                } else {
+                    onContactClick(contact)
+                }
+            }
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -448,6 +468,9 @@ fun ContactItem(
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -475,10 +498,14 @@ fun ContactItem(
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .clickable(enabled = !editMode) { 
                 if (contact.phoneNumbers.size > 1) {
-                    dialogAction = "call"
+                    dialogAction = if (isInternational) "whatsapp" else "call"
                     showPhoneNumberDialog = true
                 } else {
-                    onContactClick(contact)
+                    if (isInternational) {
+                        onWhatsAppClick(contact)
+                    } else {
+                        onContactClick(contact)
+                    }
                 }
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -564,19 +591,23 @@ fun ContactItem(
                     )
                 }
             } else {
-                // WhatsApp icon when not in edit mode
+                // For international: Phone button (to call), for domestic: WhatsApp button
                 IconButton(onClick = { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = "whatsapp"
+                        dialogAction = if (isInternational) "call" else "whatsapp"
                         showPhoneNumberDialog = true
                     } else {
-                        onWhatsAppClick(contact)
+                        if (isInternational) {
+                            onContactClick(contact)
+                        } else {
+                            onWhatsAppClick(contact)
+                        }
                     }
                 }) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Open WhatsApp Chat",
-                        tint = Color(0xFF25D366) // WhatsApp green color
+                        imageVector = if (isInternational) Icons.Default.Phone else Icons.AutoMirrored.Filled.Send,
+                        contentDescription = if (isInternational) "Call ${contact.name}" else "Open WhatsApp Chat",
+                        tint = if (isInternational) MaterialTheme.colorScheme.primary else Color(0xFF25D366)
                     )
                 }
             }
