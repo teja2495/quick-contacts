@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
@@ -127,9 +128,13 @@ fun ContactList(
 
     LazyColumn(
         state = reorderState.listState,
-        modifier = modifier
-            .reorderable(reorderState)
-            .detectReorderAfterLongPress(reorderState),
+        modifier = modifier.then(
+            if (editMode) {
+                Modifier.reorderable(reorderState)
+            } else {
+                Modifier
+            }
+        ),
         contentPadding = PaddingValues(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
@@ -137,18 +142,29 @@ fun ContactList(
             items = contacts,
             key = { contact -> contact.id }
         ) { contact ->
-            ReorderableItem(reorderState, key = contact.id) { isDragging ->
-                val elevation = animateDpAsState(if (isDragging) 4.dp else 0.dp, label = "dragElevation")
+            if (editMode) {
+                ReorderableItem(reorderState, key = contact.id) { isDragging ->
+                    ContactItem(
+                        contact = contact,
+                        onContactClick = onContactClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        editMode = editMode,
+                        onDeleteContact = onDeleteContact,
+                        onWhatsAppClick = onWhatsAppClick,
+                        onContactImageClick = onContactImageClick,
+                        reorderState = reorderState
+                    )
+                }
+            } else {
                 ContactItem(
                     contact = contact,
                     onContactClick = onContactClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(elevation.value),
+                    modifier = Modifier.fillMaxWidth(),
                     editMode = editMode,
                     onDeleteContact = onDeleteContact,
                     onWhatsAppClick = onWhatsAppClick,
-                    onContactImageClick = onContactImageClick
+                    onContactImageClick = onContactImageClick,
+                    reorderState = null
                 )
             }
         }
@@ -463,7 +479,8 @@ fun ContactItem(
     editMode: Boolean,
     onDeleteContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
-    onContactImageClick: (Contact) -> Unit = {}
+    onContactImageClick: (Contact) -> Unit = {},
+    reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -522,12 +539,20 @@ fun ContactItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (editMode) {
-                // Reorder handle icon - purely visual hint for drag & drop
+                // Reorder handle icon - draggable handle for reordering
                 Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Reorder",
+                    contentDescription = "Drag to reorder",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .then(
+                            if (reorderState != null) {
+                                Modifier.detectReorder(reorderState)
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
 
@@ -587,7 +612,7 @@ fun ContactItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Contact",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = Color(0xFFD32F2F)
                     )
                 }
             } else {
