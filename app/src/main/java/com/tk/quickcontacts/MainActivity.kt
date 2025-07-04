@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -148,7 +150,8 @@ fun QuickContactsApp() {
                     title = {
                         Text(
                             text = "Quick Contacts",
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp) // Align with Recent Calls text
                         )
                     }
                 )
@@ -329,6 +332,7 @@ fun SearchScreen(
     val context = LocalContext.current
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val focusRequester = remember { FocusRequester() }
     
     // Handle Android system back button
     BackHandler {
@@ -342,9 +346,10 @@ fun SearchScreen(
         }
     }
     
-    // Clear search when entering the screen
+    // Clear search when entering the screen and request focus
     LaunchedEffect(Unit) {
         viewModel.updateSearchQuery("")
+        focusRequester.requestFocus()
     }
     
     Scaffold(
@@ -353,24 +358,27 @@ fun SearchScreen(
             TopAppBar(
                 title = {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 0.dp)
                     ) {
                         IconButton(
                             onClick = onBackPressed,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Back",
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                         Text(
                             text = "Search Contacts",
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 8.dp)
+                            modifier = Modifier.padding(start = 4.dp)
                         )
                     }
-                }
+                },
+                modifier = Modifier.height(56.dp)
             )
         }
     ) { innerPadding ->
@@ -383,9 +391,10 @@ fun SearchScreen(
             SearchBar(
                 query = searchQuery,
                 onQueryChange = viewModel::updateSearchQuery,
+                focusRequester = focusRequester,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 16.dp)
             )
             
             // Instruction text (only show when there are search results)
@@ -396,7 +405,7 @@ fun SearchScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(start = 24.dp, end = 8.dp, top = 6.dp, bottom = 8.dp)
                 )
             }
         
@@ -507,12 +516,13 @@ fun SearchScreen(
 fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        modifier = modifier,
+        modifier = modifier.focusRequester(focusRequester),
         placeholder = {
             Text(
                 text = "Search contacts...",
@@ -837,9 +847,10 @@ fun EmptyContactsScreen() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(32.dp),
+            .padding(horizontal = 32.dp, vertical = 32.dp)
+            .padding(top = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         Icon(
             imageVector = Icons.Default.Person,
