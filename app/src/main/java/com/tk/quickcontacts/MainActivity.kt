@@ -679,6 +679,29 @@ fun SearchResultItem(
     modifier: Modifier = Modifier
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
+    var showPhoneNumberDialog by remember { mutableStateOf(false) }
+    var dialogAction by remember { mutableStateOf<String?>(null) }
+    
+    // Phone number selection dialog
+    if (showPhoneNumberDialog) {
+        PhoneNumberSelectionDialog(
+            contact = contact,
+            onPhoneNumberSelected = { selectedNumber: String ->
+                val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber)
+                when (dialogAction) {
+                    "call" -> onContactClick(contactWithSelectedNumber)
+                    "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
+                    "add" -> onToggleContact(contactWithSelectedNumber)
+                }
+                showPhoneNumberDialog = false
+                dialogAction = null
+            },
+            onDismiss = {
+                showPhoneNumberDialog = false
+                dialogAction = null
+            }
+        )
+    }
     
     Card(
         modifier = modifier
@@ -698,7 +721,19 @@ fun SearchResultItem(
         ) {
             // Toggle quick contacts button
             IconButton(
-                onClick = { onToggleContact(contact) },
+                onClick = { 
+                    if (isSelected) {
+                        // If already selected, just remove it
+                        onToggleContact(contact)
+                    } else if (contact.phoneNumbers.size > 1) {
+                        // If multiple numbers and not selected, show dialog
+                        dialogAction = "add"
+                        showPhoneNumberDialog = true
+                    } else {
+                        // Single number and not selected, add directly
+                        onToggleContact(contact)
+                    }
+                },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
@@ -718,25 +753,51 @@ fun SearchResultItem(
             Spacer(modifier = Modifier.width(16.dp))
             
             // Contact Info - clickable to call
-            Text(
-                text = contact.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+            Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onContactClick(contact) }
+                    .clickable { 
+                        if (contact.phoneNumbers.size > 1) {
+                            dialogAction = "call"
+                            showPhoneNumberDialog = true
+                        } else {
+                            onContactClick(contact)
+                        }
+                    }
                     .padding(vertical = 8.dp)
-            )
+            ) {
+                Text(
+                    text = contact.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                if (contact.phoneNumbers.size > 1) {
+                    Text(
+                        text = "${contact.phoneNumbers.size} numbers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
             
             // WhatsApp send button
             IconButton(
-                onClick = { onWhatsAppClick(contact) },
+                onClick = { 
+                    if (contact.phoneNumbers.size > 1) {
+                        dialogAction = "whatsapp"
+                        showPhoneNumberDialog = true
+                    } else {
+                        onWhatsAppClick(contact)
+                    }
+                },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send WhatsApp message to ${contact.name}",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = androidx.compose.ui.graphics.Color(0xFF25D366),
                     modifier = Modifier.size(20.dp)
                 )
             }
