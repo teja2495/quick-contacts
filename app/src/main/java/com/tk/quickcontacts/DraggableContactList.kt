@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
+
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Menu
@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -390,14 +391,22 @@ fun RecentCallVerticalItem(
                     }
                 }
             },
-            modifier = Modifier.size(32.dp)
+            modifier = Modifier.size(40.dp)
         ) {
-            Icon(
-                imageVector = if (isInternational) Icons.Default.Phone else Icons.AutoMirrored.Filled.Send,
-                contentDescription = if (isInternational) "Call ${contact.name}" else "WhatsApp ${contact.name}",
-                tint = if (isInternational) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
-            )
+            if (isInternational) {
+                Icon(
+                    imageVector = Icons.Default.Phone,
+                    contentDescription = "Call ${contact.name}",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            } else {
+                Icon(
+                    painter = painterResource(id = R.drawable.whatsapp_icon),
+                    contentDescription = "WhatsApp ${contact.name}",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
     }
 }
@@ -614,28 +623,40 @@ fun ContactItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Contact",
-                        tint = Color(0xFFD32F2F)
+                        tint = Color(0xFFE57373)
                     )
                 }
             } else {
                 // For international: Phone button (to call), for domestic: WhatsApp button
-                IconButton(onClick = { 
-                    if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational) "call" else "whatsapp"
-                        showPhoneNumberDialog = true
-                    } else {
-                        if (isInternational) {
-                            onContactClick(contact)
+                IconButton(
+                    onClick = { 
+                        if (contact.phoneNumbers.size > 1) {
+                            dialogAction = if (isInternational) "call" else "whatsapp"
+                            showPhoneNumberDialog = true
                         } else {
-                            onWhatsAppClick(contact)
+                            if (isInternational) {
+                                onContactClick(contact)
+                            } else {
+                                onWhatsAppClick(contact)
+                            }
                         }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    if (isInternational) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Call ${contact.name}",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(id = R.drawable.whatsapp_icon),
+                            contentDescription = "Open WhatsApp Chat",
+                            tint = Color(0xFF25D366),
+                            modifier = Modifier.size(30.dp)
+                        )
                     }
-                }) {
-                    Icon(
-                        imageVector = if (isInternational) Icons.Default.Phone else Icons.AutoMirrored.Filled.Send,
-                        contentDescription = if (isInternational) "Call ${contact.name}" else "Open WhatsApp Chat",
-                        tint = if (isInternational) MaterialTheme.colorScheme.primary else Color(0xFF25D366)
-                    )
                 }
             }
         }

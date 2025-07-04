@@ -37,7 +37,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.automirrored.filled.Send
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -828,14 +829,22 @@ fun SearchResultItem(
                         }
                     }
                 },
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(
-                    imageVector = if (isInternational) Icons.Default.Phone else Icons.AutoMirrored.Filled.Send,
-                    contentDescription = if (isInternational) "Call ${contact.name}" else "Send WhatsApp message to ${contact.name}",
-                    tint = if (isInternational) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color(0xFF25D366),
-                    modifier = Modifier.size(20.dp)
-                )
+                if (isInternational) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Call ${contact.name}",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(id = R.drawable.whatsapp_icon),
+                        contentDescription = "Send WhatsApp message to ${contact.name}",
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
