@@ -314,36 +314,13 @@ fun SearchScreen(
         modifier = modifier.fillMaxSize()
     ) {
         // Top search bar
-        Card(
+        SearchBar(
+            query = searchQuery,
+            onQueryChange = viewModel::updateSearchQuery,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBackPressed) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = viewModel::updateSearchQuery,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp)
-                )
-            }
-        }
+                .padding(16.dp)
+        )
         
         // Search results
         LazyColumn(
