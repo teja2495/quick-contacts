@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
@@ -140,14 +142,16 @@ fun QuickContactsApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Quick Contacts",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            )
+            if (!isSearchScreenOpen) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Quick Contacts",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                )
+            }
         }
     ) { innerPadding ->
         if (isSearchScreenOpen) {
@@ -298,6 +302,11 @@ fun SearchScreen(
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
+    // Handle Android system back button
+    BackHandler {
+        onBackPressed()
+    }
+    
     // Search all contacts when search query changes
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotEmpty()) {
@@ -310,17 +319,58 @@ fun SearchScreen(
         viewModel.updateSearchQuery("")
     }
     
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // Top search bar
-        SearchBar(
-            query = searchQuery,
-            onQueryChange = viewModel::updateSearchQuery,
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onBackPressed,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                        Text(
+                            text = "Search Contacts",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        )
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Search bar
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = viewModel::updateSearchQuery,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+            
+            // Instruction text (only show when there are search results)
+            if (searchQuery.isNotEmpty() && searchResults.isNotEmpty()) {
+                Text(
+                    text = "Tap + to add to quick contacts",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         
         // Search results
         LazyColumn(
@@ -411,11 +461,15 @@ fun SearchScreen(
                                 viewModel.addContact(contact)
                             }
                         },
+                        onWhatsAppClick = { contact ->
+                            viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                        },
                         selectedContacts = viewModel.selectedContacts.collectAsState().value,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
+        }
         }
     }
 }
@@ -505,6 +559,7 @@ fun SearchResultsSection(
     searchResults: List<Contact>,
     onContactClick: (Contact) -> Unit,
     onToggleContact: (Contact) -> Unit,
+    onWhatsAppClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
     modifier: Modifier = Modifier
 ) {
@@ -538,6 +593,7 @@ fun SearchResultsSection(
                     contact = contact,
                     onContactClick = onContactClick,
                     onToggleContact = onToggleContact,
+                    onWhatsAppClick = onWhatsAppClick,
                     selectedContacts = selectedContacts,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -560,10 +616,10 @@ fun SearchResultItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onToggleContact: (Contact) -> Unit,
+    onWhatsAppClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
     modifier: Modifier = Modifier
 ) {
-    var imageLoadFailed by remember { mutableStateOf(false) }
     val isSelected = selectedContacts.any { it.id == contact.id }
     
     Card(
@@ -582,91 +638,49 @@ fun SearchResultItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Contact Photo
-            if (contact.photoUri != null && !imageLoadFailed) {
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(contact.photoUri)
-                            .crossfade(true)
-                            .build(),
-                        onError = { imageLoadFailed = true }
-                    ),
-                    contentDescription = "Contact photo",
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+            // Toggle quick contacts button
+            IconButton(
+                onClick = { onToggleContact(contact) },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
+                    contentDescription = if (isSelected) 
+                        "Remove ${contact.name} from quick contacts" 
+                    else 
+                        "Add ${contact.name} to quick contacts",
+                    tint = if (isSelected) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(20.dp)
                 )
-            } else {
-                // Default avatar
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Contact Info
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = contact.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = contact.phoneNumber,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            // Contact Info - clickable to call
+            Text(
+                text = contact.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onContactClick(contact) }
+                    .padding(vertical = 8.dp)
+            )
             
-            // Action buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // WhatsApp send button
+            IconButton(
+                onClick = { onWhatsAppClick(contact) },
+                modifier = Modifier.size(40.dp)
             ) {
-                // Call button
-                IconButton(
-                    onClick = { onContactClick(contact) },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Call ${contact.name}",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                
-                // Toggle quick contacts button
-                IconButton(
-                    onClick = { onToggleContact(contact) },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
-                        contentDescription = if (isSelected) 
-                            "Remove ${contact.name} from quick contacts" 
-                        else 
-                            "Add ${contact.name} to quick contacts",
-                        tint = if (isSelected) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send WhatsApp message to ${contact.name}",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
