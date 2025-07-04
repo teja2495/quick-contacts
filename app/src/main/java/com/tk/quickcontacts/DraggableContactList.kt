@@ -337,7 +337,7 @@ fun RecentCallVerticalItem(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Send,
                 contentDescription = "WhatsApp ${contact.name}",
-                tint = Color(0xFF25D366), // WhatsApp green color
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp)
             )
         }
