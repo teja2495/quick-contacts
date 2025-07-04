@@ -209,7 +209,7 @@ fun RecentCallsSection(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp)
+                        .padding(bottom = 0.dp)
                 ) {
                     Text(
                         text = "Recent Calls",
@@ -240,7 +240,8 @@ fun RecentCallsSection(
                 
                 // Vertical list of recent calls
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.offset(y = (-4).dp)
                 ) {
                     recentCalls.take(2).forEach { contact ->
                         RecentCallVerticalItem(
@@ -258,7 +259,8 @@ fun RecentCallsSection(
                     exit = shrinkVertically(animationSpec = tween(300))
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.offset(y = (-4).dp)
                     ) {
                         recentCalls.drop(2).forEach { contact ->
                             RecentCallVerticalItem(
