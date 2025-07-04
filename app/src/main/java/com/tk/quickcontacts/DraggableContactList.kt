@@ -154,6 +154,7 @@ fun RecentCallsSection(
     recentCalls: List<Contact>,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
+    onExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (recentCalls.isNotEmpty()) {
@@ -197,7 +198,10 @@ fun RecentCallsSection(
                     // Expand/Collapse arrow (only show if more than 2 items)
                     if (recentCalls.size > 2) {
                         IconButton(
-                            onClick = { isExpanded = !isExpanded }
+                            onClick = { 
+                                isExpanded = !isExpanded
+                                onExpandedChange(isExpanded)
+                            }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,

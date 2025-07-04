@@ -124,6 +124,7 @@ fun QuickContactsApp() {
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     var editMode by remember { mutableStateOf(false) }
+    var isRecentCallsExpanded by remember { mutableStateOf(false) }
     
     // Load recent calls when permissions are available or selected contacts change
     LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts) {
@@ -204,11 +205,20 @@ fun QuickContactsApp() {
                                 },
                                 onWhatsAppClick = { contact ->
                                     viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                },
+                                onExpandedChange = { expanded ->
+                                    isRecentCallsExpanded = expanded
+                                    // Reset edit mode when expanding recent calls
+                                    if (expanded) {
+                                        editMode = false
+                                    }
                                 }
                             )
                             
-                            // Empty contacts screen
-                            EmptyContactsScreen()
+                            // Empty contacts screen (hide when recent calls are expanded)
+                            if (!isRecentCallsExpanded) {
+                                EmptyContactsScreen()
+                            }
                         }
                         
                         // Fixed search bar at bottom
@@ -237,11 +247,18 @@ fun QuickContactsApp() {
                                 },
                                 onWhatsAppClick = { contact ->
                                     viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                },
+                                onExpandedChange = { expanded ->
+                                    isRecentCallsExpanded = expanded
+                                    // Reset edit mode when expanding recent calls
+                                    if (expanded) {
+                                        editMode = false
+                                    }
                                 }
                             )
                             
-                            // Favourite header with edit functionality
-                            if (selectedContacts.isNotEmpty()) {
+                            // Favourite header with edit functionality (hide when recent calls are expanded)
+                            if (selectedContacts.isNotEmpty() && !isRecentCallsExpanded) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -266,23 +283,25 @@ fun QuickContactsApp() {
                                 }
                             }
                             
-                            // Quick contacts list
-                            ContactList(
-                                contacts = filteredSelectedContacts,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                editMode = editMode,
-                                onDeleteContact = { contact ->
-                                    viewModel.removeContact(contact)
-                                },
-                                onMove = { from, to ->
-                                    viewModel.moveContact(from, to)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                                }
-                            )
+                            // Quick contacts list (hide when recent calls are expanded)
+                            if (!isRecentCallsExpanded) {
+                                ContactList(
+                                    contacts = filteredSelectedContacts,
+                                    onContactClick = { contact ->
+                                        viewModel.makePhoneCall(context, contact.phoneNumber)
+                                    },
+                                    editMode = editMode,
+                                    onDeleteContact = { contact ->
+                                        viewModel.removeContact(contact)
+                                    },
+                                    onMove = { from, to ->
+                                        viewModel.moveContact(from, to)
+                                    },
+                                    onWhatsAppClick = { contact ->
+                                        viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                    }
+                                )
+                            }
                         }
                         
                         // Fixed search bar at bottom

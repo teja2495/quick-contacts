@@ -266,7 +266,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
                 
                 if (numberColumn >= 0 && nameColumn >= 0) {
-                    while (it.moveToNext() && recentCallsList.size < 6) {
+                    while (it.moveToNext() && recentCallsList.size < 10) {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
                         
