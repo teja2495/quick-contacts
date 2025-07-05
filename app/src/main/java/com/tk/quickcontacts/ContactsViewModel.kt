@@ -97,6 +97,200 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _filteredRecentCalls.value = _recentCalls.value
     }
     
+    // Public method to check and load favorite contacts when permissions are available
+    fun checkAndLoadFavoriteContactsOnFirstLaunch(context: Context) {
+        if (isFirstTimeLaunch() && _selectedContacts.value.isEmpty()) {
+            android.util.Log.d("QuickContacts", "First time launch detected, loading favorite contacts...")
+            loadFavoriteContactsOnFirstLaunch(context)
+        }
+    }
+    
+    // Public method for testing - manually load favorite contacts
+    fun loadFavoriteContactsForTesting(context: Context) {
+        android.util.Log.d("QuickContacts", "Manually loading favorite contacts for testing...")
+        val favoriteContacts = getFavoriteContacts(context)
+        android.util.Log.d("QuickContacts", "Found ${favoriteContacts.size} favorite contacts for testing")
+        
+        if (favoriteContacts.isNotEmpty()) {
+            val contactsToAdd = favoriteContacts.take(5)
+            contactsToAdd.forEach { contact ->
+                android.util.Log.d("QuickContacts", "Adding favorite contact for testing: ${contact.name} - ${contact.phoneNumber}")
+                addContact(contact)
+            }
+        }
+    }
+    
+    // Check if this is the first time the app is launched
+    private fun isFirstTimeLaunch(): Boolean {
+        return sharedPreferences.getBoolean("is_first_launch", true)
+    }
+    
+    // Mark that the app has been launched for the first time
+    private fun markFirstLaunchComplete() {
+        sharedPreferences.edit().putBoolean("is_first_launch", false).apply()
+    }
+    
+    // Public method for testing - reset first launch flag
+    fun resetFirstLaunchFlag() {
+        sharedPreferences.edit().putBoolean("is_first_launch", true).apply()
+        android.util.Log.d("QuickContacts", "First launch flag reset for testing")
+    }
+    
+    // Load favorite contacts on first app launch
+    private fun loadFavoriteContactsOnFirstLaunch(context: Context) {
+        try {
+            android.util.Log.d("QuickContacts", "Loading favorite contacts...")
+            val favoriteContacts = getFavoriteContacts(context)
+            android.util.Log.d("QuickContacts", "Found ${favoriteContacts.size} favorite contacts")
+            
+            if (favoriteContacts.isNotEmpty()) {
+                // Add up to 5 favorite contacts to avoid overwhelming the user
+                val contactsToAdd = favoriteContacts.take(5)
+                android.util.Log.d("QuickContacts", "Adding ${contactsToAdd.size} favorite contacts to quick list")
+                contactsToAdd.forEach { contact ->
+                    android.util.Log.d("QuickContacts", "Adding favorite contact: ${contact.name} - ${contact.phoneNumber}")
+                    addContact(contact)
+                }
+                // Mark first launch as complete
+                markFirstLaunchComplete()
+                android.util.Log.d("QuickContacts", "First launch setup completed")
+            } else {
+                android.util.Log.d("QuickContacts", "No favorite contacts found, marking first launch complete")
+                markFirstLaunchComplete()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("QuickContacts", "Error loading favorite contacts: ${e.message}")
+            // Even if loading fails, mark first launch as complete to avoid retrying
+            markFirstLaunchComplete()
+        }
+    }
+    
+    // Get favorite contacts from the device
+    private fun getFavoriteContacts(context: Context): List<Contact> {
+        val favoriteContacts = mutableListOf<Contact>()
+        val seenContactsMap = mutableMapOf<String, Contact>()
+        
+        try {
+            android.util.Log.d("QuickContacts", "Querying for starred contacts...")
+            // First, get all starred contact IDs
+            val starredContactIds = mutableSetOf<String>()
+            val contactsProjection = arrayOf(ContactsContract.Contacts._ID)
+            val contactsSelection = "${ContactsContract.Contacts.STARRED} = 1"
+            
+            val contactsCursor: Cursor? = context.contentResolver.query(
+                ContactsContract.Contacts.CONTENT_URI,
+                contactsProjection,
+                contactsSelection,
+                null,
+                null
+            )
+            
+            contactsCursor?.use {
+                val idColumn = it.getColumnIndex(ContactsContract.Contacts._ID)
+                android.util.Log.d("QuickContacts", "Contacts cursor count: ${it.count}")
+                if (idColumn >= 0) {
+                    while (it.moveToNext()) {
+                        val contactId = it.getString(idColumn)
+                        if (contactId != null) {
+                            starredContactIds.add(contactId)
+                            android.util.Log.d("QuickContacts", "Found starred contact ID: $contactId")
+                        }
+                    }
+                } else {
+                    android.util.Log.e("QuickContacts", "ID column not found in contacts cursor")
+                }
+            }
+            
+            // If no starred contacts found, return empty list
+            if (starredContactIds.isEmpty()) {
+                android.util.Log.d("QuickContacts", "No starred contacts found")
+                return favoriteContacts
+            }
+            
+            android.util.Log.d("QuickContacts", "Found ${starredContactIds.size} starred contact IDs")
+            
+            // Now get phone numbers for starred contacts
+            val phoneProjection = arrayOf(
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            
+            // Create selection for starred contact IDs
+            val placeholders = starredContactIds.joinToString(",") { "?" }
+            val phoneSelection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} IN ($placeholders)"
+            val phoneSelectionArgs = starredContactIds.toTypedArray()
+            
+            val phoneCursor: Cursor? = context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                phoneProjection,
+                phoneSelection,
+                phoneSelectionArgs,
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+            )
+            
+            phoneCursor?.use {
+                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                
+                android.util.Log.d("QuickContacts", "Phone cursor count: ${it.count}")
+                android.util.Log.d("QuickContacts", "Phone selection: $phoneSelection")
+                android.util.Log.d("QuickContacts", "Phone selection args: ${phoneSelectionArgs.joinToString()}")
+                
+                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
+                    while (it.moveToNext()) {
+                        val id = it.getString(idColumn)
+                        val name = it.getString(nameColumn)
+                        val number = it.getString(numberColumn)
+                        
+                        if (id != null && name != null && number != null) {
+                            android.util.Log.d("QuickContacts", "Processing contact: $name ($id) - $number")
+                            if (seenContactsMap.containsKey(id)) {
+                                // Add phone number to existing contact
+                                val existingContact = seenContactsMap[id]!!
+                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
+                                val normalizedNewNumber = normalizePhoneNumber(number)
+                                
+                                // Check if this normalized number already exists
+                                val alreadyExists = updatedPhoneNumbers.any { 
+                                    normalizePhoneNumber(it) == normalizedNewNumber 
+                                }
+                                
+                                if (!alreadyExists) {
+                                    updatedPhoneNumbers.add(number)
+                                    seenContactsMap[id] = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                }
+                            } else {
+                                // Create new contact
+                                val photoUri = getContactPhotoUri(context, id)
+                                val contact = Contact(
+                                    id = id,
+                                    name = name,
+                                    phoneNumber = number, // Primary phone number
+                                    phoneNumbers = listOf(number),
+                                    photoUri = photoUri
+                                )
+                                seenContactsMap[id] = contact
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Convert map to list
+            favoriteContacts.addAll(seenContactsMap.values)
+            android.util.Log.d("QuickContacts", "Processed ${favoriteContacts.size} favorite contacts with phone numbers")
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("QuickContacts", "Error getting favorite contacts: ${e.message}")
+        }
+        
+        return favoriteContacts
+    }
+    
     // Check which messaging apps are available on the device
     private fun checkAvailableMessagingApps() {
         val availableApps = mutableSetOf<MessagingApp>()

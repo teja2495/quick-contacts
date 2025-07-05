@@ -237,6 +237,13 @@ fun QuickContactsApp() {
         }
     }
     
+    // Check and load favorite contacts on first launch when permissions are granted
+    LaunchedEffect(hasContactsPermission) {
+        if (hasContactsPermission) {
+            viewModel.checkAndLoadFavoriteContactsOnFirstLaunch(context)
+        }
+    }
+    
     // Search all contacts when search query changes
     LaunchedEffect(searchQuery, hasContactsPermission) {
         if (hasContactsPermission && searchQuery.isNotEmpty()) {
