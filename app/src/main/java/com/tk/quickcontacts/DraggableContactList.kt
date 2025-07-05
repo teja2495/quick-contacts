@@ -670,33 +670,12 @@ fun RecentCallsSection(
                 }
                 
                 // Vertical list of recent calls
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.offset(y = (-4).dp)
-                ) {
-                    recentCalls.take(2).forEach { contact ->
-                        RecentCallVerticalItem(
-                            contact = contact,
-                            onContactClick = onContactClick,
-                            onWhatsAppClick = onWhatsAppClick,
-                            onContactImageClick = onContactImageClick,
-                            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-                            defaultMessagingApp = defaultMessagingApp,
-                            modifier = Modifier.fillMaxWidth(),
-                            selectedContacts = selectedContacts
-                        )
-                    }
-                }
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(animationSpec = tween(300)),
-                    exit = shrinkVertically(animationSpec = tween(300))
-                ) {
+                if (!isExpanded) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                         modifier = Modifier.offset(y = (-4).dp)
                     ) {
-                        recentCalls.drop(2).forEach { contact ->
+                        recentCalls.take(2).forEach { contact ->
                             RecentCallVerticalItem(
                                 contact = contact,
                                 onContactClick = onContactClick,
@@ -707,6 +686,35 @@ fun RecentCallsSection(
                                 modifier = Modifier.fillMaxWidth(),
                                 selectedContacts = selectedContacts
                             )
+                        }
+                    }
+                }
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = expandVertically(animationSpec = tween(300)),
+                    exit = shrinkVertically(animationSpec = tween(300))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .offset(y = (-4).dp)
+                            .weight(1f)
+                    ) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(vertical = 0.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(recentCalls) { contact ->
+                                RecentCallVerticalItem(
+                                    contact = contact,
+                                    onContactClick = onContactClick,
+                                    onWhatsAppClick = onWhatsAppClick,
+                                    onContactImageClick = onContactImageClick,
+                                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                    defaultMessagingApp = defaultMessagingApp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    selectedContacts = selectedContacts
+                                )
+                            }
                         }
                     }
                 }
