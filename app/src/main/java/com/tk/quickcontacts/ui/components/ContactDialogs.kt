@@ -1,0 +1,457 @@
+package com.tk.quickcontacts.ui.components
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import com.tk.quickcontacts.Contact
+import com.tk.quickcontacts.R
+import com.tk.quickcontacts.models.CustomActions
+import com.tk.quickcontacts.models.MessagingApp
+
+@Composable
+fun PhoneNumberSelectionDialog(
+    contact: Contact,
+    onPhoneNumberSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+    selectedContacts: List<Contact> = emptyList(),
+    onAddContact: ((Contact) -> Unit)? = null,
+    onRemoveContact: ((Contact) -> Unit)? = null
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Select Phone Number",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Choose a phone number for ${contact.name}:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                contact.phoneNumbers.forEach { phoneNumber ->
+                    // Use remember to make this reactive to selectedContacts changes
+                    val isNumberInQuickList by remember(selectedContacts, contact.id, phoneNumber) {
+                        mutableStateOf(
+                            selectedContacts.any { selectedContact ->
+                                selectedContact.id == contact.id && selectedContact.phoneNumber == phoneNumber
+                            }
+                        )
+                    }
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onPhoneNumberSelected(phoneNumber) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = phoneNumber,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // Only show tick/+ icon when onToggleContact is provided (search results + button)
+                            if (onAddContact != null && onRemoveContact != null) {
+                                Icon(
+                                    imageVector = if (isNumberInQuickList) Icons.Default.Done else Icons.Default.Add,
+                                    contentDescription = if (isNumberInQuickList) 
+                                        "Already in quick list" 
+                                    else 
+                                        "Add to quick list",
+                                    tint = if (isNumberInQuickList) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clickable {
+                                            val add = onAddContact
+                                            val remove = onRemoveContact
+                                            
+                                            // Create the contact with selected number
+                                            val contactWithSelectedNumber = contact.copy(
+                                                phoneNumber = phoneNumber,
+                                                phoneNumbers = listOf(phoneNumber)
+                                            )
+                                            
+                                            if (isNumberInQuickList) {
+                                                // If this number is already selected, just remove it
+                                                remove(contactWithSelectedNumber)
+                                            } else {
+                                                // If this number is not selected, remove any existing number for this contact and add this one
+                                                val existingContact = selectedContacts.find { it.id == contact.id }
+                                                if (existingContact != null) {
+                                                    remove(existingContact) // Remove existing
+                                                }
+                                                add(contactWithSelectedNumber) // Add new
+                                            }
+                                        }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(if (onAddContact != null && onRemoveContact != null) "Done" else "Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ActionToggleDialog(
+    contact: Contact,
+    isInternational: Boolean,
+    isCurrentlySwapped: Boolean,
+    customActions: CustomActions? = null,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
+    isInternationalDetectionEnabled: Boolean = true,
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onConfirm: (primaryAction: String, secondaryAction: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Available actions based on installed apps
+    val availableActions = mutableListOf("Call")
+    if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) availableActions.add("WhatsApp")
+    if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) availableActions.add("Telegram")
+    if (availableMessagingApps.contains(MessagingApp.SMS)) availableActions.add("SMS")
+    
+    // Get default messaging app name
+    val messagingAppName = when (defaultMessagingApp) {
+        MessagingApp.WHATSAPP -> "WhatsApp"
+        MessagingApp.SMS -> "SMS"
+        MessagingApp.TELEGRAM -> "Telegram"
+    }
+    
+    // Current actions - use custom actions if available, otherwise use new default logic
+    val currentPrimary = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+        messagingAppName  // International: Primary = messaging app
+    } else {
+        "Call"  // Default: Primary = Call
+    }
+    
+    val currentSecondary = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+        "Call"  // International: Secondary = Call
+    } else {
+        messagingAppName  // Default: Secondary = messaging app
+    }
+    
+    // State for selected actions
+    var selectedPrimary by remember { mutableStateOf(currentPrimary) }
+    var selectedSecondary by remember { mutableStateOf(currentSecondary) }
+    
+    // Check if configuration has changed
+    val hasChanged = selectedPrimary != currentPrimary || selectedSecondary != currentSecondary
+    
+    // Check if selections are valid (different actions)
+    val isValidSelection = selectedPrimary != selectedSecondary
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Change Actions",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Set actions for ${contact.name}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                
+                // Primary action selection
+                Text(
+                    text = "Primary (Tap Card)",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+                
+                // Two rows of FilterChips for Primary Action
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FilterChip(
+                        onClick = { selectedPrimary = "Call" },
+                        label = { Text("Call") },
+                        selected = selectedPrimary == "Call",
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .weight(1f)
+                    )
+                    FilterChip(
+                        onClick = { selectedPrimary = "SMS" },
+                        label = { Text("SMS") },
+                        selected = selectedPrimary == "SMS",
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .weight(1f)
+                    )
+                }
+                
+                // Only show second row if there are apps to show
+                val hasWhatsApp = availableMessagingApps.contains(MessagingApp.WHATSAPP)
+                val hasTelegram = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+                if (hasWhatsApp || hasTelegram) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (hasWhatsApp && hasTelegram) {
+                            FilterChip(
+                                onClick = { selectedPrimary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedPrimary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            FilterChip(
+                                onClick = { selectedPrimary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedPrimary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                        } else if (hasWhatsApp) {
+                            FilterChip(
+                                onClick = { selectedPrimary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedPrimary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else if (hasTelegram) {
+                            FilterChip(
+                                onClick = { selectedPrimary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedPrimary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+                
+                // Secondary action selection
+                Text(
+                    text = "Secondary (Tap Icon)",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+                
+                // Two rows of FilterChips for Secondary Action
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FilterChip(
+                        onClick = { selectedSecondary = "Call" },
+                        label = { Text("Call") },
+                        selected = selectedSecondary == "Call",
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .weight(1f)
+                    )
+                    FilterChip(
+                        onClick = { selectedSecondary = "SMS" },
+                        label = { Text("SMS") },
+                        selected = selectedSecondary == "SMS",
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .weight(1f)
+                    )
+                }
+                
+                // Only show second row if there are apps to show
+                val hasWhatsAppSec = availableMessagingApps.contains(MessagingApp.WHATSAPP)
+                val hasTelegramSec = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+                if (hasWhatsAppSec || hasTelegramSec) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (hasWhatsAppSec && hasTelegramSec) {
+                            FilterChip(
+                                onClick = { selectedSecondary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedSecondary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            FilterChip(
+                                onClick = { selectedSecondary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedSecondary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                        } else if (hasWhatsAppSec) {
+                            FilterChip(
+                                onClick = { selectedSecondary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedSecondary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else if (hasTelegramSec) {
+                            FilterChip(
+                                onClick = { selectedSecondary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedSecondary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+                
+                // Error message for invalid selection
+                if (!isValidSelection) {
+                    Text(
+                        text = "Primary and secondary actions must be different",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (isValidSelection) {
+                        onConfirm(selectedPrimary, selectedSecondary)
+                    }
+                },
+                enabled = isValidSelection && hasChanged
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+} 
