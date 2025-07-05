@@ -426,7 +426,8 @@ fun QuickContactsApp() {
                                         }
                                     },
                                     isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                    defaultMessagingApp = defaultMessagingApp
+                                    defaultMessagingApp = defaultMessagingApp,
+                                    selectedContacts = selectedContacts
                                 )
                             }
                             
@@ -482,7 +483,8 @@ fun QuickContactsApp() {
                                         }
                                     },
                                     isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                    defaultMessagingApp = defaultMessagingApp
+                                    defaultMessagingApp = defaultMessagingApp,
+                                    selectedContacts = selectedContacts
                                 )
                             }
                             
@@ -567,7 +569,8 @@ fun QuickContactsApp() {
                                 customActionPreferences = customActionPreferences,
                                 isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp,
-                                availableMessagingApps = availableMessagingApps
+                                availableMessagingApps = availableMessagingApps,
+                                selectedContacts = selectedContacts
                             )
                             }
                         }
@@ -810,6 +813,12 @@ fun SearchResultsContent(
                             viewModel.addContact(contact)
                         }
                     },
+                    onAddContact = { contact ->
+                        viewModel.addContact(contact)
+                    },
+                    onRemoveContact = { contact ->
+                        viewModel.removeContact(contact)
+                    },
                     onWhatsAppClick = { contact ->
                         viewModel.openMessagingApp(context, contact.phoneNumber)
                     },
@@ -832,6 +841,8 @@ fun SearchResultItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onToggleContact: (Contact) -> Unit,
+    onAddContact: (Contact) -> Unit,
+    onRemoveContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit,
     onContactImageClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
@@ -858,7 +869,7 @@ fun SearchResultItem(
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
-                    "add" -> onToggleContact(contactWithSelectedNumber)
+                    "add" -> onAddContact(contactWithSelectedNumber)
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -866,7 +877,19 @@ fun SearchResultItem(
             onDismiss = {
                 showPhoneNumberDialog = false
                 dialogAction = null
-            }
+            },
+            selectedContacts = selectedContacts,
+            onAddContact = if (dialogAction == "add") { contactWithSelectedNumber ->
+                // Create a new contact with the selected number
+                val newContact = contact.copy(
+                    phoneNumber = contactWithSelectedNumber.phoneNumber,
+                    phoneNumbers = listOf(contactWithSelectedNumber.phoneNumber)
+                )
+                onAddContact(newContact)
+            } else null,
+            onRemoveContact = if (dialogAction == "add") { contactToRemove ->
+                onRemoveContact(contactToRemove)
+            } else null
         )
     }
     
@@ -904,34 +927,46 @@ fun SearchResultItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Toggle quick contacts button
-            IconButton(
-                onClick = { 
-                    if (isSelected) {
-                        // If already selected, just remove it
-                        onToggleContact(contact)
-                    } else if (contact.phoneNumbers.size > 1) {
-                        // If multiple numbers and not selected, show dialog
+            if (contact.phoneNumbers.size > 1) {
+                // For multiple numbers, always open dialog, do not show tick/+
+                IconButton(
+                    onClick = {
                         dialogAction = "add"
                         showPhoneNumberDialog = true
-                    } else {
-                        // Single number and not selected, add directly
-                        onToggleContact(contact)
-                    }
-                },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
-                    contentDescription = if (isSelected) 
-                        "Remove ${contact.name} from quick contacts" 
-                    else 
-                        "Add ${contact.name} to quick contacts",
-                    tint = if (isSelected) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
-                        MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp)
-                )
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add ${contact.name} to quick contacts",
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = {
+                        if (isSelected) {
+                            onRemoveContact(contact)
+                        } else {
+                            onAddContact(contact)
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
+                        contentDescription = if (isSelected)
+                            "Remove ${contact.name} from quick contacts"
+                        else
+                            "Add ${contact.name} to quick contacts",
+                        tint = if (isSelected)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.width(16.dp))

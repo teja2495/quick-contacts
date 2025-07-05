@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +55,10 @@ import androidx.compose.animation.shrinkVertically
 fun PhoneNumberSelectionDialog(
     contact: Contact,
     onPhoneNumberSelected: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    selectedContacts: List<Contact> = emptyList(),
+    onAddContact: ((Contact) -> Unit)? = null,
+    onRemoveContact: ((Contact) -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -74,6 +79,15 @@ fun PhoneNumberSelectionDialog(
                 )
                 
                 contact.phoneNumbers.forEach { phoneNumber ->
+                    // Use remember to make this reactive to selectedContacts changes
+                    val isNumberInQuickList by remember(selectedContacts, contact.id, phoneNumber) {
+                        mutableStateOf(
+                            selectedContacts.any { selectedContact ->
+                                selectedContact.id == contact.id && selectedContact.phoneNumber == phoneNumber
+                            }
+                        )
+                    }
+                    
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -95,14 +109,51 @@ fun PhoneNumberSelectionDialog(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
-                            
                             Spacer(modifier = Modifier.width(12.dp))
-                            
                             Text(
                                 text = phoneNumber,
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.weight(1f)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // Only show tick/+ icon when onToggleContact is provided (search results + button)
+                            if (onAddContact != null && onRemoveContact != null) {
+                                Icon(
+                                    imageVector = if (isNumberInQuickList) Icons.Default.Done else Icons.Default.Add,
+                                    contentDescription = if (isNumberInQuickList) 
+                                        "Already in quick list" 
+                                    else 
+                                        "Add to quick list",
+                                    tint = if (isNumberInQuickList) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clickable {
+                                            val add = onAddContact
+                                            val remove = onRemoveContact
+                                            
+                                            // Create the contact with selected number
+                                            val contactWithSelectedNumber = contact.copy(
+                                                phoneNumber = phoneNumber,
+                                                phoneNumbers = listOf(phoneNumber)
+                                            )
+                                            
+                                            if (isNumberInQuickList) {
+                                                // If this number is already selected, just remove it
+                                                remove(contactWithSelectedNumber)
+                                            } else {
+                                                // If this number is not selected, remove any existing number for this contact and add this one
+                                                val existingContact = selectedContacts.find { it.id == contact.id }
+                                                if (existingContact != null) {
+                                                    remove(existingContact) // Remove existing
+                                                }
+                                                add(contactWithSelectedNumber) // Add new
+                                            }
+                                        }
+                                )
+                            }
                         }
                     }
                 }
@@ -110,7 +161,7 @@ fun PhoneNumberSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(if (onAddContact != null && onRemoveContact != null) "Done" else "Cancel")
             }
         }
     )
@@ -406,7 +457,8 @@ fun ContactList(
     customActionPreferences: Map<String, CustomActions> = emptyMap(),
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS)
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    selectedContacts: List<Contact> = emptyList()
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -444,7 +496,8 @@ fun ContactList(
                         customActions = customActionPreferences[contact.id],
                         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                         defaultMessagingApp = defaultMessagingApp,
-                        availableMessagingApps = availableMessagingApps
+                        availableMessagingApps = availableMessagingApps,
+                        selectedContacts = selectedContacts
                     )
                 }
             } else {
@@ -462,7 +515,8 @@ fun ContactList(
                     customActions = customActionPreferences[contact.id],
                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp,
-                    availableMessagingApps = availableMessagingApps
+                    availableMessagingApps = availableMessagingApps,
+                    selectedContacts = selectedContacts
                 )
             }
         }
@@ -478,7 +532,8 @@ fun RecentCallsSection(
     onExpandedChange: (Boolean) -> Unit = {},
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedContacts: List<Contact> = emptyList()
 ) {
     if (recentCalls.isNotEmpty()) {
         var isExpanded by remember { mutableStateOf(false) }
@@ -550,7 +605,8 @@ fun RecentCallsSection(
                             onContactImageClick = onContactImageClick,
                             isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                             defaultMessagingApp = defaultMessagingApp,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            selectedContacts = selectedContacts
                         )
                     }
                 }
@@ -571,7 +627,8 @@ fun RecentCallsSection(
                                 onContactImageClick = onContactImageClick,
                                 isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                selectedContacts = selectedContacts
                             )
                         }
                     }
@@ -589,7 +646,8 @@ fun RecentCallVerticalItem(
     onContactImageClick: (Contact) -> Unit = {},
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedContacts: List<Contact> = emptyList()
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -617,6 +675,13 @@ fun RecentCallVerticalItem(
             onDismiss = {
                 showPhoneNumberDialog = false
                 dialogAction = null
+            },
+            selectedContacts = selectedContacts,
+            onAddContact = { contactWithSelectedNumber ->
+                onContactClick(contactWithSelectedNumber)
+            },
+            onRemoveContact = { contactWithSelectedNumber ->
+                onContactClick(contactWithSelectedNumber)
             }
         )
     }
@@ -830,7 +895,8 @@ fun ContactItem(
     customActions: CustomActions? = null,
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS)
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    selectedContacts: List<Contact> = emptyList()
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -877,6 +943,13 @@ fun ContactItem(
             onDismiss = {
                 showPhoneNumberDialog = false
                 dialogAction = null
+            },
+            selectedContacts = selectedContacts,
+            onAddContact = { contactWithSelectedNumber ->
+                onContactClick(contactWithSelectedNumber)
+            },
+            onRemoveContact = { contactWithSelectedNumber ->
+                onContactClick(contactWithSelectedNumber)
             }
         )
     }
