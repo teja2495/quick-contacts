@@ -519,7 +519,7 @@ fun QuickContactsApp() {
                                     // Show hint text in edit mode
                                     if (editMode) {
                                         Text(
-                                            text = "Long press to change actions",
+                                            text = "Tap contact to change actions",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)

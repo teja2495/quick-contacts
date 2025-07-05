@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -311,41 +312,70 @@ fun ActionToggleDialog(
                     )
                 }
                 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Only show WhatsApp if it's available
-                    if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
-                        FilterChip(
-                            onClick = { selectedPrimary = "WhatsApp" },
-                            label = { Text("WhatsApp") },
-                            selected = selectedPrimary == "WhatsApp",
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier
-                                .height(32.dp)
-                                .weight(1f)
-                        )
-                    }
-                    // Only show Telegram if it's available
-                    if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
-                        FilterChip(
-                            onClick = { selectedPrimary = "Telegram" },
-                            label = { Text("Telegram") },
-                            selected = selectedPrimary == "Telegram",
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier
-                                .height(32.dp)
-                                .weight(1f)
-                        )
+                // Only show second row if there are apps to show
+                val hasWhatsApp = availableMessagingApps.contains(MessagingApp.WHATSAPP)
+                val hasTelegram = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+                if (hasWhatsApp || hasTelegram) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (hasWhatsApp && hasTelegram) {
+                            FilterChip(
+                                onClick = { selectedPrimary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedPrimary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            FilterChip(
+                                onClick = { selectedPrimary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedPrimary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                        } else if (hasWhatsApp) {
+                            FilterChip(
+                                onClick = { selectedPrimary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedPrimary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else if (hasTelegram) {
+                            FilterChip(
+                                onClick = { selectedPrimary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedPrimary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
                 
@@ -391,41 +421,70 @@ fun ActionToggleDialog(
                     )
                 }
                 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Only show WhatsApp if it's available
-                    if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
-                        FilterChip(
-                            onClick = { selectedSecondary = "WhatsApp" },
-                            label = { Text("WhatsApp") },
-                            selected = selectedSecondary == "WhatsApp",
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier
-                                .height(32.dp)
-                                .weight(1f)
-                        )
-                    }
-                    // Only show Telegram if it's available
-                    if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
-                        FilterChip(
-                            onClick = { selectedSecondary = "Telegram" },
-                            label = { Text("Telegram") },
-                            selected = selectedSecondary == "Telegram",
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier
-                                .height(32.dp)
-                                .weight(1f)
-                        )
+                // Only show second row if there are apps to show
+                val hasWhatsAppSec = availableMessagingApps.contains(MessagingApp.WHATSAPP)
+                val hasTelegramSec = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+                if (hasWhatsAppSec || hasTelegramSec) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (hasWhatsAppSec && hasTelegramSec) {
+                            FilterChip(
+                                onClick = { selectedSecondary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedSecondary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            FilterChip(
+                                onClick = { selectedSecondary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedSecondary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                        } else if (hasWhatsAppSec) {
+                            FilterChip(
+                                onClick = { selectedSecondary = "WhatsApp" },
+                                label = { Text("WhatsApp") },
+                                selected = selectedSecondary == "WhatsApp",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else if (hasTelegramSec) {
+                            FilterChip(
+                                onClick = { selectedSecondary = "Telegram" },
+                                label = { Text("Telegram") },
+                                selected = selectedSecondary == "Telegram",
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .weight(1f)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
                 
@@ -998,8 +1057,11 @@ fun ContactItem(
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .combinedClickable(
                 enabled = true, // Always enabled to handle both edit and normal mode
-                onClick = { 
-                    if (!editMode) {
+                onClick = {
+                    if (editMode) {
+                        // In edit mode, show action toggle dialog on press
+                        showActionToggleDialog = true
+                    } else {
                         // Normal mode: perform contact action
                         // Get default messaging app name
                         val messagingAppName = when (defaultMessagingApp) {
@@ -1007,14 +1069,12 @@ fun ContactItem(
                             MessagingApp.SMS -> "SMS"
                             MessagingApp.TELEGRAM -> "Telegram"
                         }
-                        
                         // Use custom primary action or determine based on new default logic
                         val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
                             messagingAppName  // International: Primary = messaging app
                         } else {
                             "Call"  // Default: Primary = Call
                         }
-                        
                         if (contact.phoneNumbers.size > 1) {
                             dialogAction = primaryAction.lowercase()
                             showPhoneNumberDialog = true
@@ -1023,13 +1083,9 @@ fun ContactItem(
                             onContactClick(contact)
                         }
                     }
-                    // In edit mode, clicks are disabled for contact actions
                 },
                 onLongClick = {
-                    if (editMode) {
-                        // Only show action toggle dialog in edit mode
-                        showActionToggleDialog = true
-                    }
+                    // No longer needed for edit mode
                 }
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
