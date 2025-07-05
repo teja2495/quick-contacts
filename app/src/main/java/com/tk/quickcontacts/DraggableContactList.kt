@@ -121,38 +121,50 @@ fun ActionToggleDialog(
     contact: Contact,
     isInternational: Boolean,
     isCurrentlySwapped: Boolean,
-    onConfirm: () -> Unit,
+    customActions: CustomActions? = null,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
+    isInternationalDetectionEnabled: Boolean = true,
+    onConfirm: (primaryAction: String, secondaryAction: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val currentPrimary = if (isCurrentlySwapped) {
-        if (isInternational) "Call" else "WhatsApp"
-    } else {
-        if (isInternational) "WhatsApp" else "Call"
+    // Available actions
+    val availableActions = listOf("Call", "WhatsApp", "Telegram", "SMS")
+    
+    // Get default messaging app name
+    val messagingAppName = when (defaultMessagingApp) {
+        MessagingApp.WHATSAPP -> "WhatsApp"
+        MessagingApp.SMS -> "SMS"
+        MessagingApp.TELEGRAM -> "Telegram"
     }
     
-    val currentSecondary = if (isCurrentlySwapped) {
-        if (isInternational) "WhatsApp" else "Call"
+    // Current actions - use custom actions if available, otherwise use new default logic
+    val currentPrimary = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+        messagingAppName  // International: Primary = messaging app
     } else {
-        if (isInternational) "Call" else "WhatsApp"
+        "Call"  // Default: Primary = Call
     }
     
-    val newPrimary = if (!isCurrentlySwapped) {
-        if (isInternational) "Call" else "WhatsApp"
+    val currentSecondary = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+        "Call"  // International: Secondary = Call
     } else {
-        if (isInternational) "WhatsApp" else "Call"
+        messagingAppName  // Default: Secondary = messaging app
     }
     
-    val newSecondary = if (!isCurrentlySwapped) {
-        if (isInternational) "WhatsApp" else "Call"
-    } else {
-        if (isInternational) "Call" else "WhatsApp"
-    }
+    // State for selected actions
+    var selectedPrimary by remember { mutableStateOf(currentPrimary) }
+    var selectedSecondary by remember { mutableStateOf(currentSecondary) }
+    
+    // Check if configuration has changed
+    val hasChanged = selectedPrimary != currentPrimary || selectedSecondary != currentSecondary
+    
+    // Check if selections are valid (different actions)
+    val isValidSelection = selectedPrimary != selectedSecondary
     
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Switch Actions",
+                text = "Set Actions",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -160,128 +172,102 @@ fun ActionToggleDialog(
         text = {
             Column {
                 Text(
-                    text = "Change the tap actions for ${contact.name}?",
+                    text = "Configure tap actions for ${contact.name}:",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
                 
-                // Current actions section
+                // Primary action selection
                 Column {
                     Text(
-                        text = "Current:",
+                        text = "Primary Action (Tap Card):",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
+                    availableActions.forEach { action ->
+                        Row(
                             modifier = Modifier
-                                .size(6.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                    shape = CircleShape
+                                .fillMaxWidth()
+                                .clickable { selectedPrimary = action }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedPrimary == action,
+                                onClick = { selectedPrimary = action },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
                                 )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Tap card: $currentPrimary",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, bottom = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                    shape = CircleShape
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Tap icon: $currentSecondary",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = action,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
                 
-                // New actions section
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Secondary action selection
                 Column {
                     Text(
-                        text = "Changing to:",
+                        text = "Secondary Action (Tap Icon):",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
+                    availableActions.forEach { action ->
+                        Row(
                             modifier = Modifier
-                                .size(6.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    shape = CircleShape
+                                .fillMaxWidth()
+                                .clickable { selectedSecondary = action }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedSecondary == action,
+                                onClick = { selectedSecondary = action },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
                                 )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Tap card: $newPrimary",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Medium
-                        )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = action,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    shape = CircleShape
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Tap icon: $newSecondary",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                }
+                
+                // Validation message
+                if (!isValidSelection) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Primary and secondary actions must be different",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Switch")
+            TextButton(
+                onClick = { onConfirm(selectedPrimary, selectedSecondary) },
+                enabled = isValidSelection && hasChanged
+            ) {
+                Text("Apply")
             }
         },
         dismissButton = {
@@ -303,7 +289,8 @@ fun ContactList(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onLongClick: (Contact) -> Unit = {},
-    actionPreferences: Map<String, Boolean> = emptyMap(),
+    onSetCustomActions: (Contact, String, String) -> Unit = { _, _, _ -> },
+    customActionPreferences: Map<String, CustomActions> = emptyMap(),
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP
 ) {
@@ -339,7 +326,8 @@ fun ContactList(
                         onContactImageClick = onContactImageClick,
                         reorderState = reorderState,
                         onLongClick = onLongClick,
-                        isActionSwapped = actionPreferences[contact.id] ?: false,
+                        onSetCustomActions = onSetCustomActions,
+                        customActions = customActionPreferences[contact.id],
                         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                         defaultMessagingApp = defaultMessagingApp
                     )
@@ -355,7 +343,8 @@ fun ContactList(
                     onContactImageClick = onContactImageClick,
                     reorderState = null,
                     onLongClick = onLongClick,
-                    isActionSwapped = actionPreferences[contact.id] ?: false,
+                    onSetCustomActions = onSetCustomActions,
+                    customActions = customActionPreferences[contact.id],
                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp
                 )
@@ -717,7 +706,8 @@ fun ContactItem(
     onContactImageClick: (Contact) -> Unit = {},
     reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
     onLongClick: (Contact) -> Unit = {},
-    isActionSwapped: Boolean = false,
+    onSetCustomActions: (Contact, String, String) -> Unit = { _, _, _ -> },
+    customActions: CustomActions? = null,
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP
 ) {
@@ -738,6 +728,8 @@ fun ContactItem(
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
+                    "sms" -> onWhatsAppClick(contactWithSelectedNumber) // Will route to SMS via executeAction
+                    "telegram" -> onWhatsAppClick(contactWithSelectedNumber) // Will route to Telegram via executeAction
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -754,9 +746,12 @@ fun ContactItem(
         ActionToggleDialog(
             contact = contact,
             isInternational = isInternational,
-            isCurrentlySwapped = isActionSwapped,
-            onConfirm = {
-                onLongClick(contact)
+            isCurrentlySwapped = false, // No longer using swap logic
+            customActions = customActions,
+            defaultMessagingApp = defaultMessagingApp,
+            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+            onConfirm = { primaryAction, secondaryAction ->
+                onSetCustomActions(contact, primaryAction, secondaryAction)
                 showActionToggleDialog = false
             },
             onDismiss = {
@@ -774,21 +769,30 @@ fun ContactItem(
                 onClick = { 
                     if (!editMode) {
                         // Normal mode: perform contact action
-                        // Determine primary action based on international status and swap preference
-                        val primaryActionIsWhatsApp = if (isActionSwapped) {
-                            !isInternational  // Swapped: domestic -> WhatsApp primary
+                        // Get default messaging app name
+                        val messagingAppName = when (defaultMessagingApp) {
+                            MessagingApp.WHATSAPP -> "WhatsApp"
+                            MessagingApp.SMS -> "SMS"
+                            MessagingApp.TELEGRAM -> "Telegram"
+                        }
+                        
+                        // Use custom primary action or determine based on new default logic
+                        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                            messagingAppName  // International: Primary = messaging app
                         } else {
-                            isInternational   // Normal: international -> WhatsApp primary
+                            "Call"  // Default: Primary = Call
                         }
                         
                         if (contact.phoneNumbers.size > 1) {
-                            dialogAction = if (primaryActionIsWhatsApp) "whatsapp" else "call"
+                            dialogAction = primaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            if (primaryActionIsWhatsApp) {
-                                onWhatsAppClick(contact)
-                            } else {
-                                onContactClick(contact)
+                            when (primaryAction) {
+                                "Call" -> onContactClick(contact)
+                                "WhatsApp" -> onWhatsAppClick(contact)
+                                "SMS" -> onWhatsAppClick(contact) // Will route to SMS via executeAction
+                                "Telegram" -> onWhatsAppClick(contact) // Will route to Telegram via executeAction
+                                else -> onContactClick(contact) // Fallback
                             }
                         }
                     }
@@ -895,67 +899,91 @@ fun ContactItem(
                 // Secondary action button - opposite of primary action
                 IconButton(
                     onClick = { 
-                        // Determine secondary action based on international status and swap preference
-                        val secondaryActionIsWhatsApp = if (isActionSwapped) {
-                            isInternational  // Swapped: international -> WhatsApp secondary
+                        // Get default messaging app name
+                        val messagingAppName = when (defaultMessagingApp) {
+                            MessagingApp.WHATSAPP -> "WhatsApp"
+                            MessagingApp.SMS -> "SMS"
+                            MessagingApp.TELEGRAM -> "Telegram"
+                        }
+                        
+                        // Use custom secondary action or determine based on new default logic
+                        val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                            "Call"  // International: Secondary = Call
                         } else {
-                            !isInternational  // Normal: domestic -> WhatsApp secondary
+                            messagingAppName  // Default: Secondary = messaging app
                         }
                         
                         if (contact.phoneNumbers.size > 1) {
-                            dialogAction = if (secondaryActionIsWhatsApp) "whatsapp" else "call"
+                            dialogAction = secondaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            if (secondaryActionIsWhatsApp) {
-                                onWhatsAppClick(contact)
-                            } else {
-                                onContactClick(contact)
+                            when (secondaryAction) {
+                                "Call" -> onContactClick(contact)
+                                "WhatsApp" -> onWhatsAppClick(contact)
+                                "SMS" -> onWhatsAppClick(contact) // Will route to SMS via executeAction
+                                "Telegram" -> onWhatsAppClick(contact) // Will route to Telegram via executeAction
+                                else -> onContactClick(contact) // Fallback
                             }
                         }
                     },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    // Show secondary action icon
-                    val secondaryActionIsWhatsApp = if (isActionSwapped) {
-                        isInternational  // Swapped: international -> WhatsApp secondary
-                    } else {
-                        !isInternational  // Normal: domestic -> WhatsApp secondary
+                    // Get default messaging app name
+                    val messagingAppName = when (defaultMessagingApp) {
+                        MessagingApp.WHATSAPP -> "WhatsApp"
+                        MessagingApp.SMS -> "SMS"
+                        MessagingApp.TELEGRAM -> "Telegram"
                     }
                     
-                    if (secondaryActionIsWhatsApp) {
-                        when (defaultMessagingApp) {
-                            MessagingApp.WHATSAPP -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.whatsapp_icon),
-                                    contentDescription = "WhatsApp ${contact.name}",
-                                    tint = Color(0xFF25D366),
-                                    modifier = Modifier.size(35.dp)
-                                )
-                            }
-                            MessagingApp.SMS -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.sms_icon),
-                                    contentDescription = "SMS ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(35.dp)
-                                )
-                            }
-                            MessagingApp.TELEGRAM -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.telegram_icon),
-                                    contentDescription = "Telegram ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(35.dp)
-                                )
-                            }
-                        }
+                    // Show secondary action icon based on custom actions or new default logic
+                    val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                        "Call"  // International: Secondary = Call
                     } else {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Call ${contact.name}",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(35.dp)
-                        )
+                        messagingAppName  // Default: Secondary = messaging app
+                    }
+                    
+                    when (secondaryAction) {
+                        "Call" -> {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Call ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(35.dp)
+                            )
+                        }
+                        "WhatsApp" -> {
+                            Icon(
+                                painter = painterResource(id = R.drawable.whatsapp_icon),
+                                contentDescription = "WhatsApp ${contact.name}",
+                                tint = Color(0xFF25D366),
+                                modifier = Modifier.size(35.dp)
+                            )
+                        }
+                        "SMS" -> {
+                            Icon(
+                                painter = painterResource(id = R.drawable.sms_icon),
+                                contentDescription = "SMS ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(35.dp)
+                            )
+                        }
+                        "Telegram" -> {
+                            Icon(
+                                painter = painterResource(id = R.drawable.telegram_icon),
+                                contentDescription = "Telegram ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(35.dp)
+                            )
+                        }
+                        else -> {
+                            // Fallback for unknown actions
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Call ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(35.dp)
+                            )
+                                                 }
                     }
                 }
             }

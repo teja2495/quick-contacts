@@ -25,6 +25,11 @@ enum class MessagingApp {
     TELEGRAM
 }
 
+data class CustomActions(
+    val primaryAction: String,
+    val secondaryAction: String
+)
+
 class ContactsViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedContacts = MutableStateFlow<List<Contact>>(emptyList())
     val selectedContacts: StateFlow<List<Contact>> = _selectedContacts
@@ -47,6 +52,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     // Action preferences: Map<ContactId, Boolean> where true means actions are swapped
     private val _actionPreferences = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences
+
+    // Custom action preferences: Map<ContactId, CustomActions> for individual contact actions
+    private val _customActionPreferences = MutableStateFlow<Map<String, CustomActions>>(emptyMap())
+    val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences
 
     // Settings preferences
     private val _isInternationalDetectionEnabled = MutableStateFlow(true)
@@ -71,6 +80,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         sharedPreferences = application.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
         loadContacts()
         loadActionPreferences()
+        loadCustomActionPreferences()
         loadSettings()
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
@@ -213,6 +223,33 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         currentPreferences[contactId] = !currentPreferences.getOrDefault(contactId, false)
         _actionPreferences.value = currentPreferences
         saveActionPreferences()
+    }
+
+    private fun loadCustomActionPreferences() {
+        val json = sharedPreferences.getString("custom_action_preferences", null)
+        if (json != null) {
+            val type = object : TypeToken<Map<String, CustomActions>>() {}.type
+            _customActionPreferences.value = gson.fromJson(json, type)
+        }
+    }
+
+    private fun saveCustomActionPreferences() {
+        val json = gson.toJson(_customActionPreferences.value)
+        sharedPreferences.edit().putString("custom_action_preferences", json).apply()
+    }
+
+    fun setCustomActions(contactId: String, primaryAction: String, secondaryAction: String) {
+        val currentPreferences = _customActionPreferences.value.toMutableMap()
+        currentPreferences[contactId] = CustomActions(primaryAction, secondaryAction)
+        _customActionPreferences.value = currentPreferences
+        saveCustomActionPreferences()
+    }
+
+    fun removeCustomActions(contactId: String) {
+        val currentPreferences = _customActionPreferences.value.toMutableMap()
+        currentPreferences.remove(contactId)
+        _customActionPreferences.value = currentPreferences
+        saveCustomActionPreferences()
     }
 
     private fun loadSettings() {
@@ -426,6 +463,15 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             MessagingApp.WHATSAPP -> openWhatsAppChat(context, phoneNumber)
             MessagingApp.SMS -> openSmsApp(context, phoneNumber)
             MessagingApp.TELEGRAM -> openTelegramChat(context, phoneNumber)
+        }
+    }
+
+    fun executeAction(context: Context, action: String, phoneNumber: String) {
+        when (action) {
+            "Call" -> makePhoneCall(context, phoneNumber)
+            "WhatsApp" -> openWhatsAppChat(context, phoneNumber)
+            "SMS" -> openSmsApp(context, phoneNumber)
+            "Telegram" -> openTelegramChat(context, phoneNumber)
         }
     }
 

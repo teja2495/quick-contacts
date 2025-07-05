@@ -202,7 +202,7 @@ fun QuickContactsApp() {
     val filteredRecentCalls by viewModel.filteredRecentCalls.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val actionPreferences by viewModel.actionPreferences.collectAsState()
+    val customActionPreferences by viewModel.customActionPreferences.collectAsState()
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     
@@ -515,10 +515,16 @@ fun QuickContactsApp() {
                             
                             // Quick contacts list (hide when recent calls are expanded)
                             if (!isRecentCallsExpanded) {
-                                                            ContactList(
+                                ContactList(
                                 contacts = filteredSelectedContacts,
                                 onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
+                                    // Check if contact has custom actions
+                                    val customActions = customActionPreferences[contact.id]
+                                    if (customActions != null) {
+                                        viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
+                                    } else {
+                                        viewModel.makePhoneCall(context, contact.phoneNumber)
+                                    }
                                 },
                                 editMode = editMode,
                                 onDeleteContact = { contact ->
@@ -528,15 +534,24 @@ fun QuickContactsApp() {
                                     viewModel.moveContact(from, to)
                                 },
                                 onWhatsAppClick = { contact ->
-                                    viewModel.openMessagingApp(context, contact.phoneNumber)
+                                    // Check if contact has custom actions
+                                    val customActions = customActionPreferences[contact.id]
+                                    if (customActions != null) {
+                                        viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
+                                    } else {
+                                        viewModel.openMessagingApp(context, contact.phoneNumber)
+                                    }
                                 },
                                 onContactImageClick = { contact ->
                                     viewModel.openContactInContactsApp(context, contact)
                                 },
                                 onLongClick = { contact ->
-                                    viewModel.toggleActionPreference(contact.id)
+                                    // Long click handled within ContactItem in edit mode
                                 },
-                                actionPreferences = actionPreferences,
+                                onSetCustomActions = { contact, primaryAction, secondaryAction ->
+                                    viewModel.setCustomActions(contact.id, primaryAction, secondaryAction)
+                                },
+                                customActionPreferences = customActionPreferences,
                                 isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp
                             )
