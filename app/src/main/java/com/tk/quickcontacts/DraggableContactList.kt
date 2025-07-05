@@ -409,7 +409,8 @@ fun RecentCallsSection(
                             onClick = { 
                                 isExpanded = !isExpanded
                                 onExpandedChange(isExpanded)
-                            }
+                            },
+                            modifier = Modifier.padding(end = 5.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
@@ -578,20 +579,20 @@ fun RecentCallVerticalItem(
                     }
                 }
             },
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(48.dp)
         ) {
             if (isInternational) {
                 Icon(
                     imageVector = Icons.Default.Phone,
                     contentDescription = "Call ${contact.name}",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             } else {
                 Icon(
                     painter = painterResource(id = R.drawable.whatsapp_icon),
                     contentDescription = "WhatsApp ${contact.name}",
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -889,13 +890,14 @@ fun ContactItem(
                             painter = painterResource(id = R.drawable.whatsapp_icon),
                             contentDescription = "WhatsApp ${contact.name}",
                             tint = Color(0xFF25D366),
-                            modifier = Modifier.size(30.dp)
+                            modifier = Modifier.size(35.dp)
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Phone,
                             contentDescription = "Call ${contact.name}",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(35.dp)
                         )
                     }
                 }

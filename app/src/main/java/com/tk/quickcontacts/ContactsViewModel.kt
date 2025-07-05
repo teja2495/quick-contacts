@@ -224,6 +224,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         context.startActivity(intent)
     }
     
+    fun openDialer(context: Context) {
+        val intent = Intent(Intent.ACTION_DIAL)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
+    }
+    
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
         val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
         

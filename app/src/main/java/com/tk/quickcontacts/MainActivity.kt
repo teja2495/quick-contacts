@@ -37,6 +37,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Dialpad
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -268,6 +270,20 @@ fun QuickContactsApp() {
                             )
                         }
                     }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            // TODO: Handle settings click
+                        },
+                        modifier = Modifier.padding(end = 24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             )
         }
@@ -375,6 +391,9 @@ fun QuickContactsApp() {
                                 isSearching = true
                                 viewModel.updateSearchQuery("")
                             },
+                            onDialerClick = {
+                                viewModel.openDialer(context)
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 16.dp)
@@ -436,7 +455,7 @@ fun QuickContactsApp() {
                                             color = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier
                                                 .clickable { editMode = !editMode }
-                                                .padding(end = 8.dp)
+                                                .padding(end = 10.dp)
                                         )
                                     }
                                     
@@ -485,6 +504,9 @@ fun QuickContactsApp() {
                             onClick = { 
                                 isSearching = true
                                 viewModel.updateSearchQuery("")
+                            },
+                            onDialerClick = {
+                                viewModel.openDialer(context)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -542,10 +564,11 @@ fun SearchBar(
 @Composable
 fun FakeSearchBar(
     onClick: () -> Unit,
+    onDialerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.clickable { onClick() },
+        modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -561,19 +584,38 @@ fun FakeSearchBar(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Search area - clickable to open search
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClick() },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Text(
+                    text = "Search contacts...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Dialer icon - clickable to open dialer
             Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search",
+                imageVector = Icons.Default.Dialpad,
+                contentDescription = "Dialer",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Text(
-                text = "Search contacts...",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier
+                    .size(24.dp)
+                    .padding(end = 4.dp)
+                    .clickable { onDialerClick() }
             )
         }
     }
@@ -794,20 +836,20 @@ fun SearchResultItem(
                         onToggleContact(contact)
                     }
                 },
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             ) {
-                            Icon(
-                imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
-                contentDescription = if (isSelected) 
-                    "Remove ${contact.name} from quick contacts" 
-                else 
-                    "Add ${contact.name} to quick contacts",
-                tint = if (isSelected) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(24.dp)
-            )
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
+                    contentDescription = if (isSelected) 
+                        "Remove ${contact.name} from quick contacts" 
+                    else 
+                        "Add ${contact.name} to quick contacts",
+                    tint = if (isSelected) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -855,13 +897,13 @@ fun SearchResultItem(
                         imageVector = Icons.Default.Phone,
                         contentDescription = "Call ${contact.name}",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 } else {
                     Icon(
                         painter = painterResource(id = R.drawable.whatsapp_icon),
                         contentDescription = "Send WhatsApp message to ${contact.name}",
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
