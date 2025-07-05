@@ -2,16 +2,7 @@ package com.tk.quickcontacts
 
 import android.app.Application
 import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.database.Cursor
-import android.net.Uri
-import android.provider.CallLog
-import android.provider.ContactsContract
 import androidx.lifecycle.AndroidViewModel
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -19,21 +10,21 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import com.tk.quickcontacts.utils.PhoneNumberUtils
-import com.tk.quickcontacts.utils.ContactUtils
-
-enum class MessagingApp {
-    WHATSAPP,
-    SMS,
-    TELEGRAM
-}
-
-data class CustomActions(
-    val primaryAction: String,
-    val secondaryAction: String
-)
+import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.models.CustomActions
+import com.tk.quickcontacts.repository.PreferencesRepository
+import com.tk.quickcontacts.services.ContactService
+import com.tk.quickcontacts.services.MessagingService
+import com.tk.quickcontacts.services.PhoneService
 
 class ContactsViewModel(application: Application) : AndroidViewModel(application) {
+    // Services
+    private val preferencesRepository = PreferencesRepository(application)
+    private val contactService = ContactService()
+    private val messagingService = MessagingService()
+    private val phoneService = PhoneService()
+    
+    // State flows
     private val _selectedContacts = MutableStateFlow<List<Contact>>(emptyList())
     val selectedContacts: StateFlow<List<Contact>> = _selectedContacts
 
@@ -52,11 +43,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
     val searchResults: StateFlow<List<Contact>> = _searchResults
 
-    // Action preferences: Map<ContactId, Boolean> where true means actions are swapped
+    // Action preferences
     private val _actionPreferences = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences
 
-    // Custom action preferences: Map<ContactId, CustomActions> for individual contact actions
+    // Custom action preferences
     private val _customActionPreferences = MutableStateFlow<Map<String, CustomActions>>(emptyMap())
     val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences
 
@@ -64,19 +55,16 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _isInternationalDetectionEnabled = MutableStateFlow(false)
     val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled
     
-    // Recent calls visibility preference
     private val _isRecentCallsVisible = MutableStateFlow(true)
     val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible
     
-    // Messaging app preference
     private val _defaultMessagingApp = MutableStateFlow(MessagingApp.WHATSAPP)
     val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp
     
-    // Available messaging apps
     private val _availableMessagingApps = MutableStateFlow<Set<MessagingApp>>(emptySet())
     val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps
     
-    // Backward compatibility - keep the old boolean property for existing UI
+    // Backward compatibility
     val useWhatsAppAsDefault: StateFlow<Boolean> = _defaultMessagingApp.map { it == MessagingApp.WHATSAPP }
         .stateIn(
             scope = CoroutineScope(Dispatchers.Main),
@@ -84,11 +72,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             initialValue = true
         )
 
-    private val sharedPreferences: SharedPreferences
-    private val gson = Gson()
-
     init {
-        sharedPreferences = application.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
         loadContacts()
         loadActionPreferences()
         loadCustomActionPreferences()
@@ -99,18 +83,17 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _filteredRecentCalls.value = _recentCalls.value
     }
     
-    // Public method to check and load favorite contacts when permissions are available
+    // First launch and testing methods
     fun checkAndLoadFavoriteContactsOnFirstLaunch(context: Context) {
-        if (isFirstTimeLaunch() && _selectedContacts.value.isEmpty()) {
+        if (preferencesRepository.isFirstTimeLaunch() && _selectedContacts.value.isEmpty()) {
             android.util.Log.d("QuickContacts", "First time launch detected, loading favorite contacts...")
             loadFavoriteContactsOnFirstLaunch(context)
         }
     }
     
-    // Public method for testing - manually load favorite contacts
     fun loadFavoriteContactsForTesting(context: Context) {
         android.util.Log.d("QuickContacts", "Manually loading favorite contacts for testing...")
-        val favoriteContacts = getFavoriteContacts(context)
+        val favoriteContacts = contactService.getFavoriteContacts(context)
         android.util.Log.d("QuickContacts", "Found ${favoriteContacts.size} favorite contacts for testing")
         
         if (favoriteContacts.isNotEmpty()) {
@@ -122,219 +105,57 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
-    // Check if this is the first time the app is launched
-    private fun isFirstTimeLaunch(): Boolean {
-        return sharedPreferences.getBoolean("is_first_launch", true)
-    }
-    
-    // Mark that the app has been launched for the first time
-    private fun markFirstLaunchComplete() {
-        sharedPreferences.edit().putBoolean("is_first_launch", false).apply()
-    }
-    
-    // Public method for testing - reset first launch flag
     fun resetFirstLaunchFlag() {
-        sharedPreferences.edit().putBoolean("is_first_launch", true).apply()
+        preferencesRepository.resetFirstLaunchFlag()
         android.util.Log.d("QuickContacts", "First launch flag reset for testing")
     }
     
-    // Check if edit hint has been shown
     fun hasShownEditHint(): Boolean {
-        return sharedPreferences.getBoolean("has_shown_edit_hint", false)
+        return preferencesRepository.hasShownEditHint()
     }
     
-    // Mark that edit hint has been shown
     fun markEditHintShown() {
-        sharedPreferences.edit().putBoolean("has_shown_edit_hint", true).apply()
+        preferencesRepository.markEditHintShown()
         android.util.Log.d("QuickContacts", "Edit hint marked as shown")
     }
     
-    // Public method for testing - reset edit hint flag
     fun resetEditHintFlag() {
-        sharedPreferences.edit().putBoolean("has_shown_edit_hint", false).apply()
+        preferencesRepository.resetEditHintFlag()
         android.util.Log.d("QuickContacts", "Edit hint flag reset for testing")
     }
     
-    // Load favorite contacts on first app launch
+    // Private helper methods
     private fun loadFavoriteContactsOnFirstLaunch(context: Context) {
         try {
             android.util.Log.d("QuickContacts", "Loading favorite contacts...")
-            val favoriteContacts = getFavoriteContacts(context)
+            val favoriteContacts = contactService.getFavoriteContacts(context)
             android.util.Log.d("QuickContacts", "Found ${favoriteContacts.size} favorite contacts")
             
             if (favoriteContacts.isNotEmpty()) {
-                // Add up to 5 favorite contacts to avoid overwhelming the user
                 val contactsToAdd = favoriteContacts.take(5)
                 android.util.Log.d("QuickContacts", "Adding ${contactsToAdd.size} favorite contacts to quick list")
                 contactsToAdd.forEach { contact ->
                     android.util.Log.d("QuickContacts", "Adding favorite contact: ${contact.name} - ${contact.phoneNumber}")
                     addContact(contact)
                 }
-                // Mark first launch as complete
-                markFirstLaunchComplete()
+                preferencesRepository.markFirstLaunchComplete()
                 android.util.Log.d("QuickContacts", "First launch setup completed")
             } else {
                 android.util.Log.d("QuickContacts", "No favorite contacts found, marking first launch complete")
-                markFirstLaunchComplete()
+                preferencesRepository.markFirstLaunchComplete()
             }
         } catch (e: Exception) {
             e.printStackTrace()
             android.util.Log.e("QuickContacts", "Error loading favorite contacts: ${e.message}")
-            // Even if loading fails, mark first launch as complete to avoid retrying
-            markFirstLaunchComplete()
+            preferencesRepository.markFirstLaunchComplete()
         }
     }
     
-    // Get favorite contacts from the device
-    private fun getFavoriteContacts(context: Context): List<Contact> {
-        val favoriteContacts = mutableListOf<Contact>()
-        val seenContactsMap = mutableMapOf<String, Contact>()
-        
-        try {
-            android.util.Log.d("QuickContacts", "Querying for starred contacts...")
-            // First, get all starred contact IDs
-            val starredContactIds = mutableSetOf<String>()
-            val contactsProjection = arrayOf(ContactsContract.Contacts._ID)
-            val contactsSelection = "${ContactsContract.Contacts.STARRED} = 1"
-            
-            val contactsCursor: Cursor? = context.contentResolver.query(
-                ContactsContract.Contacts.CONTENT_URI,
-                contactsProjection,
-                contactsSelection,
-                null,
-                null
-            )
-            
-            contactsCursor?.use {
-                val idColumn = it.getColumnIndex(ContactsContract.Contacts._ID)
-                android.util.Log.d("QuickContacts", "Contacts cursor count: ${it.count}")
-                if (idColumn >= 0) {
-                    while (it.moveToNext()) {
-                        val contactId = it.getString(idColumn)
-                        if (contactId != null) {
-                            starredContactIds.add(contactId)
-                            android.util.Log.d("QuickContacts", "Found starred contact ID: $contactId")
-                        }
-                    }
-                } else {
-                    android.util.Log.e("QuickContacts", "ID column not found in contacts cursor")
-                }
-            }
-            
-            // If no starred contacts found, return empty list
-            if (starredContactIds.isEmpty()) {
-                android.util.Log.d("QuickContacts", "No starred contacts found")
-                return favoriteContacts
-            }
-            
-            android.util.Log.d("QuickContacts", "Found ${starredContactIds.size} starred contact IDs")
-            
-            // Now get phone numbers for starred contacts
-            val phoneProjection = arrayOf(
-                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
-            
-            // Create selection for starred contact IDs
-            val placeholders = starredContactIds.joinToString(",") { "?" }
-            val phoneSelection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} IN ($placeholders)"
-            val phoneSelectionArgs = starredContactIds.toTypedArray()
-            
-            val phoneCursor: Cursor? = context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                phoneProjection,
-                phoneSelection,
-                phoneSelectionArgs,
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
-            )
-            
-            phoneCursor?.use {
-                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                
-                android.util.Log.d("QuickContacts", "Phone cursor count: ${it.count}")
-                android.util.Log.d("QuickContacts", "Phone selection: $phoneSelection")
-                android.util.Log.d("QuickContacts", "Phone selection args: ${phoneSelectionArgs.joinToString()}")
-                
-                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
-                    while (it.moveToNext()) {
-                        val id = it.getString(idColumn)
-                        val name = it.getString(nameColumn)
-                        val number = it.getString(numberColumn)
-                        
-                        if (id != null && name != null && number != null) {
-                            android.util.Log.d("QuickContacts", "Processing contact: $name ($id) - $number")
-                            if (seenContactsMap.containsKey(id)) {
-                                // Add phone number to existing contact
-                                val existingContact = seenContactsMap[id]!!
-                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
-                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
-                                
-                                // Check if this normalized number already exists
-                                val alreadyExists = updatedPhoneNumbers.any { 
-                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
-                                }
-                                
-                                if (!alreadyExists) {
-                                    updatedPhoneNumbers.add(number)
-                                    seenContactsMap[id] = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
-                                }
-                            } else {
-                                // Create new contact
-                                val photoUri = getContactPhotoUri(context, id)
-                                val contact = Contact(
-                                    id = id,
-                                    name = name,
-                                    phoneNumber = number, // Primary phone number
-                                    phoneNumbers = listOf(number),
-                                    photoUri = photoUri
-                                )
-                                seenContactsMap[id] = contact
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Convert map to list
-            favoriteContacts.addAll(seenContactsMap.values)
-            android.util.Log.d("QuickContacts", "Processed ${favoriteContacts.size} favorite contacts with phone numbers")
-            
-        } catch (e: Exception) {
-            e.printStackTrace()
-            android.util.Log.e("QuickContacts", "Error getting favorite contacts: ${e.message}")
-        }
-        
-        return favoriteContacts
-    }
-    
-    // Check which messaging apps are available on the device
     private fun checkAvailableMessagingApps() {
-        val availableApps = mutableSetOf<MessagingApp>()
         val packageManager = getApplication<Application>().packageManager
+        val availableApps = messagingService.checkAvailableMessagingApps(packageManager)
         
-        // SMS is always available
-        availableApps.add(MessagingApp.SMS)
-        
-        // Check if WhatsApp is installed by trying to resolve a WhatsApp intent
-        val isWhatsAppAvailable = isWhatsAppInstalled(packageManager)
-        if (isWhatsAppAvailable) {
-            availableApps.add(MessagingApp.WHATSAPP)
-        }
-        
-        // Check if Telegram is installed by trying to resolve a Telegram intent
-        val isTelegramAvailable = isTelegramInstalled(packageManager)
-        if (isTelegramAvailable) {
-            availableApps.add(MessagingApp.TELEGRAM)
-        }
-        
-        // Debug logging
         android.util.Log.d("QuickContacts", "Available messaging apps: $availableApps")
-        android.util.Log.d("QuickContacts", "WhatsApp available: $isWhatsAppAvailable")
-        android.util.Log.d("QuickContacts", "Telegram available: $isTelegramAvailable")
-        
         _availableMessagingApps.value = availableApps
         
         // If current default app is not available, switch to SMS
@@ -345,29 +166,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
-    private fun isWhatsAppInstalled(packageManager: PackageManager): Boolean {
-        return try {
-            packageManager.getPackageInfo("com.whatsapp", 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
-            false
-        }
-    }
-    
-    private fun isTelegramInstalled(packageManager: PackageManager): Boolean {
-        return try {
-            packageManager.getPackageInfo("org.telegram.messenger", 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
-            false
-        }
-    }
-    
-    // Public function to refresh available apps (useful when returning from settings)
-    fun refreshAvailableMessagingApps() {
-        checkAvailableMessagingApps()
-    }
-    
+    // Search and filtering
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
         filterContacts()
@@ -381,7 +180,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             _filteredRecentCalls.value = _recentCalls.value
             _searchResults.value = emptyList()
         } else {
-            // Filter only by name, not phone number
             _filteredSelectedContacts.value = _selectedContacts.value.filter { contact ->
                 contact.name.lowercase().contains(query)
             }
@@ -393,130 +191,60 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     fun searchAllContacts(context: Context, query: String) {
-        if (query.trim().isEmpty()) {
-            _searchResults.value = emptyList()
-            return
-        }
-        
-        try {
-            val searchResultsList = mutableListOf<Contact>()
-            val seenContactsMap = mutableMapOf<String, Contact>()
-            
-            val projection = arrayOf(
-                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
-            
-            // Search only by name, not phone number
-            val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
-            val selectionArgs = arrayOf("%$query%")
-            
-            val cursor: Cursor? = context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
-            )
-            
-            cursor?.use {
-                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                
-                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
-                    while (it.moveToNext()) {
-                        val id = it.getString(idColumn)
-                        val name = it.getString(nameColumn)
-                        val number = it.getString(numberColumn)
-                        
-                        if (id != null && name != null && number != null) {
-                            
-                            if (seenContactsMap.containsKey(id)) {
-                                // Add phone number to existing contact (normalize to avoid duplicates)
-                                val existingContact = seenContactsMap[id]!!
-                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
-                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
-                                
-                                // Check if this normalized number already exists
-                                val alreadyExists = updatedPhoneNumbers.any { 
-                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
-                                }
-                                
-                                if (!alreadyExists) {
-                                    updatedPhoneNumbers.add(number)
-                                    seenContactsMap[id] = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
-                                }
-                            } else {
-                                // Create new contact
-                                val contact = Contact(
-                                    id = id,
-                                    name = name,
-                                    phoneNumber = number, // Primary phone number
-                                    phoneNumbers = listOf(number),
-                                    photoUri = null // Not using photos in search results
-                                )
-                                seenContactsMap[id] = contact
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Convert map to list and limit results
-            _searchResults.value = seenContactsMap.values.take(20)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            _searchResults.value = emptyList()
-        }
+        val results = contactService.searchContacts(context, query)
+        _searchResults.value = results
     }
-
+    
+    // Data loading and saving
     private fun loadContacts() {
-        val json = sharedPreferences.getString("selected_contacts", null)
-        if (json != null) {
-            val type = object : TypeToken<List<Contact>>() {}.type
-            _selectedContacts.value = gson.fromJson(json, type)
-            filterContacts()
-        }
+        val contacts = preferencesRepository.loadContacts()
+        _selectedContacts.value = contacts
+        filterContacts()
     }
 
     private fun saveContacts() {
-        val json = gson.toJson(_selectedContacts.value)
-        sharedPreferences.edit().putString("selected_contacts", json).apply()
+        preferencesRepository.saveContacts(_selectedContacts.value)
     }
 
     private fun loadActionPreferences() {
-        val json = sharedPreferences.getString("action_preferences", null)
-        if (json != null) {
-            val type = object : TypeToken<Map<String, Boolean>>() {}.type
-            _actionPreferences.value = gson.fromJson(json, type)
-        }
+        val preferences = preferencesRepository.loadActionPreferences()
+        _actionPreferences.value = preferences
     }
 
     private fun saveActionPreferences() {
-        val json = gson.toJson(_actionPreferences.value)
-        sharedPreferences.edit().putString("action_preferences", json).apply()
+        preferencesRepository.saveActionPreferences(_actionPreferences.value)
     }
 
+    private fun loadCustomActionPreferences() {
+        val preferences = preferencesRepository.loadCustomActionPreferences()
+        _customActionPreferences.value = preferences
+    }
+
+    private fun saveCustomActionPreferences() {
+        preferencesRepository.saveCustomActionPreferences(_customActionPreferences.value)
+    }
+
+    private fun loadSettings() {
+        val (isInternationalDetectionEnabled, isRecentCallsVisible, defaultMessagingApp) = preferencesRepository.loadSettings()
+        _isInternationalDetectionEnabled.value = isInternationalDetectionEnabled
+        _isRecentCallsVisible.value = isRecentCallsVisible
+        _defaultMessagingApp.value = defaultMessagingApp
+    }
+
+    private fun saveSettings() {
+        preferencesRepository.saveSettings(
+            _isInternationalDetectionEnabled.value,
+            _isRecentCallsVisible.value,
+            _defaultMessagingApp.value
+        )
+    }
+    
+    // Public methods for preferences
     fun toggleActionPreference(contactId: String) {
         val currentPreferences = _actionPreferences.value.toMutableMap()
         currentPreferences[contactId] = !currentPreferences.getOrDefault(contactId, false)
         _actionPreferences.value = currentPreferences
         saveActionPreferences()
-    }
-
-    private fun loadCustomActionPreferences() {
-        val json = sharedPreferences.getString("custom_action_preferences", null)
-        if (json != null) {
-            val type = object : TypeToken<Map<String, CustomActions>>() {}.type
-            _customActionPreferences.value = gson.fromJson(json, type)
-        }
-    }
-
-    private fun saveCustomActionPreferences() {
-        val json = gson.toJson(_customActionPreferences.value)
-        sharedPreferences.edit().putString("custom_action_preferences", json).apply()
     }
 
     fun setCustomActions(contactId: String, primaryAction: String, secondaryAction: String) {
@@ -531,34 +259,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         currentPreferences.remove(contactId)
         _customActionPreferences.value = currentPreferences
         saveCustomActionPreferences()
-    }
-
-    private fun loadSettings() {
-        _isInternationalDetectionEnabled.value = sharedPreferences.getBoolean("international_detection_enabled", false)
-        _isRecentCallsVisible.value = sharedPreferences.getBoolean("recent_calls_visible", true)
-        
-        // Load messaging app preference with backward compatibility
-        val messagingAppString = sharedPreferences.getString("default_messaging_app", null)
-        if (messagingAppString != null) {
-            try {
-                _defaultMessagingApp.value = MessagingApp.valueOf(messagingAppString)
-            } catch (e: IllegalArgumentException) {
-                // If invalid enum value, fall back to WhatsApp
-                _defaultMessagingApp.value = MessagingApp.WHATSAPP
-            }
-        } else {
-            // Backward compatibility: check old boolean preference
-            val useWhatsApp = sharedPreferences.getBoolean("use_whatsapp_as_default", true)
-            _defaultMessagingApp.value = if (useWhatsApp) MessagingApp.WHATSAPP else MessagingApp.SMS
-        }
-    }
-
-    private fun saveSettings() {
-        sharedPreferences.edit()
-            .putBoolean("international_detection_enabled", _isInternationalDetectionEnabled.value)
-            .putBoolean("recent_calls_visible", _isRecentCallsVisible.value)
-            .putString("default_messaging_app", _defaultMessagingApp.value.name)
-            .apply()
     }
 
     fun toggleInternationalDetection() {
@@ -576,7 +276,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         saveSettings()
     }
     
-    // Keep the old toggle function for backward compatibility
     fun toggleMessagingApp() {
         _defaultMessagingApp.value = when (_defaultMessagingApp.value) {
             MessagingApp.WHATSAPP -> MessagingApp.SMS
@@ -586,6 +285,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         saveSettings()
     }
 
+    // Contact management
     fun addContact(contact: Contact) {
         val currentList = _selectedContacts.value.toMutableList()
         if (!currentList.any { it.id == contact.id }) {
@@ -615,143 +315,29 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // Action execution
     fun makePhoneCall(context: Context, phoneNumber: String) {
-        val intent = Intent(Intent.ACTION_CALL).apply {
-            data = Uri.parse("tel:$phoneNumber")
-        }
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        context.startActivity(intent)
+        phoneService.makePhoneCall(context, phoneNumber)
     }
     
     fun openDialer(context: Context) {
-        val intent = Intent(Intent.ACTION_DIAL)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        context.startActivity(intent)
+        phoneService.openDialer(context)
     }
     
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
-        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
-        
-        try {
-            // Method 1: Use ACTION_SENDTO with smsto scheme for direct chat
-            val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("smsto:$cleanNumber")
-                setPackage("com.whatsapp")
-            }
-            smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(smsIntent)
-        } catch (e: Exception) {
-            try {
-                // Method 2: Use ACTION_SEND with WhatsApp package
-                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra("jid", "$cleanNumber@s.whatsapp.net")
-                    setPackage("com.whatsapp")
-                }
-                sendIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(sendIntent)
-            } catch (e2: Exception) {
-                try {
-                    // Method 3: Try standard messaging intent
-                    val messageIntent = Intent(Intent.ACTION_VIEW).apply {
-                        data = Uri.parse("sms:$cleanNumber")
-                        setPackage("com.whatsapp")
-                    }
-                    messageIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(messageIntent)
-                } catch (e3: Exception) {
-                    try {
-                        // Method 4: Final fallback to web API
-                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber")
-                        }
-                        webIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(webIntent)
-                    } catch (e4: Exception) {
-                        // WhatsApp not installed or no browser available
-                        android.util.Log.e("QuickContacts", "Unable to open WhatsApp: ${e4.message}")
-                    }
-                }
-            }
-        }
+        messagingService.openWhatsAppChat(context, phoneNumber)
     }
 
     fun openSmsApp(context: Context, phoneNumber: String) {
-        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
-        
-        try {
-            // Use ACTION_SENDTO with sms scheme to open default SMS app
-            val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("sms:$cleanNumber")
-            }
-            smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(smsIntent)
-        } catch (e: Exception) {
-            try {
-                // Fallback: Use ACTION_VIEW with sms scheme
-                val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("sms:$cleanNumber")
-                }
-                viewIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(viewIntent)
-            } catch (e2: Exception) {
-                // Final fallback: open generic messaging app
-                try {
-                    val messageIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "")
-                    }
-                    messageIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(Intent.createChooser(messageIntent, "Send message"))
-                } catch (e3: Exception) {
-                    android.util.Log.e("QuickContacts", "Unable to open SMS app: ${e3.message}")
-                }
-            }
-        }
+        messagingService.openSmsApp(context, phoneNumber)
     }
 
     fun openTelegramChat(context: Context, phoneNumber: String) {
-        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
-        
-        try {
-            // Method 1: Try to open direct chat using phone number
-            val telegramIntent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("tg://resolve?phone=$cleanNumber")
-                setPackage("org.telegram.messenger")
-            }
-            telegramIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(telegramIntent)
-        } catch (e: Exception) {
-            try {
-                // Method 2: Try with t.me link
-                val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("https://t.me/$cleanNumber")
-                }
-                webIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(webIntent)
-            } catch (e2: Exception) {
-                try {
-                    // Method 3: Open Telegram app directly
-                    val appIntent = Intent(Intent.ACTION_MAIN).apply {
-                        setPackage("org.telegram.messenger")
-                        addCategory(Intent.CATEGORY_LAUNCHER)
-                    }
-                    appIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(appIntent)
-                } catch (e3: Exception) {
-                    // Telegram not installed
-                    android.util.Log.e("QuickContacts", "Unable to open Telegram: ${e3.message}")
-                }
-            }
-        }
+        messagingService.openTelegramChat(context, phoneNumber)
     }
 
     fun openMessagingApp(context: Context, phoneNumber: String) {
-        when (_defaultMessagingApp.value) {
-            MessagingApp.WHATSAPP -> openWhatsAppChat(context, phoneNumber)
-            MessagingApp.SMS -> openSmsApp(context, phoneNumber)
-            MessagingApp.TELEGRAM -> openTelegramChat(context, phoneNumber)
-        }
+        messagingService.openMessagingApp(context, phoneNumber, _defaultMessagingApp.value)
     }
 
     fun executeAction(context: Context, action: String, phoneNumber: String) {
@@ -764,190 +350,20 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openContactInContactsApp(context: Context, contact: Contact) {
-        try {
-            // Extract actual contact ID for recent calls contacts
-            val actualContactId = if (contact.id.startsWith("call_history_")) {
-                val extractedId = contact.id.substringAfter("call_history_")
-                // Check if it's a valid numeric contact ID (not a hashcode)
-                if (extractedId.all { it.isDigit() } || extractedId.contains("-")) {
-                    extractedId
-                } else {
-                    // It's likely a hashcode, so skip to phone number fallback
-                    throw Exception("Invalid contact ID - likely a hashcode")
-                }
-            } else {
-                contact.id
-            }
-            
-            // Try to open the specific contact using contact ID
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, actualContactId)
-            }
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            try {
-                // Fallback: search for contact by phone number
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(contact.phoneNumber))
-                }
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intent)
-            } catch (e2: Exception) {
-                // Final fallback: just open contacts app
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = ContactsContract.Contacts.CONTENT_URI
-                }
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intent)
-            }
-        }
+        phoneService.openContactInContactsApp(context, contact)
     }
 
     fun loadRecentCalls(context: Context) {
-        try {
-            val recentCallsList = mutableListOf<Contact>()
-            val seenNumbers = mutableSetOf<String>()
-            
-            // Get phone numbers from selected contacts to exclude them from recent calls
-            val selectedContactNumbers = _selectedContacts.value.map { 
-                PhoneNumberUtils.normalizePhoneNumber(it.phoneNumber) 
-            }.toSet()
-            
-            // Debug logging
-            android.util.Log.d("QuickContacts", "Selected contact numbers (normalized): $selectedContactNumbers")
-            
-            val projection = arrayOf(
-                CallLog.Calls.NUMBER,
-                CallLog.Calls.CACHED_NAME,
-                CallLog.Calls.DATE
-            )
-            
-            val cursor: Cursor? = context.contentResolver.query(
-                CallLog.Calls.CONTENT_URI,
-                projection,
-                null,
-                null,
-                "${CallLog.Calls.DATE} DESC"
-            )
-            
-            cursor?.use {
-                val numberColumn = it.getColumnIndex(CallLog.Calls.NUMBER)
-                val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
-                
-                if (numberColumn >= 0 && nameColumn >= 0) {
-                    while (it.moveToNext() && recentCallsList.size < 10) {
-                        val number = it.getString(numberColumn)
-                        val cachedName = it.getString(nameColumn)
-                        
-                        if (number != null && !seenNumbers.contains(number)) {
-                            val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
-                            
-                            // Debug logging
-                            android.util.Log.d("QuickContacts", "Call log number: $number -> normalized: $normalizedNumber")
-                            android.util.Log.d("QuickContacts", "Is excluded: ${selectedContactNumbers.contains(normalizedNumber)}")
-                            
-                            // Skip if this number is already in selected contacts
-                            if (!selectedContactNumbers.contains(normalizedNumber)) {
-                                seenNumbers.add(number)
-                                
-                                // Try to get contact details from contacts provider
-                                val contact = getContactByPhoneNumber(context, number, cachedName)
-                                contact?.let { 
-                                    // Double-check: also exclude by name if it matches a selected contact
-                                    val isNameDuplicate = _selectedContacts.value.any { selectedContact ->
-                                        selectedContact.name.equals(it.name, ignoreCase = true)
-                                    }
-                                    
-                                    if (!isNameDuplicate) {
-                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${it.name} - ${it.phoneNumber}")
-                                        recentCallsList.add(it)
-                                    } else {
-                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${it.name}")
-                                    }
-                                }
-                            } else {
-                                android.util.Log.d("QuickContacts", "Skipping duplicate contact: $cachedName - $number")
-                            }
-                        }
-                    }
-                }
-            }
-            
-            _recentCalls.value = recentCallsList
-            filterContacts()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        val recentCallsList = contactService.loadRecentCalls(context, _selectedContacts.value)
+        _recentCalls.value = recentCallsList
+        filterContacts()
     }
     
-    private fun getContactByPhoneNumber(context: Context, phoneNumber: String, cachedName: String?): Contact? {
-        return ContactUtils.getContactByPhoneNumber(context, phoneNumber, cachedName)
-    }
-    
-    private fun getContactPhotoUri(context: Context, contactId: String): String? {
-        return ContactUtils.getContactPhotoUri(context, contactId)
-    }
-    
-    private fun normalizePhoneNumber(phoneNumber: String): String {
-        // Remove all non-digit characters
-        val digitsOnly = phoneNumber.replace(Regex("[^\\d]"), "")
-        
-        return when {
-            // Empty or too short
-            digitsOnly.length < 7 -> digitsOnly
-            
-            // US/Canada numbers: 11 digits starting with 1, or 10 digits
-            digitsOnly.length == 11 && digitsOnly.startsWith("1") -> {
-                // Remove leading 1 for US/Canada numbers to normalize to 10 digits
-                digitsOnly.substring(1)
-            }
-            digitsOnly.length == 10 -> {
-                // Already 10 digits, likely US/Canada without country code
-                digitsOnly
-            }
-            
-            // International numbers: keep as is but remove leading country codes for comparison
-            digitsOnly.length > 11 -> {
-                // Take last 10 digits for comparison (assumes international format)
-                digitsOnly.takeLast(10)
-            }
-            
-            // Other cases: return as is
-            else -> digitsOnly
-        }
+    fun refreshAvailableMessagingApps() {
+        checkAvailableMessagingApps()
     }
     
     fun formatPhoneNumber(phoneNumber: String): String {
-        val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
-        
-        return when {
-            // US/Canada number with +1 country code
-            cleaned.startsWith("+1") && cleaned.length == 12 -> {
-                val digits = cleaned.substring(2)
-                "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
-            }
-            // US/Canada number without country code (10 digits)
-            !cleaned.startsWith("+") && cleaned.length == 10 -> {
-                "(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6)}"
-            }
-            // US/Canada number with country code but no +
-            cleaned.startsWith("1") && cleaned.length == 11 -> {
-                val digits = cleaned.substring(1)
-                "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
-            }
-            // International number with country code
-            cleaned.startsWith("+") && cleaned.length > 7 -> {
-                val countryCode = cleaned.substring(0, cleaned.length - 10)
-                val localNumber = cleaned.substring(cleaned.length - 10)
-                if (localNumber.length == 10) {
-                    "$countryCode (${localNumber.substring(0, 3)}) ${localNumber.substring(3, 6)}-${localNumber.substring(6)}"
-                } else {
-                    cleaned // Fallback to cleaned number
-                }
-            }
-            // Other formats - just return cleaned
-            else -> cleaned
-        }
+        return phoneService.formatPhoneNumber(phoneNumber)
     }
 } 

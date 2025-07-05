@@ -54,6 +54,8 @@ import androidx.compose.animation.shrinkVertically
 import android.content.Context
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import com.tk.quickcontacts.utils.ContactUtils
+import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.models.CustomActions
 
 @Composable
 fun PhoneNumberSelectionDialog(

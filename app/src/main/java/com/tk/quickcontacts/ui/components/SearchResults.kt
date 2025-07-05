@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
-import com.tk.quickcontacts.MessagingApp
+import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils

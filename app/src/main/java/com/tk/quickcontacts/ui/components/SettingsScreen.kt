@@ -14,7 +14,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.ContactsViewModel
-import com.tk.quickcontacts.MessagingApp
+import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
 
 @Composable

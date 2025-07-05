@@ -38,6 +38,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tk.quickcontacts.ui.theme.QuickContactsTheme
 import android.app.Application
 import androidx.lifecycle.ViewModelProvider
+import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.models.CustomActions
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.focus.FocusRequester
