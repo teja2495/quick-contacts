@@ -136,6 +136,23 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         android.util.Log.d("QuickContacts", "First launch flag reset for testing")
     }
     
+    // Check if edit hint has been shown
+    fun hasShownEditHint(): Boolean {
+        return sharedPreferences.getBoolean("has_shown_edit_hint", false)
+    }
+    
+    // Mark that edit hint has been shown
+    fun markEditHintShown() {
+        sharedPreferences.edit().putBoolean("has_shown_edit_hint", true).apply()
+        android.util.Log.d("QuickContacts", "Edit hint marked as shown")
+    }
+    
+    // Public method for testing - reset edit hint flag
+    fun resetEditHintFlag() {
+        sharedPreferences.edit().putBoolean("has_shown_edit_hint", false).apply()
+        android.util.Log.d("QuickContacts", "Edit hint flag reset for testing")
+    }
+    
     // Load favorite contacts on first app launch
     private fun loadFavoriteContactsOnFirstLaunch(context: Context) {
         try {

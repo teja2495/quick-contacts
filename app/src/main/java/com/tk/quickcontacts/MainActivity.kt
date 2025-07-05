@@ -82,6 +82,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import android.content.Context
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -213,6 +214,7 @@ fun QuickContactsApp() {
     val effectiveInternationalDetectionEnabled = isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
+    var showEditHint by remember { mutableStateOf(false) }
     
     // Focus requester for search
     val focusRequester = remember { FocusRequester() }
@@ -265,6 +267,15 @@ fun QuickContactsApp() {
         }
     }
     
+    // Show edit hint popup when edit button first appears for new users
+    LaunchedEffect(selectedContacts) {
+        if (selectedContacts.isNotEmpty() && !viewModel.hasShownEditHint()) {
+            // Add a small delay to ensure the UI is fully rendered
+            delay(500)
+            showEditHint = true
+        }
+    }
+    
     // Auto-open settings when permissions are permanently denied after being requested
     LaunchedEffect(arePermissionsPermanentlyDenied(), hasRequestedPermissions, isRequestingPermissions) {
         if (arePermissionsPermanentlyDenied() && hasRequestedPermissions && !isRequestingPermissions) {
@@ -276,6 +287,8 @@ fun QuickContactsApp() {
             }
         }
     }
+
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -602,6 +615,37 @@ fun QuickContactsApp() {
                         )
                     }
                 }
+            }
+            
+            // Edit hint dialog - must be inside the main Column
+            if (showEditHint) {
+                AlertDialog(
+                    onDismissRequest = { /* Do nothing - prevent dismissal by tapping outside */ },
+                    title = {
+                        Text(
+                            text = "Editing Quick List...",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Tap ‘Edit’ button to delete, reorder contacts in quick list. You can also set customize actions for each contact.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showEditHint = false
+                                viewModel.markEditHintShown()
+                            }
+                        ) {
+                            Text("Got it!")
+                        }
+                    }
+                )
             }
         }
     }
