@@ -1015,6 +1015,30 @@ fun ContactItem(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
+                
+                // Show phone number in edit mode
+                if (editMode) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = contact.phoneNumber,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    // Show additional phone numbers if there are multiple
+                    if (contact.phoneNumbers.size > 1) {
+                        contact.phoneNumbers.forEachIndexed { index, number ->
+                            if (index > 0 && number != contact.phoneNumber) {
+                                Text(
+                                    text = number,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             if (editMode) {
