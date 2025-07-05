@@ -1427,6 +1427,34 @@ fun SettingsScreen(
                         
                         Spacer(modifier = Modifier.height(12.dp))
                         
+                        // SMS Option (always available)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setMessagingApp(MessagingApp.SMS)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = defaultMessagingApp == MessagingApp.SMS,
+                                onClick = { 
+                                    viewModel.setMessagingApp(MessagingApp.SMS)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "SMS",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                         // WhatsApp Option
                         val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
                         Row(
@@ -1454,9 +1482,7 @@ fun SettingsScreen(
                                     disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
                             )
-                            
                             Spacer(modifier = Modifier.width(12.dp))
-                            
                             Column {
                                 Text(
                                     text = "WhatsApp",
@@ -1476,7 +1502,6 @@ fun SettingsScreen(
                                 }
                             }
                         }
-                        
                         // Telegram Option
                         val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
                         Row(
@@ -1504,9 +1529,7 @@ fun SettingsScreen(
                                     disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
                             )
-                            
                             Spacer(modifier = Modifier.width(12.dp))
-                            
                             Column {
                                 Text(
                                     text = "Telegram",
@@ -1524,37 +1547,6 @@ fun SettingsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                     )
                                 }
-                            }
-                        }
-                        
-                        // SMS Option (always available)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { 
-                                    viewModel.setMessagingApp(MessagingApp.SMS)
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = defaultMessagingApp == MessagingApp.SMS,
-                                onClick = { 
-                                    viewModel.setMessagingApp(MessagingApp.SMS)
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Column {
-                                Text(
-                                    text = "SMS",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
                             }
                         }
                     }
