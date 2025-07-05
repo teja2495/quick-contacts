@@ -204,6 +204,7 @@ fun QuickContactsApp() {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val customActionPreferences by viewModel.customActionPreferences.collectAsState()
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
+    val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
     
@@ -404,31 +405,33 @@ fun QuickContactsApp() {
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
-                            // Recent calls section
-                            RecentCallsSection(
-                                recentCalls = filteredRecentCalls,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    viewModel.openMessagingApp(context, contact.phoneNumber)
-                                },
-                                onContactImageClick = { contact ->
-                                    viewModel.openContactInContactsApp(context, contact)
-                                },
-                                onExpandedChange = { expanded ->
-                                    isRecentCallsExpanded = expanded
-                                    // Reset edit mode when expanding recent calls
-                                    if (expanded) {
-                                        editMode = false
-                                    }
-                                },
-                                isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                defaultMessagingApp = defaultMessagingApp
-                            )
+                            // Recent calls section (only show if enabled)
+                            if (isRecentCallsVisible) {
+                                RecentCallsSection(
+                                    recentCalls = filteredRecentCalls,
+                                    onContactClick = { contact ->
+                                        viewModel.makePhoneCall(context, contact.phoneNumber)
+                                    },
+                                    onWhatsAppClick = { contact ->
+                                        viewModel.openMessagingApp(context, contact.phoneNumber)
+                                    },
+                                    onContactImageClick = { contact ->
+                                        viewModel.openContactInContactsApp(context, contact)
+                                    },
+                                    onExpandedChange = { expanded ->
+                                        isRecentCallsExpanded = expanded
+                                        // Reset edit mode when expanding recent calls
+                                        if (expanded) {
+                                            editMode = false
+                                        }
+                                    },
+                                    isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
+                                    defaultMessagingApp = defaultMessagingApp
+                                )
+                            }
                             
                             // Empty contacts screen (hide when recent calls are expanded)
-                            if (!isRecentCallsExpanded) {
+                            if (!isRecentCallsExpanded || !isRecentCallsVisible) {
                                 EmptyContactsScreen()
                             }
                         }
@@ -458,31 +461,33 @@ fun QuickContactsApp() {
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
-                            // Recent calls section
-                            RecentCallsSection(
-                                recentCalls = filteredRecentCalls,
-                                onContactClick = { contact ->
-                                    viewModel.makePhoneCall(context, contact.phoneNumber)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    viewModel.openMessagingApp(context, contact.phoneNumber)
-                                },
-                                onContactImageClick = { contact ->
-                                    viewModel.openContactInContactsApp(context, contact)
-                                },
-                                onExpandedChange = { expanded ->
-                                    isRecentCallsExpanded = expanded
-                                    // Reset edit mode when expanding recent calls
-                                    if (expanded) {
-                                        editMode = false
-                                    }
-                                },
-                                isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                defaultMessagingApp = defaultMessagingApp
-                            )
+                            // Recent calls section (only show if enabled)
+                            if (isRecentCallsVisible) {
+                                RecentCallsSection(
+                                    recentCalls = filteredRecentCalls,
+                                    onContactClick = { contact ->
+                                        viewModel.makePhoneCall(context, contact.phoneNumber)
+                                    },
+                                    onWhatsAppClick = { contact ->
+                                        viewModel.openMessagingApp(context, contact.phoneNumber)
+                                    },
+                                    onContactImageClick = { contact ->
+                                        viewModel.openContactInContactsApp(context, contact)
+                                    },
+                                    onExpandedChange = { expanded ->
+                                        isRecentCallsExpanded = expanded
+                                        // Reset edit mode when expanding recent calls
+                                        if (expanded) {
+                                            editMode = false
+                                        }
+                                    },
+                                    isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
+                                    defaultMessagingApp = defaultMessagingApp
+                                )
+                            }
                             
                             // Favourite header with edit functionality (hide when recent calls are expanded)
-                            if (selectedContacts.isNotEmpty() && !isRecentCallsExpanded) {
+                            if (selectedContacts.isNotEmpty() && (!isRecentCallsExpanded || !isRecentCallsVisible)) {
                                 Column {
                                     Row(
                                         modifier = Modifier
@@ -522,7 +527,7 @@ fun QuickContactsApp() {
                             }
                             
                             // Quick contacts list (hide when recent calls are expanded)
-                            if (!isRecentCallsExpanded) {
+                            if (!isRecentCallsExpanded || !isRecentCallsVisible) {
                                 ContactList(
                                 contacts = filteredSelectedContacts,
                                 onContactClick = { contact ->
@@ -1306,6 +1311,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
+    val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
     val useWhatsAppAsDefault by viewModel.useWhatsAppAsDefault.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
@@ -1513,6 +1519,54 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                    }
+                }
+            }
+            
+            item {
+                // Recent Calls Visibility Setting
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Show Recent Calls",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Text(
+                                text = "Display recent calls at the top of the main screen for quick access",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Switch(
+                            checked = isRecentCallsVisible,
+                            onCheckedChange = { viewModel.toggleRecentCallsVisibility() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                        )
                     }
                 }
             }

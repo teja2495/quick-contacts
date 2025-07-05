@@ -62,6 +62,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _isInternationalDetectionEnabled = MutableStateFlow(false)
     val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled
     
+    // Recent calls visibility preference
+    private val _isRecentCallsVisible = MutableStateFlow(true)
+    val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible
+    
     // Messaging app preference
     private val _defaultMessagingApp = MutableStateFlow(MessagingApp.WHATSAPP)
     val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp
@@ -318,6 +322,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadSettings() {
         _isInternationalDetectionEnabled.value = sharedPreferences.getBoolean("international_detection_enabled", false)
+        _isRecentCallsVisible.value = sharedPreferences.getBoolean("recent_calls_visible", true)
         
         // Load messaging app preference with backward compatibility
         val messagingAppString = sharedPreferences.getString("default_messaging_app", null)
@@ -338,12 +343,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private fun saveSettings() {
         sharedPreferences.edit()
             .putBoolean("international_detection_enabled", _isInternationalDetectionEnabled.value)
+            .putBoolean("recent_calls_visible", _isRecentCallsVisible.value)
             .putString("default_messaging_app", _defaultMessagingApp.value.name)
             .apply()
     }
 
     fun toggleInternationalDetection() {
         _isInternationalDetectionEnabled.value = !_isInternationalDetectionEnabled.value
+        saveSettings()
+    }
+
+    fun toggleRecentCallsVisibility() {
+        _isRecentCallsVisible.value = !_isRecentCallsVisible.value
         saveSettings()
     }
 
