@@ -776,7 +776,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
-    private fun formatPhoneNumber(phoneNumber: String): String {
+    fun formatPhoneNumber(phoneNumber: String): String {
         val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
         
         return when {
