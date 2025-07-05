@@ -304,7 +304,8 @@ fun ContactList(
     onContactImageClick: (Contact) -> Unit = {},
     onLongClick: (Contact) -> Unit = {},
     actionPreferences: Map<String, Boolean> = emptyMap(),
-    isInternationalDetectionEnabled: Boolean = true
+    isInternationalDetectionEnabled: Boolean = true,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -339,7 +340,8 @@ fun ContactList(
                         reorderState = reorderState,
                         onLongClick = onLongClick,
                         isActionSwapped = actionPreferences[contact.id] ?: false,
-                        isInternationalDetectionEnabled = isInternationalDetectionEnabled
+                        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                        defaultMessagingApp = defaultMessagingApp
                     )
                 }
             } else {
@@ -354,7 +356,8 @@ fun ContactList(
                     reorderState = null,
                     onLongClick = onLongClick,
                     isActionSwapped = actionPreferences[contact.id] ?: false,
-                    isInternationalDetectionEnabled = isInternationalDetectionEnabled
+                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                    defaultMessagingApp = defaultMessagingApp
                 )
             }
         }
@@ -369,6 +372,7 @@ fun RecentCallsSection(
     onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     isInternationalDetectionEnabled: Boolean = true,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier
 ) {
     if (recentCalls.isNotEmpty()) {
@@ -440,6 +444,7 @@ fun RecentCallsSection(
                             onWhatsAppClick = onWhatsAppClick,
                             onContactImageClick = onContactImageClick,
                             isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                            defaultMessagingApp = defaultMessagingApp,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -460,6 +465,7 @@ fun RecentCallsSection(
                                 onWhatsAppClick = onWhatsAppClick,
                                 onContactImageClick = onContactImageClick,
                                 isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                defaultMessagingApp = defaultMessagingApp,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -477,6 +483,7 @@ fun RecentCallVerticalItem(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     isInternationalDetectionEnabled: Boolean = true,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
@@ -572,7 +579,7 @@ fun RecentCallVerticalItem(
                 .padding(vertical = 4.dp)
         )
         
-        // For international: Phone button (to call), for domestic: WhatsApp button
+        // For international: Phone button (to call), for domestic: messaging app button
         IconButton(
             onClick = { 
                 if (contact.phoneNumbers.size > 1) {
@@ -596,11 +603,31 @@ fun RecentCallVerticalItem(
                     modifier = Modifier.size(24.dp)
                 )
             } else {
-                Icon(
-                    painter = painterResource(id = R.drawable.whatsapp_icon),
-                    contentDescription = "WhatsApp ${contact.name}",
-                    modifier = Modifier.size(24.dp)
-                )
+                when (defaultMessagingApp) {
+                    MessagingApp.WHATSAPP -> {
+                        Icon(
+                            painter = painterResource(id = R.drawable.whatsapp_icon),
+                            contentDescription = "WhatsApp ${contact.name}",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    MessagingApp.SMS -> {
+                        Icon(
+                            painter = painterResource(id = R.drawable.sms_icon),
+                            contentDescription = "SMS ${contact.name}",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    MessagingApp.TELEGRAM -> {
+                        Icon(
+                            painter = painterResource(id = R.drawable.telegram_icon),
+                            contentDescription = "Telegram ${contact.name}",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -691,7 +718,8 @@ fun ContactItem(
     reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
     onLongClick: (Contact) -> Unit = {},
     isActionSwapped: Boolean = false,
-    isInternationalDetectionEnabled: Boolean = true
+    isInternationalDetectionEnabled: Boolean = true,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -895,12 +923,32 @@ fun ContactItem(
                     }
                     
                     if (secondaryActionIsWhatsApp) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.whatsapp_icon),
-                            contentDescription = "WhatsApp ${contact.name}",
-                            tint = Color(0xFF25D366),
-                            modifier = Modifier.size(35.dp)
-                        )
+                        when (defaultMessagingApp) {
+                            MessagingApp.WHATSAPP -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.whatsapp_icon),
+                                    contentDescription = "WhatsApp ${contact.name}",
+                                    tint = Color(0xFF25D366),
+                                    modifier = Modifier.size(35.dp)
+                                )
+                            }
+                            MessagingApp.SMS -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.sms_icon),
+                                    contentDescription = "SMS ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(35.dp)
+                                )
+                            }
+                            MessagingApp.TELEGRAM -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.telegram_icon),
+                                    contentDescription = "Telegram ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(35.dp)
+                                )
+                            }
+                        }
                     } else {
                         Icon(
                             imageVector = Icons.Default.Phone,

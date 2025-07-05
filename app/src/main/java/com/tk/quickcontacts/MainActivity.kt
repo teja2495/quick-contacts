@@ -71,6 +71,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.WindowInsets
@@ -203,6 +204,7 @@ fun QuickContactsApp() {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val actionPreferences by viewModel.actionPreferences.collectAsState()
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
+    val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
     
@@ -361,6 +363,7 @@ fun QuickContactsApp() {
                             searchResults = searchResults,
                             selectedContacts = selectedContacts,
                             isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                            defaultMessagingApp = defaultMessagingApp,
                             modifier = Modifier.weight(1f)
                         )
                         
@@ -397,7 +400,7 @@ fun QuickContactsApp() {
                                     viewModel.makePhoneCall(context, contact.phoneNumber)
                                 },
                                 onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                    viewModel.openMessagingApp(context, contact.phoneNumber)
                                 },
                                 onContactImageClick = { contact ->
                                     viewModel.openContactInContactsApp(context, contact)
@@ -409,7 +412,8 @@ fun QuickContactsApp() {
                                         editMode = false
                                     }
                                 },
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                defaultMessagingApp = defaultMessagingApp
                             )
                             
                             // Empty contacts screen (hide when recent calls are expanded)
@@ -450,7 +454,7 @@ fun QuickContactsApp() {
                                     viewModel.makePhoneCall(context, contact.phoneNumber)
                                 },
                                 onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                    viewModel.openMessagingApp(context, contact.phoneNumber)
                                 },
                                 onContactImageClick = { contact ->
                                     viewModel.openContactInContactsApp(context, contact)
@@ -462,7 +466,8 @@ fun QuickContactsApp() {
                                         editMode = false
                                     }
                                 },
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                defaultMessagingApp = defaultMessagingApp
                             )
                             
                             // Favourite header with edit functionality (hide when recent calls are expanded)
@@ -520,7 +525,7 @@ fun QuickContactsApp() {
                                     viewModel.moveContact(from, to)
                                 },
                                 onWhatsAppClick = { contact ->
-                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                    viewModel.openMessagingApp(context, contact.phoneNumber)
                                 },
                                 onContactImageClick = { contact ->
                                     viewModel.openContactInContactsApp(context, contact)
@@ -529,7 +534,8 @@ fun QuickContactsApp() {
                                     viewModel.toggleActionPreference(contact.id)
                                 },
                                 actionPreferences = actionPreferences,
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                defaultMessagingApp = defaultMessagingApp
                             )
                             }
                         }
@@ -663,6 +669,7 @@ fun SearchResultsContent(
     searchResults: List<Contact>,
     selectedContacts: List<Contact>,
     isInternationalDetectionEnabled: Boolean = true,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -772,13 +779,14 @@ fun SearchResultsContent(
                         }
                     },
                     onWhatsAppClick = { contact ->
-                        viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                        viewModel.openMessagingApp(context, contact.phoneNumber)
                     },
                     onContactImageClick = { contact ->
                         viewModel.openContactInContactsApp(context, contact)
                     },
                     selectedContacts = selectedContacts,
                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                    defaultMessagingApp = defaultMessagingApp,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -796,6 +804,7 @@ fun SearchResultItem(
     onContactImageClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
     isInternationalDetectionEnabled: Boolean = true,
+    defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
@@ -914,7 +923,7 @@ fun SearchResultItem(
                 }
             }
             
-            // For international: Phone button (to call), for domestic: WhatsApp button
+            // For international: Phone button (to call), for domestic: messaging app button
             IconButton(
                 onClick = { 
                     if (contact.phoneNumbers.size > 1) {
@@ -938,11 +947,31 @@ fun SearchResultItem(
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Icon(
-                        painter = painterResource(id = R.drawable.whatsapp_icon),
-                        contentDescription = "Send WhatsApp message to ${contact.name}",
-                        modifier = Modifier.size(24.dp)
-                    )
+                    when (defaultMessagingApp) {
+                        MessagingApp.WHATSAPP -> {
+                            Icon(
+                                painter = painterResource(id = R.drawable.whatsapp_icon),
+                                contentDescription = "Send WhatsApp message to ${contact.name}",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        MessagingApp.SMS -> {
+                            Icon(
+                                painter = painterResource(id = R.drawable.sms_icon),
+                                contentDescription = "Send SMS to ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        MessagingApp.TELEGRAM -> {
+                            Icon(
+                                painter = painterResource(id = R.drawable.telegram_icon),
+                                contentDescription = "Send Telegram message to ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1249,6 +1278,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
+    val useWhatsAppAsDefault by viewModel.useWhatsAppAsDefault.collectAsState()
+    val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     
     Column(
         modifier = modifier
@@ -1261,6 +1292,174 @@ fun SettingsScreen(
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item {
+                // Messaging App Setting
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        // Header
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            when (defaultMessagingApp) {
+                                MessagingApp.WHATSAPP -> {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.whatsapp_icon),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                MessagingApp.SMS -> {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.sms_icon),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                MessagingApp.TELEGRAM -> {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.telegram_icon),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Text(
+                                text = "Default Messaging App",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // WhatsApp Option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = defaultMessagingApp == MessagingApp.WHATSAPP,
+                                onClick = { 
+                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column {
+                                Text(
+                                    text = "WhatsApp",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Send messages via WhatsApp",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // SMS Option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setMessagingApp(MessagingApp.SMS)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = defaultMessagingApp == MessagingApp.SMS,
+                                onClick = { 
+                                    viewModel.setMessagingApp(MessagingApp.SMS)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column {
+                                Text(
+                                    text = "SMS",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Send messages via default SMS app",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // Telegram Option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = defaultMessagingApp == MessagingApp.TELEGRAM,
+                                onClick = { 
+                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column {
+                                Text(
+                                    text = "Telegram",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Send messages via Telegram",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
             item {
                 // International Number Detection Setting
                 Card(
@@ -1357,7 +1556,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Text(
-                            text = "When enabled:\n• International numbers: Tap to WhatsApp, icon to call\n• Domestic numbers: Tap to call, icon to WhatsApp\n\nWhen disabled:\n• All numbers: Tap to call, icon to WhatsApp",
+                            text = "International Detection:\n${if (isInternationalDetectionEnabled) "• International numbers: Tap for messaging, icon to call\n• Domestic numbers: Tap to call, icon for messaging" else "• All numbers: Tap to call, icon for messaging"}\n\nMessaging App:\n• ${when (defaultMessagingApp) { MessagingApp.WHATSAPP -> "WhatsApp"; MessagingApp.SMS -> "SMS"; MessagingApp.TELEGRAM -> "Telegram" }} will be used for messaging contacts",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )

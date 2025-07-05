@@ -13,6 +13,17 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+
+enum class MessagingApp {
+    WHATSAPP,
+    SMS,
+    TELEGRAM
+}
 
 class ContactsViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedContacts = MutableStateFlow<List<Contact>>(emptyList())
@@ -40,6 +51,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     // Settings preferences
     private val _isInternationalDetectionEnabled = MutableStateFlow(true)
     val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled
+    
+    // Messaging app preference
+    private val _defaultMessagingApp = MutableStateFlow(MessagingApp.WHATSAPP)
+    val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp
+    
+    // Backward compatibility - keep the old boolean property for existing UI
+    val useWhatsAppAsDefault: StateFlow<Boolean> = _defaultMessagingApp.map { it == MessagingApp.WHATSAPP }
+        .stateIn(
+            scope = CoroutineScope(Dispatchers.Main),
+            started = SharingStarted.Eagerly,
+            initialValue = true
+        )
 
     private val sharedPreferences: SharedPreferences
     private val gson = Gson()
@@ -194,14 +217,47 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadSettings() {
         _isInternationalDetectionEnabled.value = sharedPreferences.getBoolean("international_detection_enabled", true)
+        
+        // Load messaging app preference with backward compatibility
+        val messagingAppString = sharedPreferences.getString("default_messaging_app", null)
+        if (messagingAppString != null) {
+            try {
+                _defaultMessagingApp.value = MessagingApp.valueOf(messagingAppString)
+            } catch (e: IllegalArgumentException) {
+                // If invalid enum value, fall back to WhatsApp
+                _defaultMessagingApp.value = MessagingApp.WHATSAPP
+            }
+        } else {
+            // Backward compatibility: check old boolean preference
+            val useWhatsApp = sharedPreferences.getBoolean("use_whatsapp_as_default", true)
+            _defaultMessagingApp.value = if (useWhatsApp) MessagingApp.WHATSAPP else MessagingApp.SMS
+        }
     }
 
     private fun saveSettings() {
-        sharedPreferences.edit().putBoolean("international_detection_enabled", _isInternationalDetectionEnabled.value).apply()
+        sharedPreferences.edit()
+            .putBoolean("international_detection_enabled", _isInternationalDetectionEnabled.value)
+            .putString("default_messaging_app", _defaultMessagingApp.value.name)
+            .apply()
     }
 
     fun toggleInternationalDetection() {
         _isInternationalDetectionEnabled.value = !_isInternationalDetectionEnabled.value
+        saveSettings()
+    }
+
+    fun setMessagingApp(app: MessagingApp) {
+        _defaultMessagingApp.value = app
+        saveSettings()
+    }
+    
+    // Keep the old toggle function for backward compatibility
+    fun toggleMessagingApp() {
+        _defaultMessagingApp.value = when (_defaultMessagingApp.value) {
+            MessagingApp.WHATSAPP -> MessagingApp.SMS
+            MessagingApp.SMS -> MessagingApp.WHATSAPP
+            MessagingApp.TELEGRAM -> MessagingApp.WHATSAPP
+        }
         saveSettings()
     }
 
@@ -292,6 +348,84 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
             }
+        }
+    }
+
+    fun openSmsApp(context: Context, phoneNumber: String) {
+        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
+        
+        try {
+            // Use ACTION_SENDTO with sms scheme to open default SMS app
+            val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("sms:$cleanNumber")
+            }
+            smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(smsIntent)
+        } catch (e: Exception) {
+            try {
+                // Fallback: Use ACTION_VIEW with sms scheme
+                val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse("sms:$cleanNumber")
+                }
+                viewIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(viewIntent)
+            } catch (e2: Exception) {
+                // Final fallback: open generic messaging app
+                try {
+                    val messageIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "")
+                    }
+                    messageIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    context.startActivity(Intent.createChooser(messageIntent, "Send message"))
+                } catch (e3: Exception) {
+                    android.util.Log.e("QuickContacts", "Unable to open SMS app: ${e3.message}")
+                }
+            }
+        }
+    }
+
+    fun openTelegramChat(context: Context, phoneNumber: String) {
+        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
+        
+        try {
+            // Method 1: Try to open direct chat using phone number
+            val telegramIntent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("tg://resolve?phone=$cleanNumber")
+                setPackage("org.telegram.messenger")
+            }
+            telegramIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(telegramIntent)
+        } catch (e: Exception) {
+            try {
+                // Method 2: Try with t.me link
+                val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse("https://t.me/$cleanNumber")
+                }
+                webIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(webIntent)
+            } catch (e2: Exception) {
+                try {
+                    // Method 3: Open Telegram app directly
+                    val appIntent = Intent(Intent.ACTION_MAIN).apply {
+                        setPackage("org.telegram.messenger")
+                        addCategory(Intent.CATEGORY_LAUNCHER)
+                    }
+                    appIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    context.startActivity(appIntent)
+                } catch (e3: Exception) {
+                    // Telegram not installed
+                    android.util.Log.e("QuickContacts", "Unable to open Telegram: ${e3.message}")
+                }
+            }
+        }
+    }
+
+    fun openMessagingApp(context: Context, phoneNumber: String) {
+        when (_defaultMessagingApp.value) {
+            MessagingApp.WHATSAPP -> openWhatsAppChat(context, phoneNumber)
+            MessagingApp.SMS -> openSmsApp(context, phoneNumber)
+            MessagingApp.TELEGRAM -> openTelegramChat(context, phoneNumber)
         }
     }
 
