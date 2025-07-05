@@ -308,8 +308,8 @@ fun QuickContactsApp() {
                     }
                 },
                 actions = {
-                    // Only show settings icon when not in settings screen
-                    if (!isSettingsScreenOpen) {
+                    // Only show settings icon when not in settings screen and not searching
+                    if (!isSettingsScreenOpen && !isSearching) {
                         IconButton(
                             onClick = {
                                 isSettingsScreenOpen = true
