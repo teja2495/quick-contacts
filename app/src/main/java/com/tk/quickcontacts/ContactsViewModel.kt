@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.repository.PreferencesRepository
@@ -71,6 +73,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             started = SharingStarted.Eagerly,
             initialValue = true
         )
+
+    // Search debouncing
+    private var searchJob: kotlinx.coroutines.Job? = null
+    private val searchDebounceDelay = 300L // 300ms debounce
 
     init {
         loadContacts()
@@ -170,6 +176,22 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
         filterContacts()
+        
+        // Cancel previous search job
+        searchJob?.cancel()
+        
+        // Debounce search for all contacts
+        if (query.isNotEmpty()) {
+            searchJob = CoroutineScope(Dispatchers.IO).launch {
+                delay(searchDebounceDelay)
+                if (query == _searchQuery.value) { // Only search if query hasn't changed
+                    val results = contactService.searchContacts(getApplication(), query)
+                    _searchResults.value = results
+                }
+            }
+        } else {
+            _searchResults.value = emptyList()
+        }
     }
     
     private fun filterContacts() {
@@ -178,7 +200,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         if (query.isEmpty()) {
             _filteredSelectedContacts.value = _selectedContacts.value
             _filteredRecentCalls.value = _recentCalls.value
-            _searchResults.value = emptyList()
         } else {
             _filteredSelectedContacts.value = _selectedContacts.value.filter { contact ->
                 contact.name.lowercase().contains(query)
@@ -191,8 +212,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     fun searchAllContacts(context: Context, query: String) {
-        val results = contactService.searchContacts(context, query)
-        _searchResults.value = results
+        // This method is now handled by updateSearchQuery with debouncing
+        // Keeping for backward compatibility but it's no longer needed
+        if (query.isEmpty()) {
+            _searchResults.value = emptyList()
+        }
     }
     
     // Data loading and saving

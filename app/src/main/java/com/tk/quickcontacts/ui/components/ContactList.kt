@@ -33,9 +33,17 @@ fun ContactList(
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit
 ) {
+    // Memoize the reorder state to prevent unnecessary recreations
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
     })
+    
+    // Memoize expensive computations
+    val contactItems = remember(contacts, customActionPreferences, editMode, isInternationalDetectionEnabled, defaultMessagingApp, availableMessagingApps, selectedContacts) {
+        contacts.map { contact ->
+            contact to customActionPreferences[contact.id]
+        }
+    }
 
     LazyColumn(
         state = reorderState.listState,
@@ -50,9 +58,9 @@ fun ContactList(
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         items(
-            items = contacts,
-            key = { contact -> contact.id }
-        ) { contact ->
+            items = contactItems,
+            key = { (contact, _) -> contact.id }
+        ) { (contact, customActions) ->
             if (editMode) {
                 ReorderableItem(reorderState, key = contact.id) { isDragging ->
                     ContactItem(
@@ -66,7 +74,7 @@ fun ContactList(
                         reorderState = reorderState,
                         onLongClick = onLongClick,
                         onSetCustomActions = onSetCustomActions,
-                        customActions = customActionPreferences[contact.id],
+                        customActions = customActions,
                         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                         defaultMessagingApp = defaultMessagingApp,
                         availableMessagingApps = availableMessagingApps,
@@ -86,7 +94,7 @@ fun ContactList(
                     reorderState = null,
                     onLongClick = onLongClick,
                     onSetCustomActions = onSetCustomActions,
-                    customActions = customActionPreferences[contact.id],
+                    customActions = customActions,
                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp,
                     availableMessagingApps = availableMessagingApps,

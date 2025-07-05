@@ -74,19 +74,9 @@ fun ContactItem(
                     phoneNumber = selectedNumber,
                     phoneNumbers = listOf(selectedNumber)
                 )
-                // Route based on which action triggered the dialog
                 when (dialogAction) {
-                    "call", "whatsapp", "sms", "telegram" -> {
-                        // Convert dialog action back to proper case for execution
-                        val actionToExecute = when (dialogAction) {
-                            "call" -> "Call"
-                            "whatsapp" -> "WhatsApp"
-                            "sms" -> "SMS"
-                            "telegram" -> "Telegram"
-                            else -> "Call"
-                        }
-                        onExecuteAction(context, actionToExecute, selectedNumber)
-                    }
+                    "call" -> onContactClick(contactWithSelectedNumber)
+                    "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -193,44 +183,46 @@ fun ContactItem(
 
             // Contact Photo (hidden in edit mode) - clickable to open in contacts app
             if (!editMode) {
-                if (contact.photoUri != null && !imageLoadFailed) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(contact.photoUri)
-                                .crossfade(true)
-                                .build(),
-                            onError = { imageLoadFailed = true }
-                        ),
-                        contentDescription = "Contact photo",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable { onContactImageClick(contact) },
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // Default avatar - clickable to open in contacts app
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .clickable { onContactImageClick(contact) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                Box(
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .clickable { onContactImageClick(contact) }
+                ) {
+                    if (contact.photoUri != null && !imageLoadFailed) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                model = ImageRequest.Builder(context)
+                                    .data(contact.photoUri)
+                                    .crossfade(true)
+                                    .size(48, 48) // Optimize size for better performance
+                                    .memoryCacheKey("contact_${contact.id}")
+                                    .build(),
+                                onError = { imageLoadFailed = true }
+                            ),
+                            contentDescription = "Contact photo",
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
+                    } else {
+                        // Default avatar
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
-
-                Spacer(modifier = Modifier.width(16.dp))
-            } else {
-                Spacer(modifier = Modifier.width(8.dp))
             }
 
             // Contact Info

@@ -44,15 +44,46 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.focus.FocusRequester
 import com.tk.quickcontacts.ui.components.*
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
+import coil.util.DebugLogger
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Configure Coil for better performance
+        configureImageLoader()
+        
         enableEdgeToEdge()
         setContent {
             QuickContactsTheme {
                 QuickContactsApp()
             }
+        }
+    }
+    
+    private fun configureImageLoader() {
+        val imageLoader = ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25) // Use 25% of available memory
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02) // Use 2% of available disk space
+                    .build()
+            }
+            .respectCacheHeaders(false) // Always use cached images when available
+            .build()
+        
+        // Set as default image loader
+        coil.ImageLoader.Builder(this).build().let { defaultLoader ->
+            // Replace the default loader with our optimized one
+            coil.Coil.setImageLoader(imageLoader)
         }
     }
 }
@@ -208,12 +239,8 @@ fun QuickContactsApp() {
         }
     }
     
-    // Search all contacts when search query changes
-    LaunchedEffect(searchQuery, hasContactsPermission) {
-        if (hasContactsPermission && searchQuery.isNotEmpty()) {
-            viewModel.searchAllContacts(context, searchQuery)
-        }
-    }
+    // Search all contacts when search query changes - now handled by debounced search in ViewModel
+    // Removed this LaunchedEffect as it's now handled more efficiently in the ViewModel
     
     // Request focus when entering search mode
     LaunchedEffect(isSearching) {

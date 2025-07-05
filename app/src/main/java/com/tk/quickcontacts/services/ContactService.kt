@@ -7,8 +7,34 @@ import android.provider.ContactsContract
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
+import java.util.concurrent.ConcurrentHashMap
 
 class ContactService {
+    
+    // Cache for search results to avoid repeated queries
+    private val searchCache = ConcurrentHashMap<String, List<Contact>>()
+    private val cacheMaxSize = 50
+    private val cacheExpiryTime = 5 * 60 * 1000L // 5 minutes
+    private val cacheTimestamps = ConcurrentHashMap<String, Long>()
+    
+    // Optimized projections for better performance
+    private val contactProjection = arrayOf(
+        ContactsContract.Contacts._ID,
+        ContactsContract.Contacts.DISPLAY_NAME,
+        ContactsContract.Contacts.STARRED
+    )
+    
+    private val phoneProjection = arrayOf(
+        ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+        ContactsContract.CommonDataKinds.Phone.NUMBER
+    )
+    
+    private val callLogProjection = arrayOf(
+        CallLog.Calls.NUMBER,
+        CallLog.Calls.CACHED_NAME,
+        CallLog.Calls.DATE
+    )
     
     fun getFavoriteContacts(context: Context): List<Contact> {
         val favoriteContacts = mutableListOf<Contact>()
@@ -18,12 +44,11 @@ class ContactService {
             android.util.Log.d("QuickContacts", "Querying for starred contacts...")
             // First, get all starred contact IDs
             val starredContactIds = mutableSetOf<String>()
-            val contactsProjection = arrayOf(ContactsContract.Contacts._ID)
             val contactsSelection = "${ContactsContract.Contacts.STARRED} = 1"
             
             val contactsCursor: Cursor? = context.contentResolver.query(
                 ContactsContract.Contacts.CONTENT_URI,
-                contactsProjection,
+                contactProjection,
                 contactsSelection,
                 null,
                 null
@@ -54,12 +79,6 @@ class ContactService {
             android.util.Log.d("QuickContacts", "Found ${starredContactIds.size} starred contact IDs")
             
             // Now get phone numbers for starred contacts
-            val phoneProjection = arrayOf(
-                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
-            
             // Create selection for starred contact IDs
             val placeholders = starredContactIds.joinToString(",") { "?" }
             val phoneSelection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} IN ($placeholders)"
@@ -139,15 +158,22 @@ class ContactService {
             return emptyList()
         }
         
+        // Check cache first
+        val cacheKey = query.lowercase().trim()
+        val currentTime = System.currentTimeMillis()
+        val cachedTimestamp = cacheTimestamps[cacheKey]
+        
+        if (cachedTimestamp != null && (currentTime - cachedTimestamp) < cacheExpiryTime) {
+            val cachedResults = searchCache[cacheKey]
+            if (cachedResults != null) {
+                android.util.Log.d("QuickContacts", "Returning cached search results for: $query")
+                return cachedResults
+            }
+        }
+        
         try {
             val searchResultsList = mutableListOf<Contact>()
             val seenContactsMap = mutableMapOf<String, Contact>()
-            
-            val projection = arrayOf(
-                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
             
             // Search only by name, not phone number
             val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
@@ -155,7 +181,7 @@ class ContactService {
             
             val cursor: Cursor? = context.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
+                phoneProjection,
                 selection,
                 selectionArgs,
                 "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
@@ -206,11 +232,30 @@ class ContactService {
             }
             
             // Convert map to list and limit results
-            return seenContactsMap.values.take(20)
+            val results = seenContactsMap.values.take(20)
+            
+            // Cache the results
+            cacheResults(cacheKey, results)
+            
+            return results
         } catch (e: Exception) {
             e.printStackTrace()
             return emptyList()
         }
+    }
+    
+    private fun cacheResults(query: String, results: List<Contact>) {
+        // Clean up old cache entries if cache is too large
+        if (searchCache.size >= cacheMaxSize) {
+            val oldestEntry = cacheTimestamps.minByOrNull { it.value }
+            oldestEntry?.let {
+                searchCache.remove(it.key)
+                cacheTimestamps.remove(it.key)
+            }
+        }
+        
+        searchCache[query] = results
+        cacheTimestamps[query] = System.currentTimeMillis()
     }
     
     fun loadRecentCalls(context: Context, selectedContacts: List<Contact>): List<Contact> {
@@ -226,15 +271,9 @@ class ContactService {
             // Debug logging
             android.util.Log.d("QuickContacts", "Selected contact numbers (normalized): $selectedContactNumbers")
             
-            val projection = arrayOf(
-                CallLog.Calls.NUMBER,
-                CallLog.Calls.CACHED_NAME,
-                CallLog.Calls.DATE
-            )
-            
             val cursor: Cursor? = context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
-                projection,
+                callLogProjection,
                 null,
                 null,
                 "${CallLog.Calls.DATE} DESC"
