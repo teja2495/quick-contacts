@@ -1338,7 +1338,7 @@ fun EmptyContactsScreen() {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Search contacts below and add them to your quick list for easy calling access.",
+            text = "Search contacts below and add them to your quick list for quick access.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1385,33 +1385,6 @@ fun SettingsScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        when (defaultMessagingApp) {
-                            MessagingApp.WHATSAPP -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.whatsapp_icon),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            MessagingApp.SMS -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.sms_icon),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            MessagingApp.TELEGRAM -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.telegram_icon),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = "Default Messaging App",
                             style = MaterialTheme.typography.titleMedium,
@@ -1419,6 +1392,14 @@ fun SettingsScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Explanation text for default messaging app setting
+                    Text(
+                        text = "You can change this for individual contacts in quick list by tapping on the edit button",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     // SMS Option (always available)
                     Row(
                         modifier = Modifier
@@ -1426,7 +1407,7 @@ fun SettingsScreen(
                             .clickable { 
                                 viewModel.setMessagingApp(MessagingApp.SMS)
                             }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -1438,14 +1419,19 @@ fun SettingsScreen(
                                 selectedColor = MaterialTheme.colorScheme.primary
                             )
                         )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            painter = painterResource(id = R.drawable.sms_icon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "SMS",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        Text(
+                            text = "SMS",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                     // WhatsApp Option
                     val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
@@ -1457,7 +1443,7 @@ fun SettingsScreen(
                                     viewModel.setMessagingApp(MessagingApp.WHATSAPP)
                                 }
                             }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -1473,6 +1459,13 @@ fun SettingsScreen(
                                 disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                 disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            painter = painterResource(id = R.drawable.whatsapp_icon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
@@ -1504,7 +1497,7 @@ fun SettingsScreen(
                                     viewModel.setMessagingApp(MessagingApp.TELEGRAM)
                                 }
                             }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -1520,6 +1513,13 @@ fun SettingsScreen(
                                 disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                 disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            painter = painterResource(id = R.drawable.telegram_icon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
