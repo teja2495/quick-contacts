@@ -1516,7 +1516,7 @@ fun SettingsScreen(
                             painter = painterResource(id = R.drawable.whatsapp_icon),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
