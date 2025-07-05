@@ -205,6 +205,9 @@ fun QuickContactsApp() {
     val actionPreferences by viewModel.actionPreferences.collectAsState()
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
+    
+    // Disable international detection when SMS is selected as default messaging app
+    val effectiveInternationalDetectionEnabled = isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
     
@@ -362,7 +365,7 @@ fun QuickContactsApp() {
                             searchQuery = searchQuery,
                             searchResults = searchResults,
                             selectedContacts = selectedContacts,
-                            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                            isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                             defaultMessagingApp = defaultMessagingApp,
                             modifier = Modifier.weight(1f)
                         )
@@ -412,7 +415,7 @@ fun QuickContactsApp() {
                                         editMode = false
                                     }
                                 },
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp
                             )
                             
@@ -466,7 +469,7 @@ fun QuickContactsApp() {
                                         editMode = false
                                     }
                                 },
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp
                             )
                             
@@ -534,7 +537,7 @@ fun QuickContactsApp() {
                                     viewModel.toggleActionPreference(contact.id)
                                 },
                                 actionPreferences = actionPreferences,
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp
                             )
                             }
@@ -1385,42 +1388,6 @@ fun SettingsScreen(
                             }
                         }
                         
-                        // SMS Option
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { 
-                                    viewModel.setMessagingApp(MessagingApp.SMS)
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = defaultMessagingApp == MessagingApp.SMS,
-                                onClick = { 
-                                    viewModel.setMessagingApp(MessagingApp.SMS)
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Column {
-                                Text(
-                                    text = "SMS",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Send messages via default SMS app",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        
                         // Telegram Option
                         Row(
                             modifier = Modifier
@@ -1451,6 +1418,42 @@ fun SettingsScreen(
                                 )
                                 Text(
                                     text = "Send messages via Telegram",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // SMS Option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    viewModel.setMessagingApp(MessagingApp.SMS)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = defaultMessagingApp == MessagingApp.SMS,
+                                onClick = { 
+                                    viewModel.setMessagingApp(MessagingApp.SMS)
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column {
+                                Text(
+                                    text = "SMS",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Send messages via default SMS app",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -1497,12 +1500,19 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             
                             Text(
-                                text = if (isInternationalDetectionEnabled) 
-                                    "Automatically detect international numbers and switch default actions" 
-                                else 
-                                    "Treat all numbers as domestic - same actions for all contacts",
+                                text = when {
+                                    defaultMessagingApp == MessagingApp.SMS ->
+                                        "Disabled when SMS is default messaging app - all numbers use same actions"
+                                    isInternationalDetectionEnabled -> 
+                                        "Automatically detect international numbers and switch default actions" 
+                                    else -> 
+                                        "Treat all numbers as domestic - same actions for all contacts"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (defaultMessagingApp == MessagingApp.SMS) 
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         
@@ -1511,6 +1521,7 @@ fun SettingsScreen(
                         Switch(
                             checked = isInternationalDetectionEnabled,
                             onCheckedChange = { viewModel.toggleInternationalDetection() },
+                            enabled = defaultMessagingApp != MessagingApp.SMS,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -1556,7 +1567,11 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Text(
-                            text = "International Detection:\n${if (isInternationalDetectionEnabled) "• International numbers: Tap for messaging, icon to call\n• Domestic numbers: Tap to call, icon for messaging" else "• All numbers: Tap to call, icon for messaging"}\n\nMessaging App:\n• ${when (defaultMessagingApp) { MessagingApp.WHATSAPP -> "WhatsApp"; MessagingApp.SMS -> "SMS"; MessagingApp.TELEGRAM -> "Telegram" }} will be used for messaging contacts",
+                            text = "International Detection:\n${when {
+                                defaultMessagingApp == MessagingApp.SMS -> "• Disabled when SMS is default - all numbers use same actions"
+                                isInternationalDetectionEnabled -> "• International numbers: Tap for messaging, icon to call\n• Domestic numbers: Tap to call, icon for messaging"
+                                else -> "• All numbers: Tap to call, icon for messaging"
+                            }}\n\nMessaging App:\n• ${when (defaultMessagingApp) { MessagingApp.WHATSAPP -> "WhatsApp"; MessagingApp.SMS -> "SMS"; MessagingApp.TELEGRAM -> "Telegram" }} will be used for messaging contacts",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
