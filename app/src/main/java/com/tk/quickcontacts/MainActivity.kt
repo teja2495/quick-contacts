@@ -979,6 +979,7 @@ fun SearchResultItem(
                             Icon(
                                 painter = painterResource(id = R.drawable.whatsapp_icon),
                                 contentDescription = "Send WhatsApp message to ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -1321,7 +1322,7 @@ fun SettingsScreen(
     ) {
         // Settings content
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -1573,6 +1574,25 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+        val context = LocalContext.current
+        val versionName = try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Version $versionName",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

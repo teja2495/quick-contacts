@@ -713,6 +713,7 @@ fun RecentCallVerticalItem(
                         Icon(
                             painter = painterResource(id = R.drawable.whatsapp_icon),
                             contentDescription = "WhatsApp ${contact.name}",
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1066,7 +1067,7 @@ fun ContactItem(
                                 imageVector = Icons.Default.Phone,
                                 contentDescription = "Call ${contact.name}",
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(35.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                         "WhatsApp" -> {
@@ -1074,7 +1075,7 @@ fun ContactItem(
                                 painter = painterResource(id = R.drawable.whatsapp_icon),
                                 contentDescription = "WhatsApp ${contact.name}",
                                 tint = Color(0xFF25D366),
-                                modifier = Modifier.size(35.dp)
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                         "SMS" -> {
@@ -1082,7 +1083,7 @@ fun ContactItem(
                                 painter = painterResource(id = R.drawable.sms_icon),
                                 contentDescription = "SMS ${contact.name}",
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(35.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                         "Telegram" -> {
@@ -1090,7 +1091,7 @@ fun ContactItem(
                                 painter = painterResource(id = R.drawable.telegram_icon),
                                 contentDescription = "Telegram ${contact.name}",
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(35.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                         else -> {
@@ -1099,9 +1100,9 @@ fun ContactItem(
                                 imageVector = Icons.Default.Phone,
                                 contentDescription = "Call ${contact.name}",
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(35.dp)
+                                modifier = Modifier.size(28.dp)
                             )
-                                                 }
+                        }
                     }
                 }
             }
