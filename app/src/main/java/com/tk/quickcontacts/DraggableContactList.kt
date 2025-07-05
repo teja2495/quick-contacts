@@ -51,6 +51,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import android.content.Context
 
 // Simple phone number formatting function
 private fun formatPhoneNumber(phoneNumber: String): String {
@@ -535,7 +536,8 @@ fun ContactList(
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    selectedContacts: List<Contact> = emptyList()
+    selectedContacts: List<Contact> = emptyList(),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -574,7 +576,8 @@ fun ContactList(
                         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                         defaultMessagingApp = defaultMessagingApp,
                         availableMessagingApps = availableMessagingApps,
-                        selectedContacts = selectedContacts
+                        selectedContacts = selectedContacts,
+                        onExecuteAction = onExecuteAction
                     )
                 }
             } else {
@@ -593,7 +596,8 @@ fun ContactList(
                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp,
                     availableMessagingApps = availableMessagingApps,
-                    selectedContacts = selectedContacts
+                    selectedContacts = selectedContacts,
+                    onExecuteAction = onExecuteAction
                 )
             }
         }
@@ -981,7 +985,8 @@ fun ContactItem(
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    selectedContacts: List<Contact> = emptyList()
+    selectedContacts: List<Contact> = emptyList(),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -1003,23 +1008,15 @@ fun ContactItem(
                 // Route based on which action triggered the dialog
                 when (dialogAction) {
                     "call", "whatsapp", "sms", "telegram" -> {
-                        // Check if this was triggered by primary or secondary action
-                        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
-                            when (defaultMessagingApp) {
-                                MessagingApp.WHATSAPP -> "WhatsApp"
-                                MessagingApp.SMS -> "SMS"
-                                MessagingApp.TELEGRAM -> "Telegram"
-                            }
-                        } else {
-                            "Call"
+                        // Convert dialog action back to proper case for execution
+                        val actionToExecute = when (dialogAction) {
+                            "call" -> "Call"
+                            "whatsapp" -> "WhatsApp"
+                            "sms" -> "SMS"
+                            "telegram" -> "Telegram"
+                            else -> "Call"
                         }
-                        
-                        // If the dialog action matches the primary action, it was triggered by primary action
-                        if (dialogAction == primaryAction.lowercase()) {
-                            onContactClick(contactWithSelectedNumber) // Execute primary action
-                        } else {
-                            onWhatsAppClick(contactWithSelectedNumber) // Execute secondary action
-                        }
+                        onExecuteAction(context, actionToExecute, selectedNumber)
                     }
                 }
                 showPhoneNumberDialog = false
@@ -1071,13 +1068,11 @@ fun ContactItem(
                         showActionToggleDialog = true
                     } else {
                         // Normal mode: perform contact action
-                        // Get default messaging app name
                         val messagingAppName = when (defaultMessagingApp) {
                             MessagingApp.WHATSAPP -> "WhatsApp"
                             MessagingApp.SMS -> "SMS"
                             MessagingApp.TELEGRAM -> "Telegram"
                         }
-                        // Use custom primary action or determine based on new default logic
                         val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
                             messagingAppName  // International: Primary = messaging app
                         } else {
@@ -1087,8 +1082,8 @@ fun ContactItem(
                             dialogAction = primaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            // Primary action always calls onContactClick (which executes primary action)
-                            onContactClick(contact)
+                            // Use the lambda instead of viewModel directly
+                            onExecuteAction(context, primaryAction, contact.phoneNumber)
                         }
                     }
                 },
@@ -1255,8 +1250,8 @@ fun ContactItem(
                             dialogAction = secondaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            // Secondary action always calls onWhatsAppClick (which executes secondary action)
-                            onWhatsAppClick(contact)
+                            // Use onExecuteAction to match UI label logic
+                            onExecuteAction(context, secondaryAction, contact.phoneNumber)
                         }
                     },
                     modifier = Modifier.size(48.dp)

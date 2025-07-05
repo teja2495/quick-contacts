@@ -80,6 +80,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
+import android.content.Context
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -531,47 +532,50 @@ fun QuickContactsApp() {
                             // Quick contacts list (hide when recent calls are expanded)
                             if (!isRecentCallsExpanded || !isRecentCallsVisible) {
                                 ContactList(
-                                contacts = filteredSelectedContacts,
-                                onContactClick = { contact ->
-                                    // Check if contact has custom actions
-                                    val customActions = customActionPreferences[contact.id]
-                                    if (customActions != null) {
-                                        viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
-                                    } else {
-                                        viewModel.makePhoneCall(context, contact.phoneNumber)
+                                    contacts = filteredSelectedContacts,
+                                    onContactClick = { contact ->
+                                        // Check if contact has custom actions
+                                        val customActions = customActionPreferences[contact.id]
+                                        if (customActions != null) {
+                                            viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
+                                        } else {
+                                            viewModel.makePhoneCall(context, contact.phoneNumber)
+                                        }
+                                    },
+                                    editMode = editMode,
+                                    onDeleteContact = { contact ->
+                                        viewModel.removeContact(contact)
+                                    },
+                                    onMove = { from, to ->
+                                        viewModel.moveContact(from, to)
+                                    },
+                                    onWhatsAppClick = { contact ->
+                                        // Check if contact has custom actions
+                                        val customActions = customActionPreferences[contact.id]
+                                        if (customActions != null) {
+                                            viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
+                                        } else {
+                                            viewModel.openMessagingApp(context, contact.phoneNumber)
+                                        }
+                                    },
+                                    onContactImageClick = { contact ->
+                                        viewModel.openContactInContactsApp(context, contact)
+                                    },
+                                    onLongClick = { contact ->
+                                        // Long click handled within ContactItem in edit mode
+                                    },
+                                    onSetCustomActions = { contact, primaryAction, secondaryAction ->
+                                        viewModel.setCustomActions(contact.id, primaryAction, secondaryAction)
+                                    },
+                                    customActionPreferences = customActionPreferences,
+                                    isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
+                                    defaultMessagingApp = defaultMessagingApp,
+                                    availableMessagingApps = availableMessagingApps,
+                                    selectedContacts = selectedContacts,
+                                    onExecuteAction = { context, action, phoneNumber ->
+                                        viewModel.executeAction(context, action, phoneNumber)
                                     }
-                                },
-                                editMode = editMode,
-                                onDeleteContact = { contact ->
-                                    viewModel.removeContact(contact)
-                                },
-                                onMove = { from, to ->
-                                    viewModel.moveContact(from, to)
-                                },
-                                onWhatsAppClick = { contact ->
-                                    // Check if contact has custom actions
-                                    val customActions = customActionPreferences[contact.id]
-                                    if (customActions != null) {
-                                        viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
-                                    } else {
-                                        viewModel.openMessagingApp(context, contact.phoneNumber)
-                                    }
-                                },
-                                onContactImageClick = { contact ->
-                                    viewModel.openContactInContactsApp(context, contact)
-                                },
-                                onLongClick = { contact ->
-                                    // Long click handled within ContactItem in edit mode
-                                },
-                                onSetCustomActions = { contact, primaryAction, secondaryAction ->
-                                    viewModel.setCustomActions(contact.id, primaryAction, secondaryAction)
-                                },
-                                customActionPreferences = customActionPreferences,
-                                isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                defaultMessagingApp = defaultMessagingApp,
-                                availableMessagingApps = availableMessagingApps,
-                                selectedContacts = selectedContacts
-                            )
+                                )
                             }
                         }
                         
