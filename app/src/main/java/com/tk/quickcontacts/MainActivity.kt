@@ -69,6 +69,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
@@ -102,6 +103,7 @@ fun QuickContactsApp() {
     // Navigation state - replace isSearchScreenOpen with isSearching
     var currentScreen by remember { mutableStateOf("home") }
     var isSearching by remember { mutableStateOf(false) }
+    var isSettingsScreenOpen by remember { mutableStateOf(false) }
     
     // Check if keyboard is open
     val density = LocalDensity.current
@@ -200,16 +202,24 @@ fun QuickContactsApp() {
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val actionPreferences by viewModel.actionPreferences.collectAsState()
+    val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
     
     // Focus requester for search
     val focusRequester = remember { FocusRequester() }
     
-    // Handle Android system back button when searching
-    BackHandler(enabled = isSearching) {
-        viewModel.updateSearchQuery("")
-        isSearching = false
+    // Handle Android system back button when searching or in settings
+    BackHandler(enabled = isSearching || isSettingsScreenOpen) {
+        when {
+            isSearching -> {
+                viewModel.updateSearchQuery("")
+                isSearching = false
+            }
+            isSettingsScreenOpen -> {
+                isSettingsScreenOpen = false
+            }
+        }
     }
     
     // Load recent calls when permissions are available or selected contacts change
@@ -251,17 +261,28 @@ fun QuickContactsApp() {
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isSearching) "Search" else "Quick Contacts",
+                        text = when {
+                            isSearching -> "Search"
+                            isSettingsScreenOpen -> "Settings"
+                            else -> "Quick Contacts"
+                        },
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 8.dp) // Align with Recent Calls text
                     )
                 },
                 navigationIcon = {
-                    if (isSearching) {
+                    if (isSearching || isSettingsScreenOpen) {
                         IconButton(
                             onClick = {
-                                viewModel.updateSearchQuery("")
-                                isSearching = false
+                                when {
+                                    isSearching -> {
+                                        viewModel.updateSearchQuery("")
+                                        isSearching = false
+                                    }
+                                    isSettingsScreenOpen -> {
+                                        isSettingsScreenOpen = false
+                                    }
+                                }
                             }
                         ) {
                             Icon(
@@ -272,17 +293,20 @@ fun QuickContactsApp() {
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            // TODO: Handle settings click
-                        },
-                        modifier = Modifier.padding(end = 24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            modifier = Modifier.size(24.dp)
-                        )
+                    // Only show settings icon when not in settings screen
+                    if (!isSettingsScreenOpen) {
+                        IconButton(
+                            onClick = {
+                                isSettingsScreenOpen = true
+                            },
+                            modifier = Modifier.padding(end = 24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             )
@@ -318,6 +342,13 @@ fun QuickContactsApp() {
                     )
                 }
                 
+                isSettingsScreenOpen -> {
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onBackClick = { isSettingsScreenOpen = false }
+                    )
+                }
+                
                 isSearching -> {
                     // Show search results when searching
                     Column(
@@ -329,6 +360,7 @@ fun QuickContactsApp() {
                             searchQuery = searchQuery,
                             searchResults = searchResults,
                             selectedContacts = selectedContacts,
+                            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                             modifier = Modifier.weight(1f)
                         )
                         
@@ -376,7 +408,8 @@ fun QuickContactsApp() {
                                     if (expanded) {
                                         editMode = false
                                     }
-                                }
+                                },
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled
                             )
                             
                             // Empty contacts screen (hide when recent calls are expanded)
@@ -428,7 +461,8 @@ fun QuickContactsApp() {
                                     if (expanded) {
                                         editMode = false
                                     }
-                                }
+                                },
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled
                             )
                             
                             // Favourite header with edit functionality (hide when recent calls are expanded)
@@ -473,29 +507,30 @@ fun QuickContactsApp() {
                             
                             // Quick contacts list (hide when recent calls are expanded)
                             if (!isRecentCallsExpanded) {
-                                ContactList(
-                                    contacts = filteredSelectedContacts,
-                                    onContactClick = { contact ->
-                                        viewModel.makePhoneCall(context, contact.phoneNumber)
-                                    },
-                                    editMode = editMode,
-                                    onDeleteContact = { contact ->
-                                        viewModel.removeContact(contact)
-                                    },
-                                    onMove = { from, to ->
-                                        viewModel.moveContact(from, to)
-                                    },
-                                    onWhatsAppClick = { contact ->
-                                        viewModel.openWhatsAppChat(context, contact.phoneNumber)
-                                    },
-                                    onContactImageClick = { contact ->
-                                        viewModel.openContactInContactsApp(context, contact)
-                                    },
-                                    onLongClick = { contact ->
-                                        viewModel.toggleActionPreference(contact.id)
-                                    },
-                                    actionPreferences = actionPreferences
-                                )
+                                                            ContactList(
+                                contacts = filteredSelectedContacts,
+                                onContactClick = { contact ->
+                                    viewModel.makePhoneCall(context, contact.phoneNumber)
+                                },
+                                editMode = editMode,
+                                onDeleteContact = { contact ->
+                                    viewModel.removeContact(contact)
+                                },
+                                onMove = { from, to ->
+                                    viewModel.moveContact(from, to)
+                                },
+                                onWhatsAppClick = { contact ->
+                                    viewModel.openWhatsAppChat(context, contact.phoneNumber)
+                                },
+                                onContactImageClick = { contact ->
+                                    viewModel.openContactInContactsApp(context, contact)
+                                },
+                                onLongClick = { contact ->
+                                    viewModel.toggleActionPreference(contact.id)
+                                },
+                                actionPreferences = actionPreferences,
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled
+                            )
                             }
                         }
                         
@@ -627,6 +662,7 @@ fun SearchResultsContent(
     searchQuery: String,
     searchResults: List<Contact>,
     selectedContacts: List<Contact>,
+    isInternationalDetectionEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -742,6 +778,7 @@ fun SearchResultsContent(
                         viewModel.openContactInContactsApp(context, contact)
                     },
                     selectedContacts = selectedContacts,
+                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -758,6 +795,7 @@ fun SearchResultItem(
     onWhatsAppClick: (Contact) -> Unit,
     onContactImageClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
+    isInternationalDetectionEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
@@ -765,7 +803,7 @@ fun SearchResultItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -1201,5 +1239,131 @@ fun EmptyContactsScreen() {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+fun SettingsScreen(
+    viewModel: ContactsViewModel,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
+    
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        // Settings content
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                // International Number Detection Setting
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "International Number Detection",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Text(
+                                text = if (isInternationalDetectionEnabled) 
+                                    "Automatically detect international numbers and switch default actions" 
+                                else 
+                                    "Treat all numbers as domestic - same actions for all contacts",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Switch(
+                            checked = isInternationalDetectionEnabled,
+                            onCheckedChange = { viewModel.toggleInternationalDetection() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                }
+            }
+            
+            item {
+                // Additional explanation card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Text(
+                                text = "How it works",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "When enabled:\n• International numbers: Tap to WhatsApp, icon to call\n• Domestic numbers: Tap to call, icon to WhatsApp\n\nWhen disabled:\n• All numbers: Tap to call, icon to WhatsApp",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

@@ -252,7 +252,12 @@ fun getCountryCodeFromPhoneNumber(phoneNumber: String): String? {
 }
 
 // Helper function to determine if a phone number is international
-fun isInternationalNumber(context: Context, phoneNumber: String): Boolean {
+fun isInternationalNumber(context: Context, phoneNumber: String, isDetectionEnabled: Boolean = true): Boolean {
+    // If international detection is disabled, always return false (treat as domestic)
+    if (!isDetectionEnabled) {
+        return false
+    }
+    
     val userCountryCode = getUserCountryCode(context)
     val phoneCountryCode = getCountryCodeFromPhoneNumber(phoneNumber)
     

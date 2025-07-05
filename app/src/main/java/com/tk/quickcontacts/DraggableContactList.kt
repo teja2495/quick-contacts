@@ -303,7 +303,8 @@ fun ContactList(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onLongClick: (Contact) -> Unit = {},
-    actionPreferences: Map<String, Boolean> = emptyMap()
+    actionPreferences: Map<String, Boolean> = emptyMap(),
+    isInternationalDetectionEnabled: Boolean = true
 ) {
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
@@ -337,7 +338,8 @@ fun ContactList(
                         onContactImageClick = onContactImageClick,
                         reorderState = reorderState,
                         onLongClick = onLongClick,
-                        isActionSwapped = actionPreferences[contact.id] ?: false
+                        isActionSwapped = actionPreferences[contact.id] ?: false,
+                        isInternationalDetectionEnabled = isInternationalDetectionEnabled
                     )
                 }
             } else {
@@ -351,7 +353,8 @@ fun ContactList(
                     onContactImageClick = onContactImageClick,
                     reorderState = null,
                     onLongClick = onLongClick,
-                    isActionSwapped = actionPreferences[contact.id] ?: false
+                    isActionSwapped = actionPreferences[contact.id] ?: false,
+                    isInternationalDetectionEnabled = isInternationalDetectionEnabled
                 )
             }
         }
@@ -365,6 +368,7 @@ fun RecentCallsSection(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
+    isInternationalDetectionEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     if (recentCalls.isNotEmpty()) {
@@ -435,6 +439,7 @@ fun RecentCallsSection(
                             onContactClick = onContactClick,
                             onWhatsAppClick = onWhatsAppClick,
                             onContactImageClick = onContactImageClick,
+                            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -454,6 +459,7 @@ fun RecentCallsSection(
                                 onContactClick = onContactClick,
                                 onWhatsAppClick = onWhatsAppClick,
                                 onContactImageClick = onContactImageClick,
+                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -470,6 +476,7 @@ fun RecentCallVerticalItem(
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
+    isInternationalDetectionEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
@@ -477,7 +484,7 @@ fun RecentCallVerticalItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -604,11 +611,12 @@ fun RecentCallItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
+    isInternationalDetectionEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
     
     Column(
         modifier = modifier
@@ -682,7 +690,8 @@ fun ContactItem(
     onContactImageClick: (Contact) -> Unit = {},
     reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
     onLongClick: (Contact) -> Unit = {},
-    isActionSwapped: Boolean = false
+    isActionSwapped: Boolean = false,
+    isInternationalDetectionEnabled: Boolean = true
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -690,7 +699,7 @@ fun ContactItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber())
+    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {

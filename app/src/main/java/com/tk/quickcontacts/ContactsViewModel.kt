@@ -37,6 +37,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _actionPreferences = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences
 
+    // Settings preferences
+    private val _isInternationalDetectionEnabled = MutableStateFlow(true)
+    val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled
+
     private val sharedPreferences: SharedPreferences
     private val gson = Gson()
 
@@ -44,6 +48,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         sharedPreferences = application.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
         loadContacts()
         loadActionPreferences()
+        loadSettings()
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
@@ -185,6 +190,19 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         currentPreferences[contactId] = !currentPreferences.getOrDefault(contactId, false)
         _actionPreferences.value = currentPreferences
         saveActionPreferences()
+    }
+
+    private fun loadSettings() {
+        _isInternationalDetectionEnabled.value = sharedPreferences.getBoolean("international_detection_enabled", true)
+    }
+
+    private fun saveSettings() {
+        sharedPreferences.edit().putBoolean("international_detection_enabled", _isInternationalDetectionEnabled.value).apply()
+    }
+
+    fun toggleInternationalDetection() {
+        _isInternationalDetectionEnabled.value = !_isInternationalDetectionEnabled.value
+        saveSettings()
     }
 
     fun addContact(contact: Contact) {
