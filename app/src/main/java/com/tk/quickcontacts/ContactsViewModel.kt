@@ -226,14 +226,48 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
         val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber")
-        }
+        
         try {
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
+            // Method 1: Use ACTION_SENDTO with smsto scheme for direct chat
+            val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("smsto:$cleanNumber")
+                setPackage("com.whatsapp")
+            }
+            smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(smsIntent)
         } catch (e: Exception) {
-            // WhatsApp not installed, handle gracefully
+            try {
+                // Method 2: Use ACTION_SEND with WhatsApp package
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra("jid", "$cleanNumber@s.whatsapp.net")
+                    setPackage("com.whatsapp")
+                }
+                sendIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(sendIntent)
+            } catch (e2: Exception) {
+                try {
+                    // Method 3: Try standard messaging intent
+                    val messageIntent = Intent(Intent.ACTION_VIEW).apply {
+                        data = Uri.parse("sms:$cleanNumber")
+                        setPackage("com.whatsapp")
+                    }
+                    messageIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    context.startActivity(messageIntent)
+                } catch (e3: Exception) {
+                    try {
+                        // Method 4: Final fallback to web API
+                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber")
+                        }
+                        webIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        context.startActivity(webIntent)
+                    } catch (e4: Exception) {
+                        // WhatsApp not installed or no browser available
+                        android.util.Log.e("QuickContacts", "Unable to open WhatsApp: ${e4.message}")
+                    }
+                }
+            }
         }
     }
 
