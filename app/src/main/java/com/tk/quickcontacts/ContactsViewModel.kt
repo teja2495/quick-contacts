@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import com.tk.quickcontacts.utils.PhoneNumberUtils
+import com.tk.quickcontacts.utils.ContactUtils
 
 enum class MessagingApp {
     WHATSAPP,
@@ -268,11 +270,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                                 // Add phone number to existing contact
                                 val existingContact = seenContactsMap[id]!!
                                 val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
-                                val normalizedNewNumber = normalizePhoneNumber(number)
+                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
                                 
                                 // Check if this normalized number already exists
                                 val alreadyExists = updatedPhoneNumbers.any { 
-                                    normalizePhoneNumber(it) == normalizedNewNumber 
+                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
                                 }
                                 
                                 if (!alreadyExists) {
@@ -435,11 +437,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                                 // Add phone number to existing contact (normalize to avoid duplicates)
                                 val existingContact = seenContactsMap[id]!!
                                 val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
-                                val normalizedNewNumber = normalizePhoneNumber(number)
+                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
                                 
                                 // Check if this normalized number already exists
                                 val alreadyExists = updatedPhoneNumbers.any { 
-                                    normalizePhoneNumber(it) == normalizedNewNumber 
+                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
                                 }
                                 
                                 if (!alreadyExists) {
@@ -809,7 +811,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             
             // Get phone numbers from selected contacts to exclude them from recent calls
             val selectedContactNumbers = _selectedContacts.value.map { 
-                normalizePhoneNumber(it.phoneNumber) 
+                PhoneNumberUtils.normalizePhoneNumber(it.phoneNumber) 
             }.toSet()
             
             // Debug logging
@@ -839,7 +841,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                         val cachedName = it.getString(nameColumn)
                         
                         if (number != null && !seenNumbers.contains(number)) {
-                            val normalizedNumber = normalizePhoneNumber(number)
+                            val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
                             
                             // Debug logging
                             android.util.Log.d("QuickContacts", "Call log number: $number -> normalized: $normalizedNumber")
@@ -880,82 +882,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     private fun getContactByPhoneNumber(context: Context, phoneNumber: String, cachedName: String?): Contact? {
-        try {
-            val uri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(phoneNumber)
-            )
-            
-            val projection = arrayOf(
-                ContactsContract.PhoneLookup._ID,
-                ContactsContract.PhoneLookup.DISPLAY_NAME,
-                ContactsContract.PhoneLookup.NUMBER
-            )
-            
-            val cursor = context.contentResolver.query(uri, projection, null, null, null)
-            
-            cursor?.use {
-                if (it.moveToFirst()) {
-                    val idColumnIndex = it.getColumnIndex(ContactsContract.PhoneLookup._ID)
-                    val nameColumnIndex = it.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
-                    val numberColumnIndex = it.getColumnIndex(ContactsContract.PhoneLookup.NUMBER)
-                    
-                    if (idColumnIndex >= 0 && nameColumnIndex >= 0 && numberColumnIndex >= 0) {
-                        val contactId = it.getString(idColumnIndex)
-                        val displayName = it.getString(nameColumnIndex)
-                        val number = it.getString(numberColumnIndex)
-                        
-                        // Get contact photo URI
-                        val photoUri = getContactPhotoUri(context, contactId)
-                        
-                        val finalName = displayName?.takeIf { it.isNotBlank() }
-                            ?: cachedName?.takeIf { it.isNotBlank() }
-                            ?: formatPhoneNumber(phoneNumber)
-                        
-                        return Contact(
-                            id = "call_history_$contactId",
-                            name = finalName,
-                            phoneNumber = phoneNumber, // Use original call log number for consistency
-                            phoneNumbers = listOf(phoneNumber),
-                            photoUri = photoUri
-                        )
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        
-        // Fallback: create contact with cached name or formatted phone number
-        val finalName = cachedName?.takeIf { it.isNotBlank() } ?: formatPhoneNumber(phoneNumber)
-        
-        return Contact(
-            id = "call_history_${phoneNumber.hashCode()}",
-            name = finalName,
-            phoneNumber = phoneNumber,
-            phoneNumbers = listOf(phoneNumber),
-            photoUri = null
-        )
+        return ContactUtils.getContactByPhoneNumber(context, phoneNumber, cachedName)
     }
     
     private fun getContactPhotoUri(context: Context, contactId: String): String? {
-        try {
-            val photoUri = Uri.withAppendedPath(
-                ContactsContract.Contacts.CONTENT_URI,
-                contactId
-            ).let { contactUri ->
-                Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Photo.CONTENT_DIRECTORY)
-            }
-            
-            // Check if photo exists by trying to open an input stream
-            context.contentResolver.openInputStream(photoUri)?.use {
-                return photoUri.toString()
-            }
-        } catch (e: Exception) {
-            // Photo doesn't exist or can't be accessed
-        }
-        
-        return null
+        return ContactUtils.getContactPhotoUri(context, contactId)
     }
     
     private fun normalizePhoneNumber(phoneNumber: String): String {

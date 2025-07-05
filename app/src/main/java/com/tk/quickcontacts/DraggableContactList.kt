@@ -52,40 +52,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import android.content.Context
-
-// Simple phone number formatting function
-private fun formatPhoneNumber(phoneNumber: String): String {
-    val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
-    
-    return when {
-        // US/Canada number with +1 country code
-        cleaned.startsWith("+1") && cleaned.length == 12 -> {
-            val digits = cleaned.substring(2)
-            "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
-        }
-        // US/Canada number without country code (10 digits)
-        !cleaned.startsWith("+") && cleaned.length == 10 -> {
-            "(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6)}"
-        }
-        // US/Canada number with country code but no +
-        cleaned.startsWith("1") && cleaned.length == 11 -> {
-            val digits = cleaned.substring(1)
-            "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
-        }
-        // International number with country code
-        cleaned.startsWith("+") && cleaned.length > 7 -> {
-            val countryCode = cleaned.substring(0, cleaned.length - 10)
-            val localNumber = cleaned.substring(cleaned.length - 10)
-            if (localNumber.length == 10) {
-                "$countryCode (${localNumber.substring(0, 3)}) ${localNumber.substring(3, 6)}-${localNumber.substring(6)}"
-            } else {
-                cleaned // Fallback to cleaned number
-            }
-        }
-        // Other formats - just return cleaned
-        else -> cleaned
-    }
-}
+import com.tk.quickcontacts.utils.PhoneNumberUtils
+import com.tk.quickcontacts.utils.ContactUtils
 
 @Composable
 fun PhoneNumberSelectionDialog(
@@ -743,7 +711,7 @@ fun RecentCallVerticalItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -906,7 +874,7 @@ fun RecentCallItem(
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
     
     Column(
         modifier = modifier
@@ -994,7 +962,7 @@ fun ContactItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -1199,7 +1167,7 @@ fun ContactItem(
                 if (editMode) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = formatPhoneNumber(contact.phoneNumber),
+                        text = PhoneNumberUtils.formatPhoneNumber(contact.phoneNumber),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1209,7 +1177,7 @@ fun ContactItem(
                         contact.phoneNumbers.forEachIndexed { index, number ->
                             if (index > 0 && number != contact.phoneNumber) {
                                 Text(
-                                    text = formatPhoneNumber(number),
+                                    text = PhoneNumberUtils.formatPhoneNumber(number),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.padding(top = 2.dp)

@@ -81,6 +81,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import android.content.Context
+import com.tk.quickcontacts.utils.ContactUtils
+import com.tk.quickcontacts.utils.PhoneNumberUtils
 
 
 class MainActivity : ComponentActivity() {
@@ -630,7 +632,7 @@ fun QuickContactsApp() {
                     },
                     text = {
                         Text(
-                            text = "Tap ‘Edit’ button to delete, reorder contacts in quick list. You can also set customize actions for each contact.",
+                            text = "Tap 'Edit' button to delete, reorder contacts in quick list. You can also set customize actions for each contact.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -910,7 +912,7 @@ fun SearchResultItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = isInternationalNumber(context, contact.getPrimaryPhoneNumber(), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -1102,77 +1104,6 @@ fun SearchResultItem(
             }
         }
     }
-}
-
-private fun parseContactFromUri(context: android.content.Context, contactUri: Uri): Contact? {
-    val projection = arrayOf(
-        ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-        ContactsContract.CommonDataKinds.Phone.NUMBER
-    )
-
-    var cursor: Cursor? = null
-    try {
-        cursor = context.contentResolver.query(
-            contactUri,
-            projection,
-            null,
-            null,
-            null
-        )
-
-        cursor?.let {
-            if (it.moveToFirst()) {
-                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-
-                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
-                    val id = it.getString(idColumn)
-                    val name = it.getString(nameColumn)
-                    val number = it.getString(numberColumn)
-
-                    if (name != null && number != null) {
-                        // Get the contact photo URI using the contact ID
-                        val photoUri = getContactPhotoUri(context, id)
-                        
-                        return Contact(
-                            id = id,
-                            name = name,
-                            phoneNumber = number,
-                            photoUri = photoUri
-                        )
-                    }
-                }
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    } finally {
-        cursor?.close()
-    }
-
-    return null
-}
-
-private fun getContactPhotoUri(context: android.content.Context, contactId: String): String? {
-    try {
-        val photoUri = Uri.withAppendedPath(
-            ContactsContract.Contacts.CONTENT_URI,
-            contactId
-        ).let { contactUri ->
-            Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Photo.CONTENT_DIRECTORY)
-        }
-        
-        // Check if photo exists by trying to open an input stream
-        context.contentResolver.openInputStream(photoUri)?.use {
-            return photoUri.toString()
-        }
-    } catch (e: Exception) {
-        // Photo doesn't exist or can't be accessed
-    }
-    
-    return null
 }
 
 @Composable
