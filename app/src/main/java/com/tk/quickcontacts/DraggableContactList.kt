@@ -603,7 +603,10 @@ fun RecentCallVerticalItem(
         PhoneNumberSelectionDialog(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
-                val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber)
+                val contactWithSelectedNumber = contact.copy(
+                    phoneNumber = selectedNumber,
+                    phoneNumbers = listOf(selectedNumber)
+                )
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
@@ -842,7 +845,10 @@ fun ContactItem(
         PhoneNumberSelectionDialog(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
-                val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber)
+                val contactWithSelectedNumber = contact.copy(
+                    phoneNumber = selectedNumber,
+                    phoneNumbers = listOf(selectedNumber)
+                )
                 // Route based on which action triggered the dialog
                 when (dialogAction) {
                     "call", "whatsapp", "sms", "telegram" -> {
@@ -1016,26 +1022,28 @@ fun ContactItem(
                     fontWeight = FontWeight.Medium
                 )
                 
-                // Show primary action text (always visible, not just in edit mode)
-                Spacer(modifier = Modifier.height(2.dp))
-                
-                // Get the primary action for this contact
-                val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
-                    when (defaultMessagingApp) {
-                        MessagingApp.WHATSAPP -> "WhatsApp"
-                        MessagingApp.SMS -> "SMS"
-                        MessagingApp.TELEGRAM -> "Telegram"
+                // Show primary action text (only in normal mode, not in edit mode)
+                if (!editMode) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    
+                    // Get the primary action for this contact
+                    val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                        when (defaultMessagingApp) {
+                            MessagingApp.WHATSAPP -> "WhatsApp"
+                            MessagingApp.SMS -> "SMS"
+                            MessagingApp.TELEGRAM -> "Telegram"
+                        }
+                    } else {
+                        "Call"
                     }
-                } else {
-                    "Call"
+                    
+                    Text(
+                        text = "$primaryAction",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        fontSize = 11.sp
+                    )
                 }
-                
-                Text(
-                    text = "$primaryAction",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    fontSize = 11.sp
-                )
                 
                 // Show phone number in edit mode
                 if (editMode) {

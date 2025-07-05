@@ -851,7 +851,10 @@ fun SearchResultItem(
         PhoneNumberSelectionDialog(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
-                val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber)
+                val contactWithSelectedNumber = contact.copy(
+                    phoneNumber = selectedNumber,
+                    phoneNumbers = listOf(selectedNumber)
+                )
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
