@@ -315,8 +315,8 @@ fun QuickContactsApp() {
                     }
                 },
                 actions = {
-                    // Only show settings icon when not in settings screen and not searching
-                    if (!isSettingsScreenOpen && !isSearching) {
+                    // Only show settings icon when not in settings screen, not searching, and all permissions are granted
+                    if (!isSettingsScreenOpen && !isSearching && hasCallPermission && hasContactsPermission && hasCallLogPermission) {
                         IconButton(
                             onClick = {
                                 isSettingsScreenOpen = true
