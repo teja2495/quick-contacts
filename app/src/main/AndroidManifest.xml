@@ -10,6 +10,11 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="org.telegram.messenger" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

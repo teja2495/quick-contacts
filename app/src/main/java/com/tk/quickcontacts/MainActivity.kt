@@ -205,6 +205,7 @@ fun QuickContactsApp() {
     val customActionPreferences by viewModel.customActionPreferences.collectAsState()
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
+    val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
     
     // Disable international detection when SMS is selected as default messaging app
     val effectiveInternationalDetectionEnabled = isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS
@@ -560,7 +561,8 @@ fun QuickContactsApp() {
                                 },
                                 customActionPreferences = customActionPreferences,
                                 isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                defaultMessagingApp = defaultMessagingApp
+                                defaultMessagingApp = defaultMessagingApp,
+                                availableMessagingApps = availableMessagingApps
                             )
                             }
                         }
@@ -1305,6 +1307,12 @@ fun SettingsScreen(
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
     val useWhatsAppAsDefault by viewModel.useWhatsAppAsDefault.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
+    val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
+    
+    // Refresh available messaging apps when settings screen is opened
+    LaunchedEffect(Unit) {
+        viewModel.refreshAvailableMessagingApps()
+    }
     
     Column(
         modifier = modifier
@@ -1375,11 +1383,14 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         
                         // WhatsApp Option
+                        val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { 
-                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                .clickable(enabled = isWhatsAppAvailable) { 
+                                    if (isWhatsAppAvailable) {
+                                        viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                    }
                                 }
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -1387,10 +1398,15 @@ fun SettingsScreen(
                             RadioButton(
                                 selected = defaultMessagingApp == MessagingApp.WHATSAPP,
                                 onClick = { 
-                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                    if (isWhatsAppAvailable) {
+                                        viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                    }
                                 },
+                                enabled = isWhatsAppAvailable,
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
+                                    selectedColor = MaterialTheme.colorScheme.primary,
+                                    disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
                             )
                             
@@ -1400,22 +1416,31 @@ fun SettingsScreen(
                                 Text(
                                     text = "WhatsApp",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isWhatsAppAvailable) 
+                                        MaterialTheme.colorScheme.onSurface 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
-                                Text(
-                                    text = "Send messages via WhatsApp",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (!isWhatsAppAvailable) {
+                                    Text(
+                                        text = "Not installed",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                         
                         // Telegram Option
+                        val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { 
-                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                .clickable(enabled = isTelegramAvailable) { 
+                                    if (isTelegramAvailable) {
+                                        viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                    }
                                 }
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -1423,10 +1448,15 @@ fun SettingsScreen(
                             RadioButton(
                                 selected = defaultMessagingApp == MessagingApp.TELEGRAM,
                                 onClick = { 
-                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                    if (isTelegramAvailable) {
+                                        viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                    }
                                 },
+                                enabled = isTelegramAvailable,
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
+                                    selectedColor = MaterialTheme.colorScheme.primary,
+                                    disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
                             )
                             
@@ -1436,17 +1466,23 @@ fun SettingsScreen(
                                 Text(
                                     text = "Telegram",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isTelegramAvailable) 
+                                        MaterialTheme.colorScheme.onSurface 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
-                                Text(
-                                    text = "Send messages via Telegram",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (!isTelegramAvailable) {
+                                    Text(
+                                        text = "Not installed",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                         
-                        // SMS Option
+                        // SMS Option (always available)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1473,11 +1509,6 @@ fun SettingsScreen(
                                     text = "SMS",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Send messages via default SMS app",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -1516,9 +1547,9 @@ fun SettingsScreen(
                             Text(
                                 text = when {
                                     defaultMessagingApp == MessagingApp.SMS ->
-                                        "Disabled when SMS is default messaging app - all numbers use same actions"
+                                        "Disabled when SMS is the default messaging app"
                                     else -> 
-                                        "Automatically detect international numbers and set primary action (tap contact card) to WhatsApp or Telegram depending on default messaging app" 
+                                        "Automatically detect international numbers and set primary action (tap contact card) to WhatsApp/Telegram." 
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (defaultMessagingApp == MessagingApp.SMS) 

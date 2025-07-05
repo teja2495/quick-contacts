@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.provider.CallLog
@@ -65,6 +66,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _defaultMessagingApp = MutableStateFlow(MessagingApp.WHATSAPP)
     val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp
     
+    // Available messaging apps
+    private val _availableMessagingApps = MutableStateFlow<Set<MessagingApp>>(emptySet())
+    val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps
+    
     // Backward compatibility - keep the old boolean property for existing UI
     val useWhatsAppAsDefault: StateFlow<Boolean> = _defaultMessagingApp.map { it == MessagingApp.WHATSAPP }
         .stateIn(
@@ -82,9 +87,68 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         loadActionPreferences()
         loadCustomActionPreferences()
         loadSettings()
+        checkAvailableMessagingApps()
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
+    }
+    
+    // Check which messaging apps are available on the device
+    private fun checkAvailableMessagingApps() {
+        val availableApps = mutableSetOf<MessagingApp>()
+        val packageManager = getApplication<Application>().packageManager
+        
+        // SMS is always available
+        availableApps.add(MessagingApp.SMS)
+        
+        // Check if WhatsApp is installed by trying to resolve a WhatsApp intent
+        val isWhatsAppAvailable = isWhatsAppInstalled(packageManager)
+        if (isWhatsAppAvailable) {
+            availableApps.add(MessagingApp.WHATSAPP)
+        }
+        
+        // Check if Telegram is installed by trying to resolve a Telegram intent
+        val isTelegramAvailable = isTelegramInstalled(packageManager)
+        if (isTelegramAvailable) {
+            availableApps.add(MessagingApp.TELEGRAM)
+        }
+        
+        // Debug logging
+        android.util.Log.d("QuickContacts", "Available messaging apps: $availableApps")
+        android.util.Log.d("QuickContacts", "WhatsApp available: $isWhatsAppAvailable")
+        android.util.Log.d("QuickContacts", "Telegram available: $isTelegramAvailable")
+        
+        _availableMessagingApps.value = availableApps
+        
+        // If current default app is not available, switch to SMS
+        if (!availableApps.contains(_defaultMessagingApp.value)) {
+            android.util.Log.d("QuickContacts", "Current default app ${_defaultMessagingApp.value} not available, switching to SMS")
+            _defaultMessagingApp.value = MessagingApp.SMS
+            saveSettings()
+        }
+    }
+    
+    private fun isWhatsAppInstalled(packageManager: PackageManager): Boolean {
+        return try {
+            packageManager.getPackageInfo("com.whatsapp", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+    
+    private fun isTelegramInstalled(packageManager: PackageManager): Boolean {
+        return try {
+            packageManager.getPackageInfo("org.telegram.messenger", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+    
+    // Public function to refresh available apps (useful when returning from settings)
+    fun refreshAvailableMessagingApps() {
+        checkAvailableMessagingApps()
     }
     
     fun updateSearchQuery(query: String) {
