@@ -83,6 +83,7 @@ import androidx.compose.runtime.getValue
 import android.content.Context
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
+import androidx.compose.ui.res.stringResource
 
 
 class MainActivity : ComponentActivity() {
@@ -299,9 +300,9 @@ fun QuickContactsApp() {
                 title = {
                     Text(
                         text = when {
-                            isSearching -> "Search"
-                            isSettingsScreenOpen -> "Settings"
-                            else -> "Quick Contacts"
+                            isSearching -> stringResource(R.string.title_search)
+                            isSettingsScreenOpen -> stringResource(R.string.title_settings)
+                            else -> stringResource(R.string.title_quick_contacts)
                         },
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 8.dp) // Align with Recent Calls text
@@ -324,7 +325,7 @@ fun QuickContactsApp() {
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = stringResource(R.string.cd_back)
                             )
                         }
                     }
@@ -340,7 +341,7 @@ fun QuickContactsApp() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
+                                contentDescription = stringResource(R.string.cd_settings),
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -521,15 +522,15 @@ fun QuickContactsApp() {
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = "Quick List",
+                                                                Text(
+                            text = stringResource(R.string.title_quick_list),
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         
-                                        Text(
-                                            text = if (editMode) "Done" else "Edit",
+                                                                Text(
+                            text = if (editMode) stringResource(R.string.action_done) else stringResource(R.string.action_edit),
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.primary,
@@ -541,8 +542,8 @@ fun QuickContactsApp() {
                                     
                                     // Show hint text in edit mode
                                     if (editMode) {
-                                        Text(
-                                            text = "Tap contact to change actions",
+                                                                Text(
+                            text = stringResource(R.string.edit_hint),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
@@ -624,15 +625,15 @@ fun QuickContactsApp() {
                 AlertDialog(
                     onDismissRequest = { /* Do nothing - prevent dismissal by tapping outside */ },
                     title = {
-                        Text(
-                            text = "Editing Quick List...",
+                                            Text(
+                        text = stringResource(R.string.title_editing_quick_list),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
                     },
                     text = {
                         Text(
-                            text = "Tap 'Edit' button to delete, reorder contacts in quick list. You can also set customize actions for each contact.",
+                            text = stringResource(R.string.edit_instruction),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -644,7 +645,7 @@ fun QuickContactsApp() {
                                 viewModel.markEditHintShown()
                             }
                         ) {
-                            Text("Got it!")
+                            Text(stringResource(R.string.action_got_it))
                         }
                     }
                 )
@@ -667,14 +668,14 @@ fun SearchBar(
         modifier = modifier.focusRequester(focusRequester),
         placeholder = {
             Text(
-                text = "Search contacts...",
+                text = stringResource(R.string.search_placeholder),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
-                contentDescription = "Search",
+                contentDescription = stringResource(R.string.cd_search),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
@@ -683,7 +684,7 @@ fun SearchBar(
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(
                         imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear search",
+                        contentDescription = stringResource(R.string.action_clear_search),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -734,7 +735,7 @@ fun FakeSearchBar(
                 Spacer(modifier = Modifier.width(12.dp))
                 
                 Text(
-                    text = "Search contacts...",
+                    text = stringResource(R.string.search_placeholder),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1517,7 +1518,7 @@ fun SettingsScreen(
                             if (!isTelegramAvailable) {
                                 Text(
                                     text = "Not installed",
-                                    style = MaterialTheme.typography.bodySmall,
+                         l           style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
                             }

@@ -1,3 +1,124 @@
 <resources>
     <string name="app_name">Quick Contacts</string>
+    
+    <!-- Navigation and Titles -->
+    <string name="title_search">Search</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_quick_contacts">Quick Contacts</string>
+    <string name="title_quick_list">Quick List</string>
+    <string name="title_recent_calls">Recent Calls</string>
+    <string name="title_permissions_required">Permissions Required</string>
+    <string name="title_empty_quick_list">Empty Quick List</string>
+    <string name="title_default_messaging_app">Default Messaging App</string>
+    <string name="title_show_recent_calls">Show Recent Calls</string>
+    <string name="title_international_detection">International Number Detection</string>
+    <string name="title_editing_quick_list">Editing Quick List...</string>
+    <string name="title_select_phone_number">Select Phone Number</string>
+    <string name="title_change_actions">Change Actions</string>
+    <string name="title_search_contacts">Search Contacts</string>
+    <string name="title_no_results_found">No Results Found</string>
+    
+    <!-- Actions and Buttons -->
+    <string name="action_edit">Edit</string>
+    <string name="action_done">Done</string>
+    <string name="action_back">Back</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_search">Search</string>
+    <string name="action_clear_search">Clear search</string>
+    <string name="action_dialer">Dialer</string>
+    <string name="action_grant_permissions">Grant Permissions</string>
+    <string name="action_send_feedback">Send Feedback</string>
+    <string name="action_call">Call</string>
+    <string name="action_whatsapp">WhatsApp</string>
+    <string name="action_sms">SMS</string>
+    <string name="action_telegram">Telegram</string>
+    <string name="action_add">Add</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_drag_to_reorder">Drag to reorder</string>
+    <string name="action_primary_tap_card">Primary (Tap Card)</string>
+    <string name="action_secondary_tap_icon">Secondary (Tap Icon)</string>
+    <string name="action_done_button">Done</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_got_it">Got it!</string>
+    
+    <!-- Search -->
+    <string name="search_placeholder">Search contacts...</string>
+    <string name="search_instruction">Type a name to search through all your contacts</string>
+    <string name="search_no_results">Try a different search term</string>
+    <string name="search_add_instruction">Tap + to add to your quick list</string>
+    
+    <!-- Edit Mode -->
+    <string name="edit_hint">Tap contact to change actions</string>
+    <string name="edit_instruction">Tap \'Edit\' button to delete, reorder contacts in quick list. You can also set customize actions for each contact.</string>
+    
+    <!-- Permissions -->
+    <string name="permission_phone_access">Phone Access</string>
+    <string name="permission_phone_description">Make calls directly from the app when you tap on a contact</string>
+    <string name="permission_contacts_access">Contacts Access</string>
+    <string name="permission_contacts_description">Search and display your contacts with their names and photos</string>
+    <string name="permission_call_history_access">Call History Access</string>
+    <string name="permission_call_history_description">Show your recent calls for quick redial and easy access</string>
+    <string name="permission_granted">Permission granted</string>
+    <string name="privacy_protected">Your Privacy is Protected</string>
+    <string name="privacy_description">This app has no internet access. All your data stays on your device.</string>
+    
+    <!-- Settings -->
+    <string name="settings_messaging_app_description">You can change this for individual contacts in quick list by tapping on the edit button</string>
+    <string name="settings_recent_calls_description">Display recent calls at the top of the main screen for quick access</string>
+    <string name="settings_international_detection_description">Detect international numbers with country code and open WhatsApp or Telegram when the contact card is tapped.</string>
+    <string name="settings_international_detection_disabled">Disabled when SMS is the default messaging app</string>
+    <string name="settings_not_installed">Not installed</string>
+    <string name="settings_version">Version %s</string>
+    
+    <!-- Messaging Apps -->
+    <string name="messaging_app_sms">SMS</string>
+    <string name="messaging_app_whatsapp">WhatsApp</string>
+    <string name="messaging_app_telegram">Telegram</string>
+    
+    <!-- Contact Actions -->
+    <string name="contact_phone_numbers">%d numbers</string>
+    <string name="contact_choose_phone_number">Choose a phone number for %s:</string>
+    <string name="contact_set_actions">Set actions for %s</string>
+    <string name="contact_actions_different">Primary and secondary actions must be different</string>
+    <string name="contact_already_in_quick_list">Already in quick list</string>
+    <string name="contact_add_to_quick_list">Add to quick list</string>
+    <string name="contact_call">Call %s</string>
+    <string name="contact_whatsapp">Send WhatsApp message to %s</string>
+    <string name="contact_sms">Send SMS to %s</string>
+    <string name="contact_telegram">Send Telegram message to %s</string>
+    <string name="contact_remove_from_quick_list">Remove %s from quick contacts</string>
+    <string name="contact_add_to_quick_contacts">Add %s to quick contacts</string>
+    
+    <!-- Content Descriptions -->
+    <string name="cd_search">Search</string>
+    <string name="cd_settings">Settings</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_dialer">Dialer</string>
+    <string name="cd_phone">Phone</string>
+    <string name="cd_contact_photo">Contact photo</string>
+    <string name="cd_permission_granted">Permission granted</string>
+    <string name="cd_drag_to_reorder">Drag to reorder</string>
+    <string name="cd_whatsapp">WhatsApp</string>
+    <string name="cd_sms">SMS</string>
+    <string name="cd_telegram">Telegram</string>
+    
+    <!-- Feedback -->
+    <string name="feedback_subject">Quick Contacts Feedback</string>
+    
+    <!-- Dialog Actions -->
+    <string name="dialog_action_call">call</string>
+    <string name="dialog_action_whatsapp">whatsapp</string>
+    <string name="dialog_action_add">add</string>
+    <string name="dialog_action_sms">sms</string>
+    <string name="dialog_action_telegram">telegram</string>
+    
+    <!-- Shared Preferences -->
+    <string name="pref_quick_contacts">QuickContactsPrefs</string>
+    
+    <!-- Intent Actions -->
+    <string name="intent_send_message">Send message</string>
+    
+    <!-- Log Tags -->
+    <string name="log_tag_quick_contacts">QuickContacts</string>
 </resources>
