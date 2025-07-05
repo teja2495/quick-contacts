@@ -58,7 +58,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences
 
     // Settings preferences
-    private val _isInternationalDetectionEnabled = MutableStateFlow(true)
+    private val _isInternationalDetectionEnabled = MutableStateFlow(false)
     val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled
     
     // Messaging app preference
@@ -253,7 +253,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadSettings() {
-        _isInternationalDetectionEnabled.value = sharedPreferences.getBoolean("international_detection_enabled", true)
+        _isInternationalDetectionEnabled.value = sharedPreferences.getBoolean("international_detection_enabled", false)
         
         // Load messaging app preference with backward compatibility
         val messagingAppString = sharedPreferences.getString("default_messaging_app", null)

@@ -248,6 +248,13 @@ fun QuickContactsApp() {
         }
     }
     
+    // Disable edit mode when home screen loses focus
+    LaunchedEffect(isSearching, isSettingsScreenOpen) {
+        if (isSearching || isSettingsScreenOpen) {
+            editMode = false
+        }
+    }
+    
     // Auto-open settings when permissions are permanently denied after being requested
     LaunchedEffect(arePermissionsPermanentlyDenied(), hasRequestedPermissions, isRequestingPermissions) {
         if (arePermissionsPermanentlyDenied() && hasRequestedPermissions && !isRequestingPermissions) {
@@ -1494,14 +1501,6 @@ fun SettingsScreen(
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
                         
                         Column(
                             modifier = Modifier.weight(1f)
@@ -1518,10 +1517,8 @@ fun SettingsScreen(
                                 text = when {
                                     defaultMessagingApp == MessagingApp.SMS ->
                                         "Disabled when SMS is default messaging app - all numbers use same actions"
-                                    isInternationalDetectionEnabled -> 
-                                        "Automatically detect international numbers and switch default actions" 
                                     else -> 
-                                        "Treat all numbers as domestic - same actions for all contacts"
+                                        "Automatically detect international numbers and set primary action (tap contact card) to WhatsApp or Telegram depending on default messaging app" 
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (defaultMessagingApp == MessagingApp.SMS) 
@@ -1541,54 +1538,6 @@ fun SettingsScreen(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                             )
-                        )
-                    }
-                }
-            }
-            
-            item {
-                // Additional explanation card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            Text(
-                                text = "How it works",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "International Detection:\n${when {
-                                defaultMessagingApp == MessagingApp.SMS -> "• Disabled when SMS is default - all numbers use same actions"
-                                isInternationalDetectionEnabled -> "• International numbers: Tap for messaging, icon to call\n• Domestic numbers: Tap to call, icon for messaging"
-                                else -> "• All numbers: Tap to call, icon for messaging"
-                            }}\n\nMessaging App:\n• ${when (defaultMessagingApp) { MessagingApp.WHATSAPP -> "WhatsApp"; MessagingApp.SMS -> "SMS"; MessagingApp.TELEGRAM -> "Telegram" }} will be used for messaging contacts",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
                     }
                 }
