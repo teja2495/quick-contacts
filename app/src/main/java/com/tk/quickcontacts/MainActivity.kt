@@ -1368,297 +1368,278 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             item {
-                // Messaging App Setting
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                    shape = MaterialTheme.shapes.medium
+                // Messaging App Setting (no Card)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    // Header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        when (defaultMessagingApp) {
+                            MessagingApp.WHATSAPP -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.whatsapp_icon),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            MessagingApp.SMS -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.sms_icon),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            MessagingApp.TELEGRAM -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.telegram_icon),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Default Messaging App",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // SMS Option (always available)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                viewModel.setMessagingApp(MessagingApp.SMS)
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = defaultMessagingApp == MessagingApp.SMS,
+                            onClick = { 
+                                viewModel.setMessagingApp(MessagingApp.SMS)
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "SMS",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    // WhatsApp Option
+                    val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isWhatsAppAvailable) { 
+                                if (isWhatsAppAvailable) {
+                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                }
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = defaultMessagingApp == MessagingApp.WHATSAPP,
+                            onClick = { 
+                                if (isWhatsAppAvailable) {
+                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
+                                }
+                            },
+                            enabled = isWhatsAppAvailable,
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "WhatsApp",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isWhatsAppAvailable) 
+                                    MaterialTheme.colorScheme.onSurface 
+                                else 
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
+                            if (!isWhatsAppAvailable) {
+                                Text(
+                                    text = "Not installed",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                    // Telegram Option
+                    val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isTelegramAvailable) { 
+                                if (isTelegramAvailable) {
+                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                }
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = defaultMessagingApp == MessagingApp.TELEGRAM,
+                            onClick = { 
+                                if (isTelegramAvailable) {
+                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                                }
+                            },
+                            enabled = isTelegramAvailable,
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Telegram",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isTelegramAvailable) 
+                                    MaterialTheme.colorScheme.onSurface 
+                                else 
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
+                            if (!isTelegramAvailable) {
+                                Text(
+                                    text = "Not installed",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            item {
+                // Recent Calls Visibility Setting (no Card)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                        modifier = Modifier.weight(1f)
                     ) {
-                        // Header
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            when (defaultMessagingApp) {
-                                MessagingApp.WHATSAPP -> {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.whatsapp_icon),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                                MessagingApp.SMS -> {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.sms_icon),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                                MessagingApp.TELEGRAM -> {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.telegram_icon),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.width(16.dp))
-                            
-                            Text(
-                                text = "Default Messaging App",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // SMS Option (always available)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { 
-                                    viewModel.setMessagingApp(MessagingApp.SMS)
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = defaultMessagingApp == MessagingApp.SMS,
-                                onClick = { 
-                                    viewModel.setMessagingApp(MessagingApp.SMS)
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "SMS",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                        // WhatsApp Option
-                        val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = isWhatsAppAvailable) { 
-                                    if (isWhatsAppAvailable) {
-                                        viewModel.setMessagingApp(MessagingApp.WHATSAPP)
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = defaultMessagingApp == MessagingApp.WHATSAPP,
-                                onClick = { 
-                                    if (isWhatsAppAvailable) {
-                                        viewModel.setMessagingApp(MessagingApp.WHATSAPP)
-                                    }
-                                },
-                                enabled = isWhatsAppAvailable,
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary,
-                                    disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                    disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "WhatsApp",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (isWhatsAppAvailable) 
-                                        MaterialTheme.colorScheme.onSurface 
-                                    else 
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
-                                if (!isWhatsAppAvailable) {
-                                    Text(
-                                        text = "Not installed",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                }
-                            }
-                        }
-                        // Telegram Option
-                        val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = isTelegramAvailable) { 
-                                    if (isTelegramAvailable) {
-                                        viewModel.setMessagingApp(MessagingApp.TELEGRAM)
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = defaultMessagingApp == MessagingApp.TELEGRAM,
-                                onClick = { 
-                                    if (isTelegramAvailable) {
-                                        viewModel.setMessagingApp(MessagingApp.TELEGRAM)
-                                    }
-                                },
-                                enabled = isTelegramAvailable,
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary,
-                                    disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                    disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Telegram",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (isTelegramAvailable) 
-                                        MaterialTheme.colorScheme.onSurface 
-                                    else 
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
-                                if (!isTelegramAvailable) {
-                                    Text(
-                                        text = "Not installed",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            text = "Show Recent Calls",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Display recent calls at the top of the main screen for quick access",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        checked = isRecentCallsVisible,
+                        onCheckedChange = { viewModel.toggleRecentCallsVisibility() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    )
                 }
             }
             
             item {
-                // Recent Calls Visibility Setting
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                    shape = MaterialTheme.shapes.medium
+                // International Number Detection Setting (no Card)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Show Recent Calls",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            Text(
-                                text = "Display recent calls at the top of the main screen for quick access",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Switch(
-                            checked = isRecentCallsVisible,
-                            onCheckedChange = { viewModel.toggleRecentCallsVisibility() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
+                        Text(
+                            text = "International Number Detection",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = when {
+                                defaultMessagingApp == MessagingApp.SMS ->
+                                    "Disabled when SMS is the default messaging app"
+                                else -> 
+                                    "Detect international numbers with country code and open WhatsApp or Telegram when the contact card is tapped." 
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (defaultMessagingApp == MessagingApp.SMS) 
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        checked = isInternationalDetectionEnabled,
+                        onCheckedChange = { viewModel.toggleInternationalDetection() },
+                        enabled = defaultMessagingApp != MessagingApp.SMS,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    )
                 }
             }
-            
             item {
-                // International Number Detection Setting
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "International Number Detection",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            Text(
-                                text = when {
-                                    defaultMessagingApp == MessagingApp.SMS ->
-                                        "Disabled when SMS is the default messaging app"
-                                    else -> 
-                                        "Automatically detect international numbers and set primary action (tap contact card) to WhatsApp/Telegram." 
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (defaultMessagingApp == MessagingApp.SMS) 
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                else 
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                // Feedback button just below international number detection
+                val context = LocalContext.current
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:quickcontacts.feedback@gmail.com")
+                            putExtra(Intent.EXTRA_SUBJECT, "Quick Contacts Feedback")
                         }
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Switch(
-                            checked = isInternationalDetectionEnabled,
-                            onCheckedChange = { viewModel.toggleInternationalDetection() },
-                            enabled = defaultMessagingApp != MessagingApp.SMS,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
-                        )
-                    }
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text(
+                        text = "Send Feedback",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
+        // Version number at the bottom
         val context = LocalContext.current
         val versionName = try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
