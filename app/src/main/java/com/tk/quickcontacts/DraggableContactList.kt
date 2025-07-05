@@ -843,11 +843,27 @@ fun ContactItem(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
                 val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber)
+                // Route based on which action triggered the dialog
                 when (dialogAction) {
-                    "call" -> onContactClick(contactWithSelectedNumber)
-                    "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
-                    "sms" -> onWhatsAppClick(contactWithSelectedNumber) // Will route to SMS via executeAction
-                    "telegram" -> onWhatsAppClick(contactWithSelectedNumber) // Will route to Telegram via executeAction
+                    "call", "whatsapp", "sms", "telegram" -> {
+                        // Check if this was triggered by primary or secondary action
+                        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                            when (defaultMessagingApp) {
+                                MessagingApp.WHATSAPP -> "WhatsApp"
+                                MessagingApp.SMS -> "SMS"
+                                MessagingApp.TELEGRAM -> "Telegram"
+                            }
+                        } else {
+                            "Call"
+                        }
+                        
+                        // If the dialog action matches the primary action, it was triggered by primary action
+                        if (dialogAction == primaryAction.lowercase()) {
+                            onContactClick(contactWithSelectedNumber) // Execute primary action
+                        } else {
+                            onWhatsAppClick(contactWithSelectedNumber) // Execute secondary action
+                        }
+                    }
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -906,13 +922,8 @@ fun ContactItem(
                             dialogAction = primaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            when (primaryAction) {
-                                "Call" -> onContactClick(contact)
-                                "WhatsApp" -> onWhatsAppClick(contact)
-                                "SMS" -> onWhatsAppClick(contact) // Will route to SMS via executeAction
-                                "Telegram" -> onWhatsAppClick(contact) // Will route to Telegram via executeAction
-                                else -> onContactClick(contact) // Fallback
-                            }
+                            // Primary action always calls onContactClick (which executes primary action)
+                            onContactClick(contact)
                         }
                     }
                     // In edit mode, clicks are disabled for contact actions
@@ -1036,13 +1047,8 @@ fun ContactItem(
                             dialogAction = secondaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            when (secondaryAction) {
-                                "Call" -> onContactClick(contact)
-                                "WhatsApp" -> onWhatsAppClick(contact)
-                                "SMS" -> onWhatsAppClick(contact) // Will route to SMS via executeAction
-                                "Telegram" -> onWhatsAppClick(contact) // Will route to Telegram via executeAction
-                                else -> onContactClick(contact) // Fallback
-                            }
+                            // Secondary action always calls onWhatsAppClick (which executes secondary action)
+                            onWhatsAppClick(contact)
                         }
                     },
                     modifier = Modifier.size(48.dp)
