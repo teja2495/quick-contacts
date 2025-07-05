@@ -307,11 +307,11 @@ fun QuickContactsApp() {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Search results in reverse order (most relevant closer to search bar)
+                        // Search results with top result at bottom (most relevant closer to search bar)
                         SearchResultsContent(
                             viewModel = viewModel,
                             searchQuery = searchQuery,
-                            searchResults = searchResults.reversed(), // Reverse the order
+                            searchResults = searchResults,
                             selectedContacts = selectedContacts,
                             modifier = Modifier.weight(1f)
                         )
