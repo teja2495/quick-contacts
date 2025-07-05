@@ -1016,6 +1016,27 @@ fun ContactItem(
                     fontWeight = FontWeight.Medium
                 )
                 
+                // Show primary action text (always visible, not just in edit mode)
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                // Get the primary action for this contact
+                val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                    when (defaultMessagingApp) {
+                        MessagingApp.WHATSAPP -> "WhatsApp"
+                        MessagingApp.SMS -> "SMS"
+                        MessagingApp.TELEGRAM -> "Telegram"
+                    }
+                } else {
+                    "Call"
+                }
+                
+                Text(
+                    text = "$primaryAction",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    fontSize = 11.sp
+                )
+                
                 // Show phone number in edit mode
                 if (editMode) {
                     Spacer(modifier = Modifier.height(4.dp))
