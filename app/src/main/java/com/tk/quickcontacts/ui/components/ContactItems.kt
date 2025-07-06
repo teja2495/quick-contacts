@@ -170,7 +170,7 @@ fun ContactItem(
                     contentDescription = "Drag to reorder",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
-                        .padding(end = 8.dp)
+                        .padding(end = 16.dp)
                         .then(
                             if (reorderState != null) {
                                 Modifier.detectReorder(reorderState)
