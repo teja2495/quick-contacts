@@ -25,6 +25,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -146,6 +151,9 @@ fun QuickContactsApp() {
     
     // Track if we're currently requesting permissions
     var isRequestingPermissions by remember { mutableStateOf(false) }
+    
+    // Track if user has denied permissions after first request
+    var hasDeniedPermissionsAfterFirstRequest by remember { mutableStateOf(false) }
 
     // Check if permissions are permanently denied
     fun arePermissionsPermanentlyDenied(): Boolean {
@@ -177,6 +185,8 @@ fun QuickContactsApp() {
             data = Uri.fromParts("package", context.packageName, null)
         }
         context.startActivity(intent)
+        // Refresh permissions after a short delay to catch changes when user returns
+        // This will be handled by the LaunchedEffect that listens to onResume
     }
 
     // Multiple permissions launcher
@@ -188,6 +198,11 @@ fun QuickContactsApp() {
         hasCallLogPermission = permissions[Manifest.permission.READ_CALL_LOG] ?: false
         hasRequestedPermissions = true // Mark that we've requested permissions
         isRequestingPermissions = false // We're no longer requesting permissions
+        
+        // Check if any permission was denied after the first request
+        if (hasRequestedPermissions && (!hasCallPermission || !hasContactsPermission || !hasCallLogPermission)) {
+            hasDeniedPermissionsAfterFirstRequest = true
+        }
     }
 
     // Contact states
@@ -265,15 +280,39 @@ fun QuickContactsApp() {
         }
     }
     
-    // Auto-open settings when permissions are permanently denied after being requested
-    LaunchedEffect(arePermissionsPermanentlyDenied(), hasRequestedPermissions, isRequestingPermissions) {
-        if (arePermissionsPermanentlyDenied() && hasRequestedPermissions && !isRequestingPermissions) {
-            // Add a small delay to ensure permission dialog has closed
-            delay(500)
-            // Double-check the condition after delay
-            if (arePermissionsPermanentlyDenied() && !isRequestingPermissions) {
-                openAppSettings()
-            }
+    // Note: Removed auto-opening settings when permissions are permanently denied
+    // Now settings are only opened when user explicitly taps "Grant Permissions" after denying
+    
+    // Function to refresh permission states
+    fun refreshPermissionStates() {
+        hasCallPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CALL_PHONE
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        hasContactsPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_CONTACTS
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        hasCallLogPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_CALL_LOG
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    // Refresh permissions when app becomes active
+    LaunchedEffect(Unit) {
+        // Initial check
+        refreshPermissionStates()
+    }
+    
+    // Refresh permissions when returning from settings
+    LaunchedEffect(Unit) {
+        // Check permissions every 1 second to catch changes from settings
+        while (true) {
+            delay(1000)
+            refreshPermissionStates()
         }
     }
 
@@ -347,7 +386,8 @@ fun QuickContactsApp() {
                         hasCallLogPermission = hasCallLogPermission,
                         arePermissionsPermanentlyDenied = arePermissionsPermanentlyDenied(),
                         onRequestPermissions = {
-                            if (arePermissionsPermanentlyDenied()) {
+                            if (arePermissionsPermanentlyDenied() && hasDeniedPermissionsAfterFirstRequest) {
+                                // Only open settings if user has denied permissions after first request
                                 openAppSettings()
                             } else {
                                 hasRequestedPermissions = true
@@ -405,64 +445,8 @@ fun QuickContactsApp() {
                     }
                 }
                 
-                selectedContacts.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Scrollable content
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            // Recent calls section (only show if enabled)
-                            if (isRecentCallsVisible) {
-                                RecentCallsSection(
-                                    recentCalls = filteredRecentCalls,
-                                    onContactClick = { contact ->
-                                        viewModel.makePhoneCall(context, contact.phoneNumber)
-                                    },
-                                    onWhatsAppClick = { contact ->
-                                        viewModel.openMessagingApp(context, contact.phoneNumber)
-                                    },
-                                    onContactImageClick = { contact ->
-                                        viewModel.openContactInContactsApp(context, contact)
-                                    },
-                                    onExpandedChange = { expanded ->
-                                        isRecentCallsExpanded = expanded
-                                        // Reset edit mode when expanding recent calls
-                                        if (expanded) {
-                                            editMode = false
-                                        }
-                                    },
-                                    isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                    defaultMessagingApp = defaultMessagingApp,
-                                    selectedContacts = selectedContacts
-                                )
-                            }
-                            
-                            // Empty contacts screen (hide when recent calls are expanded)
-                            if (!isRecentCallsExpanded || !isRecentCallsVisible) {
-                                EmptyContactsScreen()
-                            }
-                        }
-                        
-                        // Fixed search bar at bottom
-                        FakeSearchBar(
-                            onClick = { 
-                                isSearching = true
-                                viewModel.updateSearchQuery("")
-                            },
-                            onDialerClick = {
-                                viewModel.openDialer(context)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
-                                .imePadding()
-                        )
-                    }
-                }
-                
                 else -> {
+                    // Home screen - show either empty state or contacts with edit functionality
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -496,93 +480,99 @@ fun QuickContactsApp() {
                                 )
                             }
                             
-                            // Favourite header with edit functionality (hide when recent calls are expanded)
-                            if (selectedContacts.isNotEmpty() && (!isRecentCallsExpanded || !isRecentCallsVisible)) {
-                                Column {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 24.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.title_quick_list),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        
-                                        Text(
-                                            text = if (editMode) stringResource(R.string.action_done) else stringResource(R.string.action_edit),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.primary,
+                            // Show empty state when no contacts selected
+                            if (selectedContacts.isEmpty()) {
+                                if (!isRecentCallsExpanded || !isRecentCallsVisible) {
+                                    EmptyContactsScreen()
+                                }
+                            } else {
+                                // Show contacts with edit functionality when contacts are selected
+                                if (!isRecentCallsExpanded || !isRecentCallsVisible) {
+                                    Column {
+                                        // Favourite header with edit functionality
+                                        Row(
                                             modifier = Modifier
-                                                .clickable { editMode = !editMode }
-                                                .padding(end = 10.dp)
-                                        )
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.title_quick_list),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            
+                                            Text(
+                                                text = if (editMode) stringResource(R.string.action_done) else stringResource(R.string.action_edit),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier
+                                                    .clickable { editMode = !editMode }
+                                                    .padding(end = 10.dp)
+                                            )
+                                        }
+                                        
+                                        // Show hint text in edit mode
+                                        if (editMode) {
+                                            Text(
+                                                text = stringResource(R.string.edit_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                                            )
+                                        }
                                     }
                                     
-                                    // Show hint text in edit mode
-                                    if (editMode) {
-                                        Text(
-                                            text = stringResource(R.string.edit_hint),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-                                        )
-                                    }
+                                    // Quick contacts list
+                                    ContactList(
+                                        contacts = filteredSelectedContacts,
+                                        onContactClick = { contact ->
+                                            // Check if contact has custom actions
+                                            val customActions = customActionPreferences[contact.id]
+                                            if (customActions != null) {
+                                                viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
+                                            } else {
+                                                viewModel.makePhoneCall(context, contact.phoneNumber)
+                                            }
+                                        },
+                                        editMode = editMode,
+                                        onDeleteContact = { contact ->
+                                            viewModel.removeContact(contact)
+                                        },
+                                        onMove = { from, to ->
+                                            viewModel.moveContact(from, to)
+                                        },
+                                        onWhatsAppClick = { contact ->
+                                            // Check if contact has custom actions
+                                            val customActions = customActionPreferences[contact.id]
+                                            if (customActions != null) {
+                                                viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
+                                            } else {
+                                                viewModel.openMessagingApp(context, contact.phoneNumber)
+                                            }
+                                        },
+                                        onContactImageClick = { contact ->
+                                            viewModel.openContactInContactsApp(context, contact)
+                                        },
+                                        onLongClick = { contact ->
+                                            // Long click handled within ContactItem in edit mode
+                                        },
+                                        onSetCustomActions = { contact, primaryAction, secondaryAction ->
+                                            viewModel.setCustomActions(contact.id, primaryAction, secondaryAction)
+                                        },
+                                        customActionPreferences = customActionPreferences,
+                                        isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
+                                        defaultMessagingApp = defaultMessagingApp,
+                                        availableMessagingApps = availableMessagingApps,
+                                        selectedContacts = selectedContacts,
+                                        onExecuteAction = { context, action, phoneNumber ->
+                                            viewModel.executeAction(context, action, phoneNumber)
+                                        }
+                                    )
                                 }
-                            }
-                            
-                            // Quick contacts list (hide when recent calls are expanded)
-                            if (!isRecentCallsExpanded || !isRecentCallsVisible) {
-                                ContactList(
-                                    contacts = filteredSelectedContacts,
-                                    onContactClick = { contact ->
-                                        // Check if contact has custom actions
-                                        val customActions = customActionPreferences[contact.id]
-                                        if (customActions != null) {
-                                            viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
-                                        } else {
-                                            viewModel.makePhoneCall(context, contact.phoneNumber)
-                                        }
-                                    },
-                                    editMode = editMode,
-                                    onDeleteContact = { contact ->
-                                        viewModel.removeContact(contact)
-                                    },
-                                    onMove = { from, to ->
-                                        viewModel.moveContact(from, to)
-                                    },
-                                    onWhatsAppClick = { contact ->
-                                        // Check if contact has custom actions
-                                        val customActions = customActionPreferences[contact.id]
-                                        if (customActions != null) {
-                                            viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
-                                        } else {
-                                            viewModel.openMessagingApp(context, contact.phoneNumber)
-                                        }
-                                    },
-                                    onContactImageClick = { contact ->
-                                        viewModel.openContactInContactsApp(context, contact)
-                                    },
-                                    onLongClick = { contact ->
-                                        // Long click handled within ContactItem in edit mode
-                                    },
-                                    onSetCustomActions = { contact, primaryAction, secondaryAction ->
-                                        viewModel.setCustomActions(contact.id, primaryAction, secondaryAction)
-                                    },
-                                    customActionPreferences = customActionPreferences,
-                                    isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
-                                    defaultMessagingApp = defaultMessagingApp,
-                                    availableMessagingApps = availableMessagingApps,
-                                    selectedContacts = selectedContacts,
-                                    onExecuteAction = { context, action, phoneNumber ->
-                                        viewModel.executeAction(context, action, phoneNumber)
-                                    }
-                                )
                             }
                         }
                         
