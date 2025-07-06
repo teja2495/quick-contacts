@@ -233,7 +233,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Display recent calls at the top of the main screen for quick access",
+                            text = "Display recent calls at the top of the home screen for quick access",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -272,7 +272,7 @@ fun SettingsScreen(
                                 defaultMessagingApp == MessagingApp.SMS ->
                                     "Disabled when SMS is the default messaging app"
                                 else -> 
-                                    "Detect international numbers with country code and open WhatsApp or Telegram when the contact card is tapped." 
+                                    "For international numbers, tapping the card opens WhatsApp or Telegram." 
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (defaultMessagingApp == MessagingApp.SMS) 
