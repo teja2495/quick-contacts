@@ -151,7 +151,9 @@ fun RecentCallsSection(
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
-    selectedContacts: List<Contact> = emptyList()
+    selectedContacts: List<Contact> = emptyList(),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     com.tk.quickcontacts.ui.components.RecentCallsSection(
         recentCalls = recentCalls,
@@ -162,7 +164,9 @@ fun RecentCallsSection(
         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
         modifier = modifier,
-        selectedContacts = selectedContacts
+        selectedContacts = selectedContacts,
+        availableMessagingApps = availableMessagingApps,
+        onExecuteAction = onExecuteAction
     )
 }
 
@@ -175,7 +179,9 @@ fun RecentCallVerticalItem(
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
-    selectedContacts: List<Contact> = emptyList()
+    selectedContacts: List<Contact> = emptyList(),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     com.tk.quickcontacts.ui.components.RecentCallVerticalItem(
         contact = contact,
@@ -185,7 +191,9 @@ fun RecentCallVerticalItem(
         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
         modifier = modifier,
-        selectedContacts = selectedContacts
+        selectedContacts = selectedContacts,
+        availableMessagingApps = availableMessagingApps,
+        onExecuteAction = onExecuteAction
     )
 }
 

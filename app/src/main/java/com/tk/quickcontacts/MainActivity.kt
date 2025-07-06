@@ -426,7 +426,11 @@ fun QuickContactsApp() {
                             selectedContacts = selectedContacts,
                             isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                             defaultMessagingApp = defaultMessagingApp,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            availableMessagingApps = availableMessagingApps,
+                            onExecuteAction = { context, action, phoneNumber ->
+                                viewModel.executeAction(context, action, phoneNumber)
+                            }
                         )
                         
                         // Keep the search bar at the bottom
@@ -478,7 +482,11 @@ fun QuickContactsApp() {
                                     },
                                     isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,
                                     defaultMessagingApp = defaultMessagingApp,
-                                    selectedContacts = selectedContacts
+                                    selectedContacts = selectedContacts,
+                                    availableMessagingApps = availableMessagingApps,
+                                    onExecuteAction = { context, action, phoneNumber ->
+                                        viewModel.executeAction(context, action, phoneNumber)
+                                    }
                                 )
                             }
                             

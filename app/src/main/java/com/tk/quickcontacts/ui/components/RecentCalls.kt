@@ -17,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.models.MessagingApp
 
@@ -30,7 +31,9 @@ fun RecentCallsSection(
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
-    selectedContacts: List<Contact> = emptyList()
+    selectedContacts: List<Contact> = emptyList(),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     if (recentCalls.isNotEmpty()) {
         var isExpanded by remember { mutableStateOf(false) }
@@ -104,7 +107,9 @@ fun RecentCallsSection(
                                 isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                                 defaultMessagingApp = defaultMessagingApp,
                                 modifier = Modifier.fillMaxWidth(),
-                                selectedContacts = selectedContacts
+                                selectedContacts = selectedContacts,
+                                availableMessagingApps = availableMessagingApps,
+                                onExecuteAction = onExecuteAction
                             )
                         }
                     }
@@ -132,7 +137,9 @@ fun RecentCallsSection(
                                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                                     defaultMessagingApp = defaultMessagingApp,
                                     modifier = Modifier.fillMaxWidth(),
-                                    selectedContacts = selectedContacts
+                                    selectedContacts = selectedContacts,
+                                    availableMessagingApps = availableMessagingApps,
+                                    onExecuteAction = onExecuteAction
                                 )
                             }
                         }

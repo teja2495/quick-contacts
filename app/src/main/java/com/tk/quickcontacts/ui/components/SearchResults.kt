@@ -19,6 +19,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
@@ -35,7 +36,9 @@ fun SearchResultsContent(
     selectedContacts: List<Contact>,
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -158,7 +161,9 @@ fun SearchResultsContent(
                     selectedContacts = selectedContacts,
                     isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    availableMessagingApps = availableMessagingApps,
+                    onExecuteAction = onExecuteAction
                 )
             }
         }
@@ -178,10 +183,13 @@ fun SearchResultItem(
     selectedContacts: List<Contact>,
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
+    var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
@@ -199,6 +207,8 @@ fun SearchResultItem(
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
+                    "sms" -> onExecuteAction(context, "SMS", selectedNumber)
+                    "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
                     "add" -> onAddContact(contactWithSelectedNumber)
                 }
                 showPhoneNumberDialog = false
@@ -223,6 +233,53 @@ fun SearchResultItem(
         )
     }
     
+    // Contact actions dialog for long press
+    if (showContactActionsDialog) {
+        ContactActionsDialog(
+            contact = contact,
+            onCall = { contactToCall ->
+                if (contactToCall.phoneNumbers.size > 1) {
+                    dialogAction = "call"
+                    showPhoneNumberDialog = true
+                } else {
+                    onContactClick(contactToCall)
+                }
+                showContactActionsDialog = false
+            },
+            onSms = { contactToSms ->
+                if (contactToSms.phoneNumbers.size > 1) {
+                    dialogAction = "sms"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "SMS", contactToSms.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onWhatsApp = { contactToWhatsApp ->
+                if (contactToWhatsApp.phoneNumbers.size > 1) {
+                    dialogAction = "whatsapp"
+                    showPhoneNumberDialog = true
+                } else {
+                    onWhatsAppClick(contactToWhatsApp)
+                }
+                showContactActionsDialog = false
+            },
+            onTelegram = { contactToTelegram ->
+                if (contactToTelegram.phoneNumbers.size > 1) {
+                    dialogAction = "telegram"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onDismiss = {
+                showContactActionsDialog = false
+            },
+            availableMessagingApps = availableMessagingApps
+        )
+    }
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -241,7 +298,7 @@ fun SearchResultItem(
                     }
                 },
                 onLongClick = {
-                    onContactImageClick(contact)
+                    showContactActionsDialog = true
                 }
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),

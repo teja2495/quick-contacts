@@ -60,6 +60,7 @@ fun ContactItem(
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showActionToggleDialog by remember { mutableStateOf(false) }
+    var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
@@ -75,8 +76,10 @@ fun ContactItem(
                     phoneNumbers = listOf(selectedNumber)
                 )
                 when (dialogAction) {
-                    "call" -> onContactClick(contactWithSelectedNumber)
-                    "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
+                    "call" -> onExecuteAction(context, "Call", selectedNumber)
+                    "whatsapp" -> onExecuteAction(context, "WhatsApp", selectedNumber)
+                    "sms" -> onExecuteAction(context, "SMS", selectedNumber)
+                    "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -115,6 +118,53 @@ fun ContactItem(
         )
     }
     
+    // Contact actions dialog for long press
+    if (showContactActionsDialog) {
+        ContactActionsDialog(
+            contact = contact,
+            onCall = { contactToCall ->
+                if (contactToCall.phoneNumbers.size > 1) {
+                    dialogAction = "call"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "Call", contactToCall.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onSms = { contactToSms ->
+                if (contactToSms.phoneNumbers.size > 1) {
+                    dialogAction = "sms"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "SMS", contactToSms.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onWhatsApp = { contactToWhatsApp ->
+                if (contactToWhatsApp.phoneNumbers.size > 1) {
+                    dialogAction = "whatsapp"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "WhatsApp", contactToWhatsApp.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onTelegram = { contactToTelegram ->
+                if (contactToTelegram.phoneNumbers.size > 1) {
+                    dialogAction = "telegram"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onDismiss = {
+                showContactActionsDialog = false
+            },
+            availableMessagingApps = availableMessagingApps
+        )
+    }
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -147,7 +197,9 @@ fun ContactItem(
                     }
                 },
                 onLongClick = {
-                    // No longer needed for edit mode
+                    if (!editMode) {
+                        showContactActionsDialog = true
+                    }
                 }
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -380,6 +432,7 @@ fun ContactItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RecentCallVerticalItem(
     contact: Contact,
@@ -389,10 +442,13 @@ fun RecentCallVerticalItem(
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
-    selectedContacts: List<Contact> = emptyList()
+    selectedContacts: List<Contact> = emptyList(),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
+    var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
@@ -410,6 +466,8 @@ fun RecentCallVerticalItem(
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
+                    "sms" -> onExecuteAction(context, "SMS", selectedNumber)
+                    "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -428,9 +486,73 @@ fun RecentCallVerticalItem(
         )
     }
     
+    // Contact actions dialog for long press
+    if (showContactActionsDialog) {
+        ContactActionsDialog(
+            contact = contact,
+            onCall = { contactToCall ->
+                if (contactToCall.phoneNumbers.size > 1) {
+                    dialogAction = "call"
+                    showPhoneNumberDialog = true
+                } else {
+                    onContactClick(contactToCall)
+                }
+                showContactActionsDialog = false
+            },
+            onSms = { contactToSms ->
+                if (contactToSms.phoneNumbers.size > 1) {
+                    dialogAction = "sms"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "SMS", contactToSms.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onWhatsApp = { contactToWhatsApp ->
+                if (contactToWhatsApp.phoneNumbers.size > 1) {
+                    dialogAction = "whatsapp"
+                    showPhoneNumberDialog = true
+                } else {
+                    onWhatsAppClick(contactToWhatsApp)
+                }
+                showContactActionsDialog = false
+            },
+            onTelegram = { contactToTelegram ->
+                if (contactToTelegram.phoneNumbers.size > 1) {
+                    dialogAction = "telegram"
+                    showPhoneNumberDialog = true
+                } else {
+                    onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
+                }
+                showContactActionsDialog = false
+            },
+            onDismiss = {
+                showContactActionsDialog = false
+            },
+            availableMessagingApps = availableMessagingApps
+        )
+    }
+    
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .combinedClickable(
+                onClick = { 
+                    if (contact.phoneNumbers.size > 1) {
+                        dialogAction = if (isInternational) "whatsapp" else "call"
+                        showPhoneNumberDialog = true
+                    } else {
+                        if (isInternational) {
+                            onWhatsAppClick(contact)
+                        } else {
+                            onContactClick(contact)
+                        }
+                    }
+                },
+                onLongClick = {
+                    showContactActionsDialog = true
+                }
+            )
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -472,25 +594,13 @@ fun RecentCallVerticalItem(
         
         Spacer(modifier = Modifier.width(12.dp))
         
-        // Contact Name - for international: open WhatsApp, for domestic: call
+        // Contact Name - removed clickable modifier since entire row is now clickable
         Text(
             text = contact.name,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier
                 .weight(1f)
-                .clickable { 
-                    if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational) "whatsapp" else "call"
-                        showPhoneNumberDialog = true
-                    } else {
-                        if (isInternational) {
-                            onWhatsAppClick(contact)
-                        } else {
-                            onContactClick(contact)
-                        }
-                    }
-                }
                 .padding(vertical = 4.dp)
         )
         
