@@ -3,21 +3,25 @@ package com.tk.quickcontacts
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import com.tk.quickcontacts.models.MessagingApp
+import androidx.lifecycle.viewModelScope
 import com.tk.quickcontacts.models.CustomActions
+import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.repository.PreferencesRepository
 import com.tk.quickcontacts.services.ContactService
 import com.tk.quickcontacts.services.MessagingService
 import com.tk.quickcontacts.services.PhoneService
+import com.tk.quickcontacts.utils.ContactUtils
+import com.tk.quickcontacts.utils.PhoneNumberUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 
 class ContactsViewModel(application: Application) : AndroidViewModel(application) {
     // Services
@@ -28,43 +32,43 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     // State flows
     private val _selectedContacts = MutableStateFlow<List<Contact>>(emptyList())
-    val selectedContacts: StateFlow<List<Contact>> = _selectedContacts
+    val selectedContacts: StateFlow<List<Contact>> = _selectedContacts.asStateFlow()
 
     private val _recentCalls = MutableStateFlow<List<Contact>>(emptyList())
-    val recentCalls: StateFlow<List<Contact>> = _recentCalls
+    val recentCalls: StateFlow<List<Contact>> = _recentCalls.asStateFlow()
     
     private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     
     private val _filteredSelectedContacts = MutableStateFlow<List<Contact>>(emptyList())
-    val filteredSelectedContacts: StateFlow<List<Contact>> = _filteredSelectedContacts
+    val filteredSelectedContacts: StateFlow<List<Contact>> = _filteredSelectedContacts.asStateFlow()
     
     private val _filteredRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
-    val filteredRecentCalls: StateFlow<List<Contact>> = _filteredRecentCalls
+    val filteredRecentCalls: StateFlow<List<Contact>> = _filteredRecentCalls.asStateFlow()
     
     private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
-    val searchResults: StateFlow<List<Contact>> = _searchResults
+    val searchResults: StateFlow<List<Contact>> = _searchResults.asStateFlow()
 
     // Action preferences
     private val _actionPreferences = MutableStateFlow<Map<String, Boolean>>(emptyMap())
-    val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences
+    val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences.asStateFlow()
 
     // Custom action preferences
     private val _customActionPreferences = MutableStateFlow<Map<String, CustomActions>>(emptyMap())
-    val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences
+    val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences.asStateFlow()
 
     // Settings preferences
     private val _isInternationalDetectionEnabled = MutableStateFlow(false)
-    val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled
+    val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled.asStateFlow()
     
     private val _isRecentCallsVisible = MutableStateFlow(true)
-    val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible
+    val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible.asStateFlow()
     
     private val _defaultMessagingApp = MutableStateFlow(MessagingApp.WHATSAPP)
-    val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp
+    val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp.asStateFlow()
     
     private val _availableMessagingApps = MutableStateFlow<Set<MessagingApp>>(emptySet())
-    val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps
+    val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps.asStateFlow()
     
     // Backward compatibility
     val useWhatsAppAsDefault: StateFlow<Boolean> = _defaultMessagingApp.map { it == MessagingApp.WHATSAPP }
@@ -174,23 +178,40 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     // Search and filtering
     fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-        filterContacts()
-        
-        // Cancel previous search job
-        searchJob?.cancel()
-        
-        // Debounce search for all contacts
-        if (query.isNotEmpty()) {
-            searchJob = CoroutineScope(Dispatchers.IO).launch {
-                delay(searchDebounceDelay)
-                if (query == _searchQuery.value) { // Only search if query hasn't changed
-                    val results = contactService.searchContacts(getApplication(), query)
-                    _searchResults.value = results
+        try {
+            _searchQuery.value = query
+            filterContacts()
+            
+            // Cancel previous search job
+            searchJob?.cancel()
+            
+            // Debounce search for all contacts
+            if (query.isNotEmpty()) {
+                searchJob = CoroutineScope(Dispatchers.IO).launch {
+                    delay(searchDebounceDelay)
+                    if (query == _searchQuery.value) { // Only search if query hasn't changed
+                        try {
+                            val results = contactService.searchContacts(getApplication(), query)
+                            
+                            // Validate search results
+                            val validResults = results.filter { ContactUtils.isValidContact(it) }
+                            
+                            if (validResults.size != results.size) {
+                                android.util.Log.w("ContactsViewModel", "Removing ${results.size - validResults.size} invalid search results")
+                            }
+                            
+                            _searchResults.value = validResults
+                        } catch (e: Exception) {
+                            android.util.Log.e("ContactsViewModel", "Error searching contacts", e)
+                            _searchResults.value = emptyList()
+                        }
+                    }
                 }
+            } else {
+                _searchResults.value = emptyList()
             }
-        } else {
-            _searchResults.value = emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error updating search query", e)
         }
     }
     
@@ -221,13 +242,43 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     // Data loading and saving
     private fun loadContacts() {
-        val contacts = preferencesRepository.loadContacts()
-        _selectedContacts.value = contacts
-        filterContacts()
+        try {
+            val contacts = preferencesRepository.loadContacts()
+            
+            // Validate and sanitize loaded contacts
+            val validContacts = contacts.mapNotNull { contact ->
+                if (ContactUtils.isValidContact(contact)) {
+                    ContactUtils.sanitizeContact(contact)
+                } else {
+                    android.util.Log.w("ContactsViewModel", "Removing invalid contact from storage: ${contact.id}")
+                    null
+                }
+            }
+            
+            _selectedContacts.value = validContacts
+            android.util.Log.d("ContactsViewModel", "Loaded ${validContacts.size} valid contacts")
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error loading contacts", e)
+            _selectedContacts.value = emptyList()
+        }
     }
 
     private fun saveContacts() {
-        preferencesRepository.saveContacts(_selectedContacts.value)
+        try {
+            val contacts = _selectedContacts.value
+            
+            // Validate all contacts before saving
+            val validContacts = contacts.filter { ContactUtils.isValidContact(it) }
+            
+            if (validContacts.size != contacts.size) {
+                android.util.Log.w("ContactsViewModel", "Removing ${contacts.size - validContacts.size} invalid contacts before saving")
+                _selectedContacts.value = validContacts
+            }
+            
+            preferencesRepository.saveContacts(validContacts)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error saving contacts", e)
+        }
     }
 
     private fun loadActionPreferences() {
@@ -311,53 +362,122 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     // Contact management
     fun addContact(contact: Contact) {
-        val currentList = _selectedContacts.value.toMutableList()
-        if (!currentList.any { it.id == contact.id }) {
-            currentList.add(contact)
-            _selectedContacts.value = currentList
-            saveContacts()
-            filterContacts()
+        try {
+            // Validate contact before adding
+            if (!ContactUtils.isValidContact(contact)) {
+                android.util.Log.w("ContactsViewModel", "Invalid contact cannot be added: ${contact.id}")
+                return
+            }
+            
+            val sanitizedContact = ContactUtils.sanitizeContact(contact)
+            if (sanitizedContact == null) {
+                android.util.Log.w("ContactsViewModel", "Contact sanitization failed: ${contact.id}")
+                return
+            }
+            
+            val currentList = _selectedContacts.value.toMutableList()
+            if (!currentList.any { it.id == sanitizedContact.id }) {
+                currentList.add(sanitizedContact)
+                _selectedContacts.value = currentList
+                saveContacts()
+                filterContacts()
+                
+                // Validate state consistency
+                validateStateConsistency()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error adding contact: ${contact.id}", e)
         }
     }
 
     fun removeContact(contact: Contact) {
-        val currentList = _selectedContacts.value.toMutableList()
-        currentList.removeAll { it.id == contact.id }
-        _selectedContacts.value = currentList
-        saveContacts()
-        filterContacts()
-    }
-
-    fun moveContact(fromIndex: Int, toIndex: Int) {
-        val currentList = _selectedContacts.value.toMutableList()
-        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
-            val contact = currentList.removeAt(fromIndex)
-            currentList.add(toIndex, contact)
+        try {
+            val currentList = _selectedContacts.value.toMutableList()
+            currentList.removeAll { it.id == contact.id }
             _selectedContacts.value = currentList
             saveContacts()
             filterContacts()
+            
+            // Validate state consistency
+            validateStateConsistency()
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error removing contact: ${contact.id}", e)
         }
     }
 
-    // Action execution
+    fun moveContact(fromIndex: Int, toIndex: Int) {
+        try {
+            val currentList = _selectedContacts.value.toMutableList()
+            if (fromIndex in currentList.indices && toIndex in currentList.indices) {
+                val contact = currentList.removeAt(fromIndex)
+                currentList.add(toIndex, contact)
+                _selectedContacts.value = currentList
+                saveContacts()
+                filterContacts()
+                
+                // Validate state consistency
+                validateStateConsistency()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error moving contact from $fromIndex to $toIndex", e)
+        }
+    }
+
+    // Action execution with validation
     fun makePhoneCall(context: Context, phoneNumber: String) {
-        phoneService.makePhoneCall(context, phoneNumber)
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+                android.util.Log.w("ContactsViewModel", "Invalid phone number for call: $phoneNumber")
+                return
+            }
+            phoneService.makePhoneCall(context, phoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error making phone call to: $phoneNumber", e)
+        }
     }
     
     fun openDialer(context: Context) {
-        phoneService.openDialer(context)
+        try {
+            phoneService.openDialer(context)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening dialer", e)
+        }
     }
     
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
-        messagingService.openWhatsAppChat(context, phoneNumber)
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+                android.util.Log.w("ContactsViewModel", "Invalid phone number for WhatsApp: $phoneNumber")
+                return
+            }
+            messagingService.openWhatsAppChat(context, phoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening WhatsApp chat for: $phoneNumber", e)
+        }
     }
 
     fun openSmsApp(context: Context, phoneNumber: String) {
-        messagingService.openSmsApp(context, phoneNumber)
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+                android.util.Log.w("ContactsViewModel", "Invalid phone number for SMS: $phoneNumber")
+                return
+            }
+            messagingService.openSmsApp(context, phoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening SMS app for: $phoneNumber", e)
+        }
     }
 
     fun openTelegramChat(context: Context, phoneNumber: String) {
-        messagingService.openTelegramChat(context, phoneNumber)
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+                android.util.Log.w("ContactsViewModel", "Invalid phone number for Telegram: $phoneNumber")
+                return
+            }
+            messagingService.openTelegramChat(context, phoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Telegram chat for: $phoneNumber", e)
+        }
     }
 
     fun openMessagingApp(context: Context, phoneNumber: String) {
@@ -374,13 +494,34 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openContactInContactsApp(context: Context, contact: Contact) {
-        phoneService.openContactInContactsApp(context, contact)
+        try {
+            if (!ContactUtils.isValidContact(contact)) {
+                android.util.Log.w("ContactsViewModel", "Invalid contact for opening in contacts app: ${contact.id}")
+                return
+            }
+            phoneService.openContactInContactsApp(context, contact)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening contact in contacts app: ${contact.id}", e)
+        }
     }
 
     fun loadRecentCalls(context: Context) {
-        val recentCallsList = contactService.loadRecentCalls(context, _selectedContacts.value)
-        _recentCalls.value = recentCallsList
-        filterContacts()
+        try {
+            val recentCalls = contactService.loadRecentCalls(context, _selectedContacts.value)
+            
+            // Validate recent calls
+            val validRecentCalls = recentCalls.filter { ContactUtils.isValidContact(it) }
+            
+            if (validRecentCalls.size != recentCalls.size) {
+                android.util.Log.w("ContactsViewModel", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls")
+            }
+            
+            _recentCalls.value = validRecentCalls
+            filterContacts()
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error loading recent calls", e)
+            _recentCalls.value = emptyList()
+        }
     }
     
     fun refreshAvailableMessagingApps() {
@@ -389,5 +530,47 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     fun formatPhoneNumber(phoneNumber: String): String {
         return phoneService.formatPhoneNumber(phoneNumber)
+    }
+
+    // State consistency validation
+    private fun validateStateConsistency() {
+        try {
+            val selectedContacts = _selectedContacts.value
+            val filteredContacts = _filteredSelectedContacts.value
+            
+            // Check if filtered contacts are a subset of selected contacts
+            val selectedIds = selectedContacts.map { it.id }.toSet()
+            val filteredIds = filteredContacts.map { it.id }.toSet()
+            
+            if (!filteredIds.all { it in selectedIds }) {
+                android.util.Log.w("ContactsViewModel", "State inconsistency detected: filtered contacts not in selected contacts")
+                // Fix the inconsistency
+                filterContacts()
+            }
+            
+            // Validate all contacts in the lists
+            val invalidSelected = selectedContacts.filter { !ContactUtils.isValidContact(it) }
+            if (invalidSelected.isNotEmpty()) {
+                android.util.Log.w("ContactsViewModel", "Found ${invalidSelected.size} invalid contacts in selected list")
+                // Remove invalid contacts
+                val validContacts = selectedContacts.filter { ContactUtils.isValidContact(it) }
+                _selectedContacts.value = validContacts
+                saveContacts()
+                filterContacts()
+            }
+            
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error validating state consistency", e)
+        }
+    }
+
+    // Cleanup resources
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            contactService.cleanup()
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error during cleanup", e)
+        }
     }
 } 

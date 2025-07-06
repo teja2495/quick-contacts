@@ -8,6 +8,9 @@ import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 class ContactService {
     
@@ -16,6 +19,67 @@ class ContactService {
     private val cacheMaxSize = 50
     private val cacheExpiryTime = 5 * 60 * 1000L // 5 minutes
     private val cacheTimestamps = ConcurrentHashMap<String, Long>()
+    
+    // Scheduled executor for cache cleanup
+    private val cacheCleanupExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    
+    init {
+        // Schedule cache cleanup every 10 minutes
+        cacheCleanupExecutor.scheduleAtFixedRate({
+            cleanupExpiredCache()
+        }, 10, 10, TimeUnit.MINUTES)
+    }
+    
+    /**
+     * Clean up expired cache entries
+     */
+    private fun cleanupExpiredCache() {
+        try {
+            val currentTime = System.currentTimeMillis()
+            val expiredKeys = mutableListOf<String>()
+            
+            // Find expired entries
+            cacheTimestamps.forEach { (key, timestamp) ->
+                if (currentTime - timestamp > cacheExpiryTime) {
+                    expiredKeys.add(key)
+                }
+            }
+            
+            // Remove expired entries
+            expiredKeys.forEach { key ->
+                searchCache.remove(key)
+                cacheTimestamps.remove(key)
+            }
+            
+            // If cache is still too large, remove oldest entries
+            if (searchCache.size > cacheMaxSize) {
+                val sortedEntries = cacheTimestamps.entries.sortedBy { it.value }
+                val entriesToRemove = searchCache.size - cacheMaxSize
+                
+                sortedEntries.take(entriesToRemove).forEach { entry ->
+                    searchCache.remove(entry.key)
+                    cacheTimestamps.remove(entry.key)
+                }
+            }
+            
+            android.util.Log.d("ContactService", "Cache cleanup completed. Size: ${searchCache.size}")
+        } catch (e: Exception) {
+            android.util.Log.e("ContactService", "Error during cache cleanup", e)
+        }
+    }
+    
+    /**
+     * Clear all cache data
+     */
+    fun clearCache() {
+        try {
+            searchCache.clear()
+            cacheTimestamps.clear()
+            android.util.Log.d("ContactService", "Cache cleared")
+        } catch (e: Exception) {
+            android.util.Log.e("ContactService", "Error clearing cache", e)
+        }
+    }
     
     // Optimized projections for better performance
     private val contactProjection = arrayOf(
@@ -60,7 +124,7 @@ class ContactService {
                 if (idColumn >= 0) {
                     while (it.moveToNext()) {
                         val contactId = it.getString(idColumn)
-                        if (contactId != null) {
+                        if (contactId != null && contactId.isNotBlank()) {
                             starredContactIds.add(contactId)
                             android.util.Log.d("QuickContacts", "Found starred contact ID: $contactId")
                         }
@@ -107,7 +171,10 @@ class ContactService {
                         val name = it.getString(nameColumn)
                         val number = it.getString(numberColumn)
                         
-                        if (id != null && name != null && number != null) {
+                        if (id != null && name != null && number != null && 
+                            id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
+                            PhoneNumberUtils.isValidPhoneNumber(number)) {
+                            
                             android.util.Log.d("QuickContacts", "Processing contact: $name ($id) - $number")
                             if (seenContactsMap.containsKey(id)) {
                                 // Add phone number to existing contact
@@ -122,7 +189,11 @@ class ContactService {
                                 
                                 if (!alreadyExists) {
                                     updatedPhoneNumbers.add(number)
-                                    seenContactsMap[id] = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                    val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                    // Validate the updated contact
+                                    if (ContactUtils.isValidContact(updatedContact)) {
+                                        seenContactsMap[id] = updatedContact
+                                    }
                                 }
                             } else {
                                 // Create new contact
@@ -134,15 +205,21 @@ class ContactService {
                                     phoneNumbers = listOf(number),
                                     photoUri = photoUri
                                 )
-                                seenContactsMap[id] = contact
+                                
+                                // Validate the contact before adding
+                                if (ContactUtils.isValidContact(contact)) {
+                                    seenContactsMap[id] = contact
+                                }
                             }
                         }
                     }
                 }
             }
             
-            // Convert map to list
-            favoriteContacts.addAll(seenContactsMap.values)
+            // Convert map to list and sanitize contacts
+            favoriteContacts.addAll(seenContactsMap.values.mapNotNull { contact ->
+                ContactUtils.sanitizeContact(contact)
+            })
             android.util.Log.d("QuickContacts", "Processed ${favoriteContacts.size} favorite contacts with phone numbers")
             
         } catch (e: Exception) {
@@ -198,10 +275,12 @@ class ContactService {
                         val name = it.getString(nameColumn)
                         val number = it.getString(numberColumn)
                         
-                        if (id != null && name != null && number != null) {
+                        if (id != null && name != null && number != null && 
+                            id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
+                            PhoneNumberUtils.isValidPhoneNumber(number)) {
                             
                             if (seenContactsMap.containsKey(id)) {
-                                // Add phone number to existing contact (normalize to avoid duplicates)
+                                // Add phone number to existing contact
                                 val existingContact = seenContactsMap[id]!!
                                 val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
                                 val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
@@ -213,49 +292,49 @@ class ContactService {
                                 
                                 if (!alreadyExists) {
                                     updatedPhoneNumbers.add(number)
-                                    seenContactsMap[id] = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                    val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                    // Validate the updated contact
+                                    if (ContactUtils.isValidContact(updatedContact)) {
+                                        seenContactsMap[id] = updatedContact
+                                    }
                                 }
                             } else {
                                 // Create new contact
+                                val photoUri = ContactUtils.getContactPhotoUri(context, id)
                                 val contact = Contact(
                                     id = id,
                                     name = name,
-                                    phoneNumber = number, // Primary phone number
+                                    phoneNumber = number,
                                     phoneNumbers = listOf(number),
-                                    photoUri = null // Not using photos in search results
+                                    photoUri = photoUri
                                 )
-                                seenContactsMap[id] = contact
+                                
+                                // Validate the contact before adding
+                                if (ContactUtils.isValidContact(contact)) {
+                                    seenContactsMap[id] = contact
+                                }
                             }
                         }
                     }
                 }
             }
             
-            // Convert map to list and limit results
-            val results = seenContactsMap.values.take(20)
+            // Convert map to list and sanitize contacts
+            searchResultsList.addAll(seenContactsMap.values.mapNotNull { contact ->
+                ContactUtils.sanitizeContact(contact)
+            })
             
             // Cache the results
-            cacheResults(cacheKey, results)
+            searchCache[cacheKey] = searchResultsList
+            cacheTimestamps[cacheKey] = currentTime
             
-            return results
+            return searchResultsList
+            
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.e("QuickContacts", "Error searching contacts: ${e.message}")
             return emptyList()
         }
-    }
-    
-    private fun cacheResults(query: String, results: List<Contact>) {
-        // Clean up old cache entries if cache is too large
-        if (searchCache.size >= cacheMaxSize) {
-            val oldestEntry = cacheTimestamps.minByOrNull { it.value }
-            oldestEntry?.let {
-                searchCache.remove(it.key)
-                cacheTimestamps.remove(it.key)
-            }
-        }
-        
-        searchCache[query] = results
-        cacheTimestamps[query] = System.currentTimeMillis()
     }
     
     fun loadRecentCalls(context: Context, selectedContacts: List<Contact>): List<Contact> {
@@ -264,8 +343,11 @@ class ContactService {
             val seenNumbers = mutableSetOf<String>()
             
             // Get phone numbers from selected contacts to exclude them from recent calls
-            val selectedContactNumbers = selectedContacts.map { 
-                PhoneNumberUtils.normalizePhoneNumber(it.phoneNumber) 
+            val selectedContactNumbers = selectedContacts.mapNotNull { contact ->
+                val primaryNumber = ContactUtils.getPrimaryPhoneNumber(contact)
+                if (primaryNumber.isNotBlank()) {
+                    PhoneNumberUtils.normalizePhoneNumber(primaryNumber)
+                } else null
             }.toSet()
             
             // Debug logging
@@ -288,7 +370,9 @@ class ContactService {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
                         
-                        if (number != null && !seenNumbers.contains(number)) {
+                        if (number != null && number.isNotBlank() && !seenNumbers.contains(number) &&
+                            PhoneNumberUtils.isValidPhoneNumber(number)) {
+                            
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
                             
                             // Debug logging
@@ -301,17 +385,17 @@ class ContactService {
                                 
                                 // Try to get contact details from contacts provider
                                 val contact = ContactUtils.getContactByPhoneNumber(context, number, cachedName)
-                                contact?.let { 
+                                contact?.let { validContact ->
                                     // Double-check: also exclude by name if it matches a selected contact
                                     val isNameDuplicate = selectedContacts.any { selectedContact ->
-                                        selectedContact.name.equals(it.name, ignoreCase = true)
+                                        selectedContact.name.equals(validContact.name, ignoreCase = true)
                                     }
                                     
                                     if (!isNameDuplicate) {
-                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${it.name} - ${it.phoneNumber}")
-                                        recentCallsList.add(it)
+                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${validContact.name} - ${validContact.phoneNumber}")
+                                        recentCallsList.add(validContact)
                                     } else {
-                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${it.name}")
+                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${validContact.name}")
                                     }
                                 }
                             } else {
@@ -325,7 +409,23 @@ class ContactService {
             return recentCallsList
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.e("QuickContacts", "Error loading recent calls: ${e.message}")
             return emptyList()
+        }
+    }
+    
+    /**
+     * Cleanup resources when service is no longer needed
+     */
+    fun cleanup() {
+        try {
+            cacheCleanupExecutor.shutdown()
+            if (!cacheCleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                cacheCleanupExecutor.shutdownNow()
+            }
+            clearCache()
+        } catch (e: Exception) {
+            android.util.Log.e("ContactService", "Error during cleanup", e)
         }
     }
 } 

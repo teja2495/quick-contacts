@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.utils.PhoneNumberUtils
 
 class MessagingService {
     
@@ -49,7 +50,16 @@ class MessagingService {
     }
     
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
-        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
+        if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+            android.util.Log.w("MessagingService", "Invalid phone number for WhatsApp: $phoneNumber")
+            return
+        }
+        
+        val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
+        if (cleanNumber == null) {
+            android.util.Log.w("MessagingService", "Could not clean phone number for WhatsApp: $phoneNumber")
+            return
+        }
         
         try {
             // Method 1: Use ACTION_SENDTO with smsto scheme for direct chat
@@ -60,6 +70,7 @@ class MessagingService {
             smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             context.startActivity(smsIntent)
         } catch (e: Exception) {
+            android.util.Log.w("MessagingService", "WhatsApp method 1 failed", e)
             try {
                 // Method 2: Use ACTION_SEND with WhatsApp package
                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -70,6 +81,7 @@ class MessagingService {
                 sendIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 context.startActivity(sendIntent)
             } catch (e2: Exception) {
+                android.util.Log.w("MessagingService", "WhatsApp method 2 failed", e2)
                 try {
                     // Method 3: Try standard messaging intent
                     val messageIntent = Intent(Intent.ACTION_VIEW).apply {
@@ -79,24 +91,25 @@ class MessagingService {
                     messageIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     context.startActivity(messageIntent)
                 } catch (e3: Exception) {
-                    try {
-                        // Method 4: Final fallback to web API
-                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber")
-                        }
-                        webIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(webIntent)
-                    } catch (e4: Exception) {
-                        // WhatsApp not installed or no browser available
-                        android.util.Log.e("QuickContacts", "Unable to open WhatsApp: ${e4.message}")
-                    }
+                    android.util.Log.w("MessagingService", "WhatsApp method 3 failed", e3)
+                    // Final fallback to SMS
+                    openSmsApp(context, phoneNumber)
                 }
             }
         }
     }
     
     fun openSmsApp(context: Context, phoneNumber: String) {
-        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
+        if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+            android.util.Log.w("MessagingService", "Invalid phone number for SMS: $phoneNumber")
+            return
+        }
+        
+        val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
+        if (cleanNumber == null) {
+            android.util.Log.w("MessagingService", "Could not clean phone number for SMS: $phoneNumber")
+            return
+        }
         
         try {
             // Use ACTION_SENDTO with sms scheme to open default SMS app
@@ -106,6 +119,7 @@ class MessagingService {
             smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             context.startActivity(smsIntent)
         } catch (e: Exception) {
+            android.util.Log.w("MessagingService", "SMS method 1 failed", e)
             try {
                 // Fallback: Use ACTION_VIEW with sms scheme
                 val viewIntent = Intent(Intent.ACTION_VIEW).apply {
@@ -114,6 +128,7 @@ class MessagingService {
                 viewIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 context.startActivity(viewIntent)
             } catch (e2: Exception) {
+                android.util.Log.w("MessagingService", "SMS method 2 failed", e2)
                 // Final fallback: open generic messaging app
                 try {
                     val messageIntent = Intent(Intent.ACTION_SEND).apply {
@@ -123,14 +138,23 @@ class MessagingService {
                     messageIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     context.startActivity(Intent.createChooser(messageIntent, "Send message"))
                 } catch (e3: Exception) {
-                    android.util.Log.e("QuickContacts", "Unable to open SMS app: ${e3.message}")
+                    android.util.Log.e("MessagingService", "All SMS methods failed", e3)
                 }
             }
         }
     }
     
     fun openTelegramChat(context: Context, phoneNumber: String) {
-        val cleanNumber = phoneNumber.replace("[^\\d+]".toRegex(), "")
+        if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+            android.util.Log.w("MessagingService", "Invalid phone number for Telegram: $phoneNumber")
+            return
+        }
+        
+        val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
+        if (cleanNumber == null) {
+            android.util.Log.w("MessagingService", "Could not clean phone number for Telegram: $phoneNumber")
+            return
+        }
         
         try {
             // Method 1: Try to open direct chat using phone number
@@ -141,26 +165,19 @@ class MessagingService {
             telegramIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             context.startActivity(telegramIntent)
         } catch (e: Exception) {
+            android.util.Log.w("MessagingService", "Telegram method 1 failed", e)
             try {
-                // Method 2: Try with t.me link
-                val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("https://t.me/$cleanNumber")
+                // Method 2: Open Telegram app directly
+                val appIntent = Intent(Intent.ACTION_MAIN).apply {
+                    setPackage("org.telegram.messenger")
+                    addCategory(Intent.CATEGORY_LAUNCHER)
                 }
-                webIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(webIntent)
-            } catch (e2: Exception) {
-                try {
-                    // Method 3: Open Telegram app directly
-                    val appIntent = Intent(Intent.ACTION_MAIN).apply {
-                        setPackage("org.telegram.messenger")
-                        addCategory(Intent.CATEGORY_LAUNCHER)
-                    }
-                    appIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(appIntent)
-                } catch (e3: Exception) {
-                    // Telegram not installed
-                    android.util.Log.e("QuickContacts", "Unable to open Telegram: ${e3.message}")
-                }
+                appIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(appIntent)
+            } catch (e3: Exception) {
+                android.util.Log.e("MessagingService", "All Telegram methods failed", e3)
+                // Fallback to SMS
+                openSmsApp(context, phoneNumber)
             }
         }
     }
