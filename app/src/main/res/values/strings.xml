@@ -49,7 +49,7 @@
     
     <!-- Edit Mode -->
     <string name="edit_hint">Tap contact to change actions</string>
-    <string name="edit_instruction">Tap \'Edit\' button to delete, reorder contacts in quick list. You can also set customize actions for each contact.</string>
+    <string name="edit_instruction">Tap \'Edit\' button to delete, reorder contacts in quick list. You can also customize tap actions for each contact.</string>
     
     <!-- Permissions -->
     <string name="permission_phone_access">Phone Access</string>
@@ -102,6 +102,7 @@
     <string name="cd_whatsapp">WhatsApp</string>
     <string name="cd_sms">SMS</string>
     <string name="cd_telegram">Telegram</string>
+    <string name="cd_close">Close</string>
     
     <!-- Feedback -->
     <string name="feedback_subject">Quick Contacts Feedback</string>

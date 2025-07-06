@@ -21,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
@@ -222,7 +223,7 @@ fun QuickContactsApp() {
     val effectiveInternationalDetectionEnabled = isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
-    var showEditHint by remember { mutableStateOf(false) }
+    var showEditBanner by remember { mutableStateOf(false) }
     
     // Focus requester for search
     val focusRequester = remember { FocusRequester() }
@@ -271,14 +272,15 @@ fun QuickContactsApp() {
         }
     }
     
-    // Show edit hint popup when edit button first appears for new users
-    LaunchedEffect(selectedContacts) {
-        if (selectedContacts.isNotEmpty() && !viewModel.hasShownEditHint()) {
-            // Add a small delay to ensure the UI is fully rendered
-            delay(500)
-            showEditHint = true
+    // Show edit banner when user lands on quick list screen for the first time
+    LaunchedEffect(isSearching, isSettingsScreenOpen, isRecentCallsExpanded, selectedContacts) {
+        val onQuickListScreen = !isSearching && !isSettingsScreenOpen && !isRecentCallsExpanded && selectedContacts.isNotEmpty()
+        if (onQuickListScreen && !viewModel.hasShownEditHint()) {
+            showEditBanner = true
         }
     }
+    
+
     
     // Note: Removed auto-opening settings when permissions are permanently denied
     // Now settings are only opened when user explicitly taps "Grant Permissions" after denying
@@ -524,6 +526,49 @@ fun QuickContactsApp() {
                                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
                                             )
                                         }
+                                        
+                                        // Show edit banner for first-time users
+                                        if (showEditBanner) {
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                                ),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(16.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.edit_instruction),
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    
+                                                    IconButton(
+                                                        onClick = {
+                                                            showEditBanner = false
+                                                            viewModel.markEditHintShown()
+                                                        },
+                                                        modifier = Modifier.size(24.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Close,
+                                                            contentDescription = stringResource(R.string.cd_close),
+                                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                     
                                     // Quick contacts list
@@ -592,37 +637,6 @@ fun QuickContactsApp() {
                         )
                     }
                 }
-            }
-            
-            // Edit hint dialog - must be inside the main Column
-            if (showEditHint) {
-                AlertDialog(
-                    onDismissRequest = { /* Do nothing - prevent dismissal by tapping outside */ },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.title_editing_quick_list),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.edit_instruction),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showEditHint = false
-                                viewModel.markEditHintShown()
-                            }
-                        ) {
-                            Text(stringResource(R.string.action_got_it))
-                        }
-                    }
-                )
             }
         }
     }
