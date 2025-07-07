@@ -298,11 +298,36 @@ fun SettingsScreen(
                 val context = LocalContext.current
                 TextButton(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:quickcontacts.feedback@gmail.com")
-                            putExtra(Intent.EXTRA_SUBJECT, "Quick Contacts Feedback")
+                        val versionName = try {
+                            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                            packageInfo.versionName ?: "Unknown"
+                        } catch (e: Exception) {
+                            "Unknown"
                         }
-                        context.startActivity(intent)
+                        
+                        val androidVersion = android.os.Build.VERSION.RELEASE
+                        val deviceModel = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+                        
+                        val emailBody = """
+                            
+                            
+                            ---
+                            App Version: $versionName
+                            Android Version: $androidVersion
+                            Device: $deviceModel
+                        """.trimIndent()
+
+                        val subject = "Quick Contacts Feedback"
+
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:tejakarlapudi.apps@gmail.com?subject=${Uri.encode(subject)}&body=${Uri.encode(emailBody)}")
+                        }
+
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Handle case where no email app is installed
+                        }
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
