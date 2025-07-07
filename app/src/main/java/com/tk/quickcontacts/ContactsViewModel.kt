@@ -179,6 +179,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     // Search and filtering
     fun updateSearchQuery(query: String) {
         try {
+            android.util.Log.d("ContactsViewModel", "Updating search query: '$query'")
+            
             _searchQuery.value = query
             filterContacts()
             
@@ -191,23 +193,38 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     delay(searchDebounceDelay)
                     if (query == _searchQuery.value) { // Only search if query hasn't changed
                         try {
+                            android.util.Log.d("ContactsViewModel", "Executing search for: '$query'")
                             val results = contactService.searchContacts(getApplication(), query)
+                            
+                            android.util.Log.d("ContactsViewModel", "Raw search results: ${results.size} contacts")
+                            results.forEach { contact ->
+                                android.util.Log.d("ContactsViewModel", "Raw result: ${contact.name} (${contact.phoneNumber})")
+                            }
                             
                             // Validate search results
                             val validResults = results.filter { ContactUtils.isValidContact(it) }
+                            
+                            android.util.Log.d("ContactsViewModel", "Valid search results: ${validResults.size} contacts")
+                            validResults.forEach { contact ->
+                                android.util.Log.d("ContactsViewModel", "Valid result: ${contact.name} (${contact.phoneNumber})")
+                            }
                             
                             if (validResults.size != results.size) {
                                 android.util.Log.w("ContactsViewModel", "Removing ${results.size - validResults.size} invalid search results")
                             }
                             
                             _searchResults.value = validResults
+                            android.util.Log.d("ContactsViewModel", "Search results updated: ${validResults.size} contacts")
                         } catch (e: Exception) {
                             android.util.Log.e("ContactsViewModel", "Error searching contacts", e)
                             _searchResults.value = emptyList()
                         }
+                    } else {
+                        android.util.Log.d("ContactsViewModel", "Search query changed, skipping search for: '$query'")
                     }
                 }
             } else {
+                android.util.Log.d("ContactsViewModel", "Empty query, clearing search results")
                 _searchResults.value = emptyList()
             }
         } catch (e: Exception) {

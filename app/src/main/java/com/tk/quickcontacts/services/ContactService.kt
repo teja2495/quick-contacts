@@ -235,6 +235,8 @@ class ContactService {
             return emptyList()
         }
         
+        android.util.Log.d("ContactService", "Searching for query: '$query'")
+        
         // Check cache first
         val cacheKey = query.lowercase().trim()
         val currentTime = System.currentTimeMillis()
@@ -251,67 +253,100 @@ class ContactService {
         try {
             val searchResultsList = mutableListOf<Contact>()
             val seenContactsMap = mutableMapOf<String, Contact>()
+            val contactRelevanceMap = mutableMapOf<String, Int>() // Track relevance score for each contact
             
-            // Search only by name, not phone number
-            val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
-            val selectionArgs = arrayOf("%$query%")
-            
-            val cursor: Cursor? = context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                phoneProjection,
-                selection,
-                selectionArgs,
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+            // Define search patterns with different relevance levels
+            val searchPatterns = listOf(
+                // Level 1: Exact match (highest priority)
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ? COLLATE NOCASE" to 100,
+                // Level 2: Starts with query (high priority)
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE" to 80,
+                // Level 3: Contains query (medium priority)
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE" to 60,
+                // Level 4: Contains query with word boundaries (lower priority)
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE" to 40
             )
             
-            cursor?.use {
-                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val searchArgs = listOf(
+                query, // Exact match
+                "$query%", // Starts with
+                "%$query%", // Contains
+                "% $query %" // Word boundary
+            )
+            
+            android.util.Log.d("ContactService", "Using multiple search patterns for better relevance")
+            
+            // Execute each search pattern
+            searchPatterns.forEachIndexed { index, (pattern, relevance) ->
+                val selectionArgs = arrayOf(searchArgs[index])
                 
-                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
-                    while (it.moveToNext()) {
-                        val id = it.getString(idColumn)
-                        val name = it.getString(nameColumn)
-                        val number = it.getString(numberColumn)
-                        
-                        if (id != null && name != null && number != null && 
-                            id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
-                            PhoneNumberUtils.isValidPhoneNumber(number)) {
+                android.util.Log.d("ContactService", "Pattern $index: $pattern (relevance: $relevance)")
+                android.util.Log.d("ContactService", "Args: ${selectionArgs.joinToString()}")
+                
+                val cursor: Cursor? = context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    phoneProjection,
+                    pattern,
+                    selectionArgs,
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+                )
+                
+                cursor?.use {
+                    val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                    val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                    val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    
+                    if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
+                        while (it.moveToNext()) {
+                            val id = it.getString(idColumn)
+                            val name = it.getString(nameColumn)
+                            val number = it.getString(numberColumn)
                             
-                            if (seenContactsMap.containsKey(id)) {
-                                // Add phone number to existing contact
-                                val existingContact = seenContactsMap[id]!!
-                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
-                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
+                            if (id != null && name != null && number != null && 
+                                id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
+                                PhoneNumberUtils.isValidPhoneNumber(number)) {
                                 
-                                // Check if this normalized number already exists
-                                val alreadyExists = updatedPhoneNumbers.any { 
-                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
+                                // Only update relevance if this is a higher score or new contact
+                                val currentRelevance = contactRelevanceMap[id] ?: 0
+                                if (relevance > currentRelevance) {
+                                    contactRelevanceMap[id] = relevance
+                                    android.util.Log.d("ContactService", "Contact '$name' gets relevance score: $relevance")
                                 }
                                 
-                                if (!alreadyExists) {
-                                    updatedPhoneNumbers.add(number)
-                                    val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
-                                    // Validate the updated contact
-                                    if (ContactUtils.isValidContact(updatedContact)) {
-                                        seenContactsMap[id] = updatedContact
+                                if (seenContactsMap.containsKey(id)) {
+                                    // Add phone number to existing contact
+                                    val existingContact = seenContactsMap[id]!!
+                                    val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
+                                    val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
+                                    
+                                    // Check if this normalized number already exists
+                                    val alreadyExists = updatedPhoneNumbers.any { 
+                                        PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
                                     }
-                                }
-                            } else {
-                                // Create new contact
-                                val photoUri = ContactUtils.getContactPhotoUri(context, id)
-                                val contact = Contact(
-                                    id = id,
-                                    name = name,
-                                    phoneNumber = number,
-                                    phoneNumbers = listOf(number),
-                                    photoUri = photoUri
-                                )
-                                
-                                // Validate the contact before adding
-                                if (ContactUtils.isValidContact(contact)) {
-                                    seenContactsMap[id] = contact
+                                    
+                                    if (!alreadyExists) {
+                                        updatedPhoneNumbers.add(number)
+                                        val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                        // Validate the updated contact
+                                        if (ContactUtils.isValidContact(updatedContact)) {
+                                            seenContactsMap[id] = updatedContact
+                                        }
+                                    }
+                                } else {
+                                    // Create new contact
+                                    val photoUri = ContactUtils.getContactPhotoUri(context, id)
+                                    val contact = Contact(
+                                        id = id,
+                                        name = name,
+                                        phoneNumber = number,
+                                        phoneNumbers = listOf(number),
+                                        photoUri = photoUri
+                                    )
+                                    
+                                    // Validate the contact before adding
+                                    if (ContactUtils.isValidContact(contact)) {
+                                        seenContactsMap[id] = contact
+                                    }
                                 }
                             }
                         }
@@ -319,15 +354,36 @@ class ContactService {
                 }
             }
             
-            // Convert map to list and sanitize contacts
-            searchResultsList.addAll(seenContactsMap.values.mapNotNull { contact ->
-                ContactUtils.sanitizeContact(contact)
-            })
+            android.util.Log.d("ContactService", "Found ${seenContactsMap.size} unique contacts")
+            
+            // Convert map to list, sanitize contacts, and sort by relevance
+            val sanitizedContacts = seenContactsMap.values.mapNotNull { contact ->
+                val sanitized = ContactUtils.sanitizeContact(contact)
+                if (sanitized == null) {
+                    android.util.Log.w("ContactService", "Contact sanitization failed: ${contact.name}")
+                }
+                sanitized
+            }
+            
+            // Sort by relevance score (highest first), then by name
+            val sortedContacts = sanitizedContacts.sortedWith(
+                compareByDescending<Contact> { contactRelevanceMap[it.id] ?: 0 }
+                .thenBy { it.name.lowercase() }
+            )
+            
+            searchResultsList.addAll(sortedContacts)
+            
+            android.util.Log.d("ContactService", "Final sorted results:")
+            searchResultsList.forEachIndexed { index, contact ->
+                val relevance = contactRelevanceMap[contact.id] ?: 0
+                android.util.Log.d("ContactService", "${index + 1}. ${contact.name} (relevance: $relevance)")
+            }
             
             // Cache the results
             searchCache[cacheKey] = searchResultsList
             cacheTimestamps[cacheKey] = currentTime
             
+            android.util.Log.d("ContactService", "Search completed for '$query': ${searchResultsList.size} results")
             return searchResultsList
             
         } catch (e: Exception) {
