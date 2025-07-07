@@ -32,3 +32,37 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Android Studio deployment target files
+deploymentTargetSelector/
+
+# Android baseline profiles (.dm files)
+*.dm
+**/baselineProfiles/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# IDE specific files
+.vscode/
+*.code-workspace
+
+# OS generated files
+.fseventsd
