@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.QuickContacts" parent="android:Theme.Material.Light.NoActionBar" />
-    
-    <!-- Splash screen theme with dark background -->
+    <!-- Splash screen theme with dark background for night mode -->
     <style name="Theme.QuickContacts.Splash" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:statusBarColor">@color/splash_background</item>
         <item name="android:navigationBarColor">@color/splash_background</item>
     </style>
-</resources>
+</resources> 

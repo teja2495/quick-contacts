@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Switch to main theme after splash screen
+        setTheme(R.style.Theme_QuickContacts)
+        
         // Configure Coil for better performance
         configureImageLoader()
         
