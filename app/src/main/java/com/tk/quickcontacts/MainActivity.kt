@@ -15,8 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
+
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,7 +33,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,8 +45,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModelProvider
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.models.CustomActions
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+
 import androidx.compose.ui.focus.FocusRequester
 import com.tk.quickcontacts.ui.components.*
 import coil.ImageLoader
@@ -107,17 +105,8 @@ fun QuickContactsApp() {
     var isSearching by remember { mutableStateOf(false) }
     var isSettingsScreenOpen by remember { mutableStateOf(false) }
     
-    // Check if keyboard is open
-    val density = LocalDensity.current
-    val imeBottom = WindowInsets.ime.getBottom(density)
-    val isKeyboardOpen = imeBottom > 0
-    
-    // Animate padding change when keyboard opens/closes
-    val searchBarBottomPadding by animateDpAsState(
-        targetValue = if (isKeyboardOpen) 0.dp else 40.dp,
-        animationSpec = tween(durationMillis = 300),
-        label = "searchBarBottomPadding"
-    )
+    // Removed animated padding logic for consistent spacing across all devices
+    // Using only imePadding modifier for proper keyboard handling
     
     // Permission states
     var hasCallPermission by remember {
@@ -444,7 +433,7 @@ fun QuickContactsApp() {
                                     start = 16.dp, 
                                     top = 8.dp, 
                                     end = 16.dp, 
-                                    bottom = searchBarBottomPadding
+                                    bottom = 6.dp
                                 )
                                 .imePadding()
                         )
