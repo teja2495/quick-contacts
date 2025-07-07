@@ -15,6 +15,7 @@ class PreferencesRepository(context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
     private val gson: Gson = GsonBuilder()
         .setLenient() // Allow lenient parsing for backward compatibility
+        .excludeFieldsWithoutExposeAnnotation() // Only serialize fields with @Expose annotation
         .create()
     
     // Cache for frequently accessed data
@@ -26,6 +27,8 @@ class PreferencesRepository(context: Context) {
     // Contact management with validation
     fun saveContacts(contacts: List<Contact>) {
         try {
+            android.util.Log.d("PreferencesRepository", "Saving ${contacts.size} contacts to storage")
+            
             // Validate contacts before saving
             val validContacts = contacts.filter { ContactUtils.isValidContact(it) }
             
@@ -34,8 +37,12 @@ class PreferencesRepository(context: Context) {
             }
             
             val json = gson.toJson(validContacts)
+            android.util.Log.d("PreferencesRepository", "Serialized contacts to JSON: ${json.length} characters")
+            
             sharedPreferences.edit().putString("selected_contacts", json).apply()
             cachedContacts = validContacts
+            
+            android.util.Log.d("PreferencesRepository", "Successfully saved ${validContacts.size} contacts to SharedPreferences")
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error saving contacts", e)
         }
@@ -43,13 +50,20 @@ class PreferencesRepository(context: Context) {
 
     fun loadContacts(): List<Contact> {
         // Return cached value if available
-        cachedContacts?.let { return it }
+        cachedContacts?.let { 
+            android.util.Log.d("PreferencesRepository", "Returning ${it.size} cached contacts")
+            return it 
+        }
         
         return try {
+            android.util.Log.d("PreferencesRepository", "Loading contacts from SharedPreferences")
             val json = sharedPreferences.getString("selected_contacts", null)
             if (json != null) {
+                android.util.Log.d("PreferencesRepository", "Found JSON data: ${json.length} characters")
                 val type = object : TypeToken<List<Contact>>() {}.type
                 val contacts = gson.fromJson<List<Contact>>(json, type) ?: emptyList()
+                
+                android.util.Log.d("PreferencesRepository", "Deserialized ${contacts.size} contacts from JSON")
                 
                 // Validate loaded contacts
                 val validContacts = contacts.filter { ContactUtils.isValidContact(it) }
@@ -61,8 +75,10 @@ class PreferencesRepository(context: Context) {
                 }
                 
                 cachedContacts = validContacts
+                android.util.Log.d("PreferencesRepository", "Successfully loaded ${validContacts.size} valid contacts")
                 validContacts
             } else {
+                android.util.Log.d("PreferencesRepository", "No contacts found in SharedPreferences")
                 emptyList()
             }
         } catch (e: JsonSyntaxException) {
