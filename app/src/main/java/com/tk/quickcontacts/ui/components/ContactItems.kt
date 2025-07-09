@@ -78,7 +78,7 @@ fun ContactItem(
                 when (dialogAction) {
                     "call" -> onExecuteAction(context, "Call", selectedNumber)
                     "whatsapp" -> onExecuteAction(context, "WhatsApp", selectedNumber)
-                    "sms" -> onExecuteAction(context, "SMS", selectedNumber)
+                    "sms" -> onExecuteAction(context, "Messages", selectedNumber)
                     "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
                 }
                 showPhoneNumberDialog = false
@@ -136,7 +136,7 @@ fun ContactItem(
                     dialogAction = "sms"
                     showPhoneNumberDialog = true
                 } else {
-                    onExecuteAction(context, "SMS", contactToSms.phoneNumber)
+                    onExecuteAction(context, "Messages", contactToSms.phoneNumber)
                 }
                 showContactActionsDialog = false
             },
@@ -466,7 +466,7 @@ fun RecentCallVerticalItem(
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
-                    "sms" -> onExecuteAction(context, "SMS", selectedNumber)
+                    "sms" -> onExecuteAction(context, "Messages", selectedNumber)
                     "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
                 }
                 showPhoneNumberDialog = false
@@ -504,7 +504,7 @@ fun RecentCallVerticalItem(
                     dialogAction = "sms"
                     showPhoneNumberDialog = true
                 } else {
-                    onExecuteAction(context, "SMS", contactToSms.phoneNumber)
+                    onExecuteAction(context, "Messages", contactToSms.phoneNumber)
                 }
                 showContactActionsDialog = false
             },

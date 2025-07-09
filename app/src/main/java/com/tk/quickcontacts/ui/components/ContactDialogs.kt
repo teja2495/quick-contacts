@@ -157,12 +157,12 @@ fun ActionToggleDialog(
     val availableActions = mutableListOf("Call")
     if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) availableActions.add("WhatsApp")
     if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) availableActions.add("Telegram")
-    if (availableMessagingApps.contains(MessagingApp.SMS)) availableActions.add("SMS")
+    if (availableMessagingApps.contains(MessagingApp.SMS)) availableActions.add("Messages")
     
     // Get default messaging app name
     val messagingAppName = when (defaultMessagingApp) {
         MessagingApp.WHATSAPP -> "WhatsApp"
-        MessagingApp.SMS -> "SMS"
+        MessagingApp.SMS -> "Messages"
         MessagingApp.TELEGRAM -> "Telegram"
     }
     
@@ -238,9 +238,9 @@ fun ActionToggleDialog(
                             .weight(1f)
                     )
                     FilterChip(
-                        onClick = { selectedPrimary = "SMS" },
-                        label = { Text("SMS") },
-                        selected = selectedPrimary == "SMS",
+                        onClick = { selectedPrimary = "Messages" },
+                        label = { Text("Messages") },
+                        selected = selectedPrimary == "Messages",
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -347,9 +347,9 @@ fun ActionToggleDialog(
                             .weight(1f)
                     )
                     FilterChip(
-                        onClick = { selectedSecondary = "SMS" },
-                        label = { Text("SMS") },
-                        selected = selectedSecondary == "SMS",
+                        onClick = { selectedSecondary = "Messages" },
+                        label = { Text("Messages") },
+                        selected = selectedSecondary == "Messages",
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer

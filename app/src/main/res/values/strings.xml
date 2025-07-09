@@ -30,7 +30,7 @@
     <string name="action_send_feedback">Send Feedback</string>
     <string name="action_call">Call</string>
     <string name="action_whatsapp">WhatsApp</string>
-    <string name="action_sms">SMS</string>
+    <string name="action_sms">Messages</string>
     <string name="action_telegram">Telegram</string>
     <string name="action_add">Add</string>
     <string name="action_remove">Remove</string>
@@ -71,7 +71,7 @@
     <string name="settings_version">Version %s</string>
     
     <!-- Messaging Apps -->
-    <string name="messaging_app_sms">SMS</string>
+    <string name="messaging_app_sms">Messages</string>
     <string name="messaging_app_whatsapp">WhatsApp</string>
     <string name="messaging_app_telegram">Telegram</string>
     
@@ -100,7 +100,7 @@
     <string name="cd_permission_granted">Permission granted</string>
     <string name="cd_drag_to_reorder">Drag to reorder</string>
     <string name="cd_whatsapp">WhatsApp</string>
-    <string name="cd_sms">SMS</string>
+    <string name="cd_sms">Messages</string>
     <string name="cd_telegram">Telegram</string>
     <string name="cd_close">Close</string>
     

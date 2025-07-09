@@ -207,7 +207,7 @@ fun SearchResultItem(
                 when (dialogAction) {
                     "call" -> onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
-                    "sms" -> onExecuteAction(context, "SMS", selectedNumber)
+                    "sms" -> onExecuteAction(context, "Messages", selectedNumber)
                     "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
                     "add" -> onAddContact(contactWithSelectedNumber)
                 }
@@ -251,7 +251,7 @@ fun SearchResultItem(
                     dialogAction = "sms"
                     showPhoneNumberDialog = true
                 } else {
-                    onExecuteAction(context, "SMS", contactToSms.phoneNumber)
+                    onExecuteAction(context, "Messages", contactToSms.phoneNumber)
                 }
                 showContactActionsDialog = false
             },
