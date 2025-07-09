@@ -513,7 +513,7 @@ fun QuickContactsApp() {
                                                 color = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier
                                                     .clickable { editMode = !editMode }
-                                                    .padding(end = 10.dp)
+                                                    .padding(end = 12.dp)
                                             )
                                         }
                                         
@@ -626,9 +626,6 @@ fun QuickContactsApp() {
                             onClick = { 
                                 isSearching = true
                                 viewModel.updateSearchQuery("")
-                            },
-                            onDialerClick = {
-                                viewModel.openDialer(context)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()

@@ -91,13 +91,18 @@ fun SettingsScreen(
                             )
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            painter = painterResource(id = R.drawable.sms_icon),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier.width(28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.sms_icon),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "SMS",
                             style = MaterialTheme.typography.bodyLarge,
@@ -132,13 +137,18 @@ fun SettingsScreen(
                             )
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            painter = painterResource(id = R.drawable.whatsapp_icon),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier.width(28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.whatsapp_icon),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
                                 text = "WhatsApp",
@@ -186,13 +196,18 @@ fun SettingsScreen(
                             )
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            painter = painterResource(id = R.drawable.telegram_icon),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier.width(28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.telegram_icon),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
                                 text = "Telegram",

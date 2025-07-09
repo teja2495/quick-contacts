@@ -45,6 +45,10 @@ class PhoneService {
         }
     }
     
+    fun openPhoneApp(context: Context) {
+        openDialer(context)
+    }
+    
     fun openContactInContactsApp(context: Context, contact: Contact) {
         if (!ContactUtils.isValidContact(contact)) {
             android.util.Log.w("PhoneService", "Invalid contact for opening in contacts app: ${contact.id}")
