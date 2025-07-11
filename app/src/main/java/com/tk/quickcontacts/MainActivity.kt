@@ -160,16 +160,23 @@ fun QuickContactsApp() {
         
         // A permission is permanently denied if it's not granted AND we shouldn't show rationale
         // This happens when user denies with "Don't ask again" or denies multiple times
+        // Note: Call History permission is optional, so we don't check it for permanent denial
         val callPermissionDenied = !hasCallPermission && 
             !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CALL_PHONE)
             
         val contactsPermissionDenied = !hasContactsPermission && 
             !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CONTACTS)
-            
-        val callLogPermissionDenied = !hasCallLogPermission && 
-            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CALL_LOG)
         
-        return callPermissionDenied || contactsPermissionDenied || callLogPermissionDenied
+        return callPermissionDenied || contactsPermissionDenied
+    }
+
+    // Check if call log permission is permanently denied
+    fun isCallLogPermissionPermanentlyDenied(): Boolean {
+        val activity = context as? Activity ?: return false
+        
+        // A permission is permanently denied if it's not granted AND we shouldn't show rationale
+        return !hasCallLogPermission && 
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CALL_LOG)
     }
 
     // Function to open app settings
@@ -182,19 +189,53 @@ fun QuickContactsApp() {
         // This will be handled by the LaunchedEffect that listens to onResume
     }
 
-    // Multiple permissions launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        hasCallPermission = permissions[Manifest.permission.CALL_PHONE] ?: false
-        hasContactsPermission = permissions[Manifest.permission.READ_CONTACTS] ?: false
-        hasCallLogPermission = permissions[Manifest.permission.READ_CALL_LOG] ?: false
-        hasRequestedPermissions = true // Mark that we've requested permissions
-        isRequestingPermissions = false // We're no longer requesting permissions
+    // Call log permission launcher (for settings screen and sequential requests)
+    val callLogPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCallLogPermission = isGranted
+        // Mark that we've completed the permission request flow
+        hasRequestedPermissions = true
+        isRequestingPermissions = false
         
-        // Check if any permission was denied after the first request
-        if (hasRequestedPermissions && (!hasCallPermission || !hasContactsPermission || !hasCallLogPermission)) {
-            hasDeniedPermissionsAfterFirstRequest = true
+        // If permission is granted, automatically enable recent calls
+        if (isGranted) {
+            viewModel.enableRecentCallsVisibility()
+        }
+    }
+
+    val phonePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCallPermission = isGranted
+        if (isGranted) {
+            // If phone permission granted, request call log permission next
+            callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+        } else {
+            // If phone permission denied, mark as requested and check for permanent denial
+            hasRequestedPermissions = true
+            isRequestingPermissions = false
+            if (hasRequestedPermissions && !hasCallPermission) {
+                hasDeniedPermissionsAfterFirstRequest = true
+            }
+        }
+    }
+
+    // Individual permission launchers for sequential permission requests
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasContactsPermission = isGranted
+        if (isGranted) {
+            // If contacts permission granted, request phone permission next
+            phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE)
+        } else {
+            // If contacts permission denied, mark as requested and check for permanent denial
+            hasRequestedPermissions = true
+            isRequestingPermissions = false
+            if (hasRequestedPermissions && !hasContactsPermission) {
+                hasDeniedPermissionsAfterFirstRequest = true
+            }
         }
     }
 
@@ -348,8 +389,8 @@ fun QuickContactsApp() {
                     }
                 },
                 actions = {
-                    // Only show settings icon when not in settings screen, not searching, and all permissions are granted
-                    if (!isSettingsScreenOpen && !isSearching && hasCallPermission && hasContactsPermission && hasCallLogPermission) {
+                    // Only show settings icon when not in settings screen, not searching, and required permissions are granted
+                    if (!isSettingsScreenOpen && !isSearching && hasCallPermission && hasContactsPermission) {
                         IconButton(
                             onClick = {
                                 isSettingsScreenOpen = true
@@ -373,7 +414,7 @@ fun QuickContactsApp() {
                 .padding(innerPadding)
         ) {
             when {
-                !hasCallPermission || !hasContactsPermission || !hasCallLogPermission -> {
+                !hasCallPermission || !hasContactsPermission -> {
                     PermissionRequestScreen(
                         hasCallPermission = hasCallPermission,
                         hasContactsPermission = hasContactsPermission,
@@ -386,13 +427,8 @@ fun QuickContactsApp() {
                             } else {
                                 hasRequestedPermissions = true
                                 isRequestingPermissions = true
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.CALL_PHONE,
-                                        Manifest.permission.READ_CONTACTS,
-                                        Manifest.permission.READ_CALL_LOG
-                                    )
-                                )
+                                // Start with contacts permission first
+                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
                             }
                         }
                     )
@@ -401,7 +437,15 @@ fun QuickContactsApp() {
                 isSettingsScreenOpen -> {
                     SettingsScreen(
                         viewModel = viewModel,
-                        onBackClick = { isSettingsScreenOpen = false }
+                        onBackClick = { isSettingsScreenOpen = false },
+                        hasCallLogPermission = hasCallLogPermission,
+                        onRequestCallLogPermission = {
+                            callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                        },
+                        isCallLogPermissionPermanentlyDenied = isCallLogPermissionPermanentlyDenied(),
+                        onOpenAppSettings = {
+                            openAppSettings()
+                        }
                     )
                 }
                 
@@ -452,8 +496,8 @@ fun QuickContactsApp() {
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
-                            // Recent calls section (only show if enabled)
-                            if (isRecentCallsVisible) {
+                            // Recent calls section (only show if enabled and permission granted)
+                            if (isRecentCallsVisible && hasCallLogPermission) {
                                 RecentCallsSection(
                                     recentCalls = filteredRecentCalls,
                                     onContactClick = { contact ->

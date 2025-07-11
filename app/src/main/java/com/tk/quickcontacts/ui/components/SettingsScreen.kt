@@ -16,11 +16,16 @@ import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun SettingsScreen(
     viewModel: ContactsViewModel,
     onBackClick: () -> Unit,
+    hasCallLogPermission: Boolean = true,
+    onRequestCallLogPermission: (() -> Unit)? = null,
+    isCallLogPermissionPermanentlyDenied: Boolean = false,
+    onOpenAppSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
@@ -28,6 +33,9 @@ fun SettingsScreen(
     val useWhatsAppAsDefault by viewModel.useWhatsAppAsDefault.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
+    
+    // Dialog state for permission settings
+    var showPermissionSettingsDialog by remember { mutableStateOf(false) }
     
     // Refresh available messaging apps when settings screen is opened
     LaunchedEffect(Unit) {
@@ -248,15 +256,30 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Display recent calls at the top of the home screen for quick access",
+                            text = stringResource(R.string.recent_calls_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Switch(
-                        checked = isRecentCallsVisible,
-                        onCheckedChange = { viewModel.toggleRecentCallsVisibility() },
+                        checked = isRecentCallsVisible && hasCallLogPermission,
+                        onCheckedChange = { newValue ->
+                            if (newValue && !hasCallLogPermission) {
+                                // User wants to enable but doesn't have permission
+                                if (isCallLogPermissionPermanentlyDenied) {
+                                    // Permission is permanently denied, show dialog
+                                    showPermissionSettingsDialog = true
+                                } else {
+                                    // Request permission normally
+                                    onRequestCallLogPermission?.invoke()
+                                }
+                            } else {
+                                // User wants to disable or already has permission
+                                viewModel.toggleRecentCallsVisibility()
+                            }
+                        },
+                        enabled = true, // Always enabled
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -374,5 +397,50 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+    
+    // Permission Settings Dialog
+    if (showPermissionSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionSettingsDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_permission_required_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.dialog_permission_required_message),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionSettingsDialog = false
+                        onOpenAppSettings?.invoke()
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.dialog_open_settings),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showPermissionSettingsDialog = false }
+                ) {
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        )
     }
 } 

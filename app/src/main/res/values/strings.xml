@@ -56,11 +56,13 @@
     <string name="permission_phone_description">Make calls directly from the app when you tap on a contact</string>
     <string name="permission_contacts_access">Contacts Access</string>
     <string name="permission_contacts_description">Search and display your contacts with their names and photos</string>
-    <string name="permission_call_history_access">Call History Access</string>
+    <string name="permission_call_history_access">Call History Access (Optional)</string>
     <string name="permission_call_history_description">Show your recent calls for quick redial and easy access</string>
     <string name="permission_granted">Permission granted</string>
     <string name="privacy_protected">Your Privacy is Protected</string>
     <string name="privacy_description">This app has no internet access. All your data stays on your device.</string>
+    <string name="recent_calls_description">Display recent calls at the top of the home screen for quick access</string>
+    <string name="action_grant_call_log_permission">Grant Call History Permission</string>
     
     <!-- Settings -->
     <string name="settings_messaging_app_description">You can change this for individual contacts in quick list by tapping on the edit button</string>
@@ -122,6 +124,9 @@
     <string name="dialog_action_add">add</string>
     <string name="dialog_action_sms">sms</string>
     <string name="dialog_action_telegram">telegram</string>
+    <string name="dialog_permission_required_title">Permission Required</string>
+    <string name="dialog_permission_required_message">To enable recent calls, you need to grant Call History permission in your device settings.</string>
+    <string name="dialog_open_settings">Open Settings</string>
     
     <!-- Shared Preferences -->
     <string name="pref_quick_contacts">QuickContactsPrefs</string>

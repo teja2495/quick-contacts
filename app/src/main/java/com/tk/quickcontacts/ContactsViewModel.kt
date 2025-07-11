@@ -363,6 +363,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         saveSettings()
     }
 
+    fun enableRecentCallsVisibility() {
+        _isRecentCallsVisible.value = true
+        saveSettings()
+    }
+
     fun setMessagingApp(app: MessagingApp) {
         _defaultMessagingApp.value = app
         saveSettings()

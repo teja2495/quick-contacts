@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.tk.quickcontacts.R
 
 @Composable
 fun PermissionRequestScreen(
@@ -26,6 +28,8 @@ fun PermissionRequestScreen(
     arePermissionsPermanentlyDenied: Boolean,
     onRequestPermissions: () -> Unit
 ) {
+    // Call History permission is optional
+    val isCallLogPermissionOptional = true
     val spacing = 16.dp
     LazyColumn(
         modifier = Modifier
@@ -47,7 +51,7 @@ fun PermissionRequestScreen(
             Spacer(modifier = Modifier.height(8.dp))
             // Title
             Text(
-                text = "Permissions Required",
+                text = stringResource(R.string.title_permissions_required),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -75,14 +79,14 @@ fun PermissionRequestScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "Your Privacy is Protected",
+                            text = stringResource(R.string.privacy_protected),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "This app has no internet access. All your data stays on your device.",
+                            text = stringResource(R.string.privacy_description),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
@@ -98,22 +102,23 @@ fun PermissionRequestScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 PermissionCard(
-                    icon = Icons.Default.Phone,
-                    title = "Phone Access",
-                    description = "Make calls directly from the app when you tap on a contact",
-                    isGranted = hasCallPermission
-                )
-                PermissionCard(
                     icon = Icons.Default.Person,
-                    title = "Contacts Access",
-                    description = "Search and display your contacts with their names and photos",
+                    title = stringResource(R.string.permission_contacts_access),
+                    description = stringResource(R.string.permission_contacts_description),
                     isGranted = hasContactsPermission
                 )
                 PermissionCard(
+                    icon = Icons.Default.Phone,
+                    title = stringResource(R.string.permission_phone_access),
+                    description = stringResource(R.string.permission_phone_description),
+                    isGranted = hasCallPermission
+                )
+                PermissionCard(
                     icon = Icons.Default.History,
-                    title = "Call History Access",
-                    description = "Show your recent calls for quick redial and easy access",
-                    isGranted = hasCallLogPermission
+                    title = stringResource(R.string.permission_call_history_access),
+                    description = stringResource(R.string.permission_call_history_description),
+                    isGranted = hasCallLogPermission,
+                    isOptional = true
                 )
             }
             Spacer(modifier = Modifier.height(spacing))
@@ -127,7 +132,7 @@ fun PermissionRequestScreen(
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text(
-                    text = "Grant Permissions",
+                    text = stringResource(R.string.action_grant_permissions),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -141,7 +146,8 @@ fun PermissionCard(
     icon: ImageVector,
     title: String,
     description: String,
-    isGranted: Boolean = false
+    isGranted: Boolean = false,
+    isOptional: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -154,6 +160,8 @@ fun PermissionCard(
             width = 1.dp,
             color = if (isGranted) 
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
+            else if (isOptional)
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             else 
                 MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
         )
@@ -166,7 +174,7 @@ fun PermissionCard(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (isGranted) 
-                    MaterialTheme.colorScheme.primary 
+                    MaterialTheme.colorScheme.primary
                 else 
                     MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
@@ -178,7 +186,8 @@ fun PermissionCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
