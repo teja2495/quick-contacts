@@ -283,6 +283,32 @@ class PreferencesRepository(context: Context) {
         }
     }
     
+    // Home country code persistence
+    fun saveHomeCountryCode(code: String) {
+        try {
+            sharedPreferences.edit().putString("home_country_code", code).apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error saving home country code", e)
+        }
+    }
+
+    fun loadHomeCountryCode(): String? {
+        return try {
+            sharedPreferences.getString("home_country_code", null)
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error loading home country code", e)
+            null
+        }
+    }
+
+    fun clearHomeCountryCode() {
+        try {
+            sharedPreferences.edit().remove("home_country_code").apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error clearing home country code", e)
+        }
+    }
+    
     // Clear cache when needed (e.g., on app restart)
     fun clearCache() {
         try {

@@ -181,7 +181,8 @@ fun RecentCallVerticalItem(
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    homeCountryCode: String? = null
 ) {
     com.tk.quickcontacts.ui.components.RecentCallVerticalItem(
         contact = contact,
@@ -193,7 +194,8 @@ fun RecentCallVerticalItem(
         modifier = modifier,
         selectedContacts = selectedContacts,
         availableMessagingApps = availableMessagingApps,
-        onExecuteAction = onExecuteAction
+        onExecuteAction = onExecuteAction,
+        homeCountryCode = homeCountryCode
     )
 }
 
@@ -203,14 +205,16 @@ fun RecentCallItem(
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     isInternationalDetectionEnabled: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    homeCountryCode: String? = null
 ) {
     com.tk.quickcontacts.ui.components.RecentCallItem(
         contact = contact,
         onContactClick = onContactClick,
         onWhatsAppClick = onWhatsAppClick,
         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-        modifier = modifier
+        modifier = modifier,
+        homeCountryCode = homeCountryCode
     )
 }
 
@@ -232,7 +236,8 @@ fun ContactItem(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    homeCountryCode: String? = null
 ) {
     com.tk.quickcontacts.ui.components.ContactItem(
         contact = contact,
@@ -250,7 +255,8 @@ fun ContactItem(
         defaultMessagingApp = defaultMessagingApp,
         availableMessagingApps =  availableMessagingApps,
         selectedContacts = selectedContacts,
-        onExecuteAction = onExecuteAction
+        onExecuteAction = onExecuteAction,
+        homeCountryCode = homeCountryCode
     )
 }
 

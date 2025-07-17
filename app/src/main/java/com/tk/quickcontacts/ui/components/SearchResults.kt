@@ -41,6 +41,7 @@ fun SearchResultsContent(
     onExecuteAction: (Context, String, String) -> Unit
 ) {
     val context = LocalContext.current
+    val homeCountryCode by viewModel.homeCountryCode.collectAsState()
     
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -163,7 +164,8 @@ fun SearchResultsContent(
                     defaultMessagingApp = defaultMessagingApp,
                     modifier = Modifier.fillMaxWidth(),
                     availableMessagingApps = availableMessagingApps,
-                    onExecuteAction = onExecuteAction
+                    onExecuteAction = onExecuteAction,
+                    homeCountryCode = homeCountryCode
                 )
             }
         }
@@ -185,7 +187,8 @@ fun SearchResultItem(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    homeCountryCode: String? = null
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -193,7 +196,7 @@ fun SearchResultItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -287,13 +290,15 @@ fun SearchResultItem(
             .combinedClickable(
                 onClick = { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational) "whatsapp" else "call"
+                        dialogAction = if (isInternational == true) "whatsapp" else "call"
                         showPhoneNumberDialog = true
                     } else {
-                        if (isInternational) {
+                        if (isInternational == true) {
                             onWhatsAppClick(contact)
-                        } else {
+                        } else if (isInternational == false) {
                             onContactClick(contact)
+                        } else {
+                            // TODO: Prompt user for country code
                         }
                     }
                 },
@@ -384,26 +389,28 @@ fun SearchResultItem(
             IconButton(
                 onClick = { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational) "call" else "whatsapp"
+                        dialogAction = if (isInternational == true) "call" else "whatsapp"
                         showPhoneNumberDialog = true
                     } else {
-                        if (isInternational) {
+                        if (isInternational == true) {
                             onContactClick(contact)
-                        } else {
+                        } else if (isInternational == false) {
                             onWhatsAppClick(contact)
+                        } else {
+                            // TODO: Prompt user for country code
                         }
                     }
                 },
                 modifier = Modifier.size(48.dp)
             ) {
-                if (isInternational) {
+                if (isInternational == true) {
                     Icon(
                         imageVector = Icons.Default.Phone,
                         contentDescription = "Call ${contact.name}",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
-                } else {
+                } else if (isInternational == false) {
                     when (defaultMessagingApp) {
                         MessagingApp.WHATSAPP -> {
                             Icon(
@@ -430,6 +437,8 @@ fun SearchResultItem(
                             )
                         }
                     }
+                } else {
+                    // TODO: Prompt user for country code
                 }
             }
         }

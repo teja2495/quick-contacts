@@ -17,6 +17,10 @@ import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
 import androidx.compose.ui.res.stringResource
+import com.tk.quickcontacts.utils.PhoneNumberUtils
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun SettingsScreen(
@@ -290,6 +294,21 @@ fun SettingsScreen(
             
             item {
                 // International Number Detection Setting (no Card)
+                val context = LocalContext.current
+                // Observe home country code from ViewModel
+                val homeCountryCode by viewModel.homeCountryCode.collectAsState()
+                val isoCountry = remember(isInternationalDetectionEnabled, defaultMessagingApp) {
+                    if (isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS) {
+                        PhoneNumberUtils.getUserCountryCode(context)
+                    } else null
+                }
+                val defaultDialingCode = isoCountry?.let { PhoneNumberUtils.isoToDialingCode(it) } ?: ""
+                val displayDialingCode = homeCountryCode ?: defaultDialingCode
+
+                // Dialog state for editing country code
+                var showEditCountryCodeDialog by remember { mutableStateOf(false) }
+                var tempCountryCode by remember { mutableStateOf(displayDialingCode) }
+                var pendingEnableInternationalDetection by remember { mutableStateOf(false) }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -305,29 +324,161 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = when {
-                                defaultMessagingApp == MessagingApp.SMS ->
-                                    "Disabled when SMS is the default messaging app"
-                                else -> 
-                                    "For international numbers, tapping the card opens WhatsApp or Telegram." 
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (defaultMessagingApp == MessagingApp.SMS) 
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        when {
+                            defaultMessagingApp == MessagingApp.SMS -> {
+                                Text(
+                                    text = "Disabled when SMS is the default messaging app",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS && displayDialingCode.isNotBlank() -> {
+                                Text(
+                                    text = "Phone number must have country code.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Home Country Code: ",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = displayDialingCode,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary, // Feedback color
+                                        modifier = Modifier
+                                            .clickable { showEditCountryCodeDialog = true }
+                                    )
+                                }
+                            }
+                            else -> {
+                                Text(
+                                    text = "For international numbers, tapping the card opens WhatsApp or Telegram.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Switch(
                         checked = isInternationalDetectionEnabled,
-                        onCheckedChange = { viewModel.toggleInternationalDetection() },
+                        onCheckedChange = { newValue ->
+                            if (newValue) {
+                                // Enabling: check if country code is available
+                                if (homeCountryCode.isNullOrBlank() && defaultDialingCode.isBlank()) {
+                                    // Prompt for country code
+                                    pendingEnableInternationalDetection = true
+                                    tempCountryCode = ""
+                                    showEditCountryCodeDialog = true
+                                } else {
+                                    viewModel.toggleInternationalDetection()
+                                }
+                            } else {
+                                // Disabling: just toggle off
+                                viewModel.toggleInternationalDetection()
+                            }
+                        },
                         enabled = defaultMessagingApp != MessagingApp.SMS,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                         )
+                    )
+                }
+                // Edit Country Code Dialog
+                if (showEditCountryCodeDialog) {
+                    val isCountryCodeValid = remember(tempCountryCode) {
+                        com.tk.quickcontacts.utils.PhoneNumberUtils.isValidCountryDialingCode(tempCountryCode.trim())
+                    }
+                    AlertDialog(
+                        onDismissRequest = {
+                            showEditCountryCodeDialog = false
+                            if (pendingEnableInternationalDetection) {
+                                // User cancelled, revert toggle and clear country code
+                                pendingEnableInternationalDetection = false
+                                viewModel.clearHomeCountryCode()
+                                if (!isInternationalDetectionEnabled) {
+                                    // Already off, do nothing
+                                } else {
+                                    viewModel.toggleInternationalDetection()
+                                }
+                            }
+                        },
+                        title = {
+                            Text("Edit Home Country Code", style = MaterialTheme.typography.titleMedium)
+                        },
+                        text = {
+                            Column {
+                                OutlinedTextField(
+                                    value = tempCountryCode,
+                                    onValueChange = { input ->
+                                        // Only allow digits and plus sign
+                                        val filtered = input.filter { it.isDigit() || it == '+' }
+                                        tempCountryCode = filtered
+                                    },
+                                    label = { Text("Country Code (e.g. +1)") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                    singleLine = true,
+                                    isError = tempCountryCode.isNotBlank() && !isCountryCodeValid
+                                )
+                                if (tempCountryCode.isNotBlank() && !isCountryCodeValid) {
+                                    Text(
+                                        text = "Invalid country code. Please enter a valid code like +1, +91, etc.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                if (tempCountryCode.isBlank() || !isCountryCodeValid) {
+                                    // Don't allow blank or invalid, treat as cancel
+                                    showEditCountryCodeDialog = false
+                                    if (pendingEnableInternationalDetection) {
+                                        pendingEnableInternationalDetection = false
+                                        viewModel.clearHomeCountryCode()
+                                        if (!isInternationalDetectionEnabled) {
+                                            // Already off, do nothing
+                                        } else {
+                                            viewModel.toggleInternationalDetection()
+                                        }
+                                    }
+                                } else {
+                                    viewModel.setHomeCountryCode(tempCountryCode.trim())
+                                    showEditCountryCodeDialog = false
+                                    if (pendingEnableInternationalDetection) {
+                                        pendingEnableInternationalDetection = false
+                                        if (!isInternationalDetectionEnabled) {
+                                            viewModel.toggleInternationalDetection()
+                                        }
+                                    }
+                                }
+                            }, enabled = tempCountryCode.isNotBlank() && isCountryCodeValid) {
+                                Text("OK")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                showEditCountryCodeDialog = false
+                                if (pendingEnableInternationalDetection) {
+                                    pendingEnableInternationalDetection = false
+                                    viewModel.clearHomeCountryCode()
+                                    if (!isInternationalDetectionEnabled) {
+                                        // Already off, do nothing
+                                    } else {
+                                        viewModel.toggleInternationalDetection()
+                                    }
+                                }
+                            }) {
+                                Text("Cancel")
+                            }
+                        }
                     )
                 }
             }

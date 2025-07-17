@@ -58,7 +58,8 @@ fun ContactItem(
     onExecuteAction: (Context, String, String) -> Unit,
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
     hasSeenCallWarning: Boolean = true,
-    onMarkCallWarningSeen: (() -> Unit)? = null
+    onMarkCallWarningSeen: (() -> Unit)? = null,
+    homeCountryCode: String? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -69,7 +70,7 @@ fun ContactItem(
     var pendingCallNumber by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -110,7 +111,7 @@ fun ContactItem(
     if (showActionToggleDialog) {
         ActionToggleDialog(
             contact = contact,
-            isInternational = isInternational,
+            isInternational = isInternational == true, // Pass non-null Boolean
             isCurrentlySwapped = false, // No longer using swap logic
             customActions = customActions,
             defaultMessagingApp = defaultMessagingApp,
@@ -190,7 +191,7 @@ fun ContactItem(
                             MessagingApp.SMS -> "SMS"
                             MessagingApp.TELEGRAM -> "Telegram"
                         }
-                        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
                             messagingAppName  // International: Primary = messaging app
                         } else {
                             "Call"  // Default: Primary = Call
@@ -302,7 +303,7 @@ fun ContactItem(
                     Spacer(modifier = Modifier.height(2.dp))
                     
                     // Get the primary action for this contact
-                    val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                    val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
                         when (defaultMessagingApp) {
                             MessagingApp.WHATSAPP -> "WhatsApp"
                             MessagingApp.SMS -> "SMS"
@@ -365,7 +366,7 @@ fun ContactItem(
                         }
                         
                         // Use custom secondary action or determine based on new default logic
-                        val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                        val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
                             "Call"  // International: Secondary = Call
                         } else {
                             messagingAppName  // Default: Secondary = messaging app
@@ -389,7 +390,7 @@ fun ContactItem(
                     }
                     
                     // Show secondary action icon based on custom actions or new default logic
-                    val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
+                    val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
                         "Call"  // International: Secondary = Call
                     } else {
                         messagingAppName  // Default: Secondary = messaging app
@@ -471,7 +472,8 @@ fun RecentCallVerticalItem(
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    homeCountryCode: String? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -479,7 +481,7 @@ fun RecentCallVerticalItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -566,13 +568,15 @@ fun RecentCallVerticalItem(
             .combinedClickable(
                 onClick = { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational) "whatsapp" else "call"
+                        dialogAction = if (isInternational == true) "whatsapp" else "call"
                         showPhoneNumberDialog = true
                     } else {
-                        if (isInternational) {
+                        if (isInternational == true) {
                             onWhatsAppClick(contact)
-                        } else {
+                        } else if (isInternational == false) {
                             onContactClick(contact)
+                        } else {
+                            // TODO: Prompt user for country code
                         }
                     }
                 },
@@ -635,26 +639,28 @@ fun RecentCallVerticalItem(
         IconButton(
             onClick = { 
                 if (contact.phoneNumbers.size > 1) {
-                    dialogAction = if (isInternational) "call" else "whatsapp"
+                    dialogAction = if (isInternational == true) "call" else "whatsapp"
                     showPhoneNumberDialog = true
                 } else {
-                    if (isInternational) {
+                    if (isInternational == true) {
                         onContactClick(contact)
-                    } else {
+                    } else if (isInternational == false) {
                         onWhatsAppClick(contact)
+                    } else {
+                        // TODO: Prompt user for country code
                     }
                 }
             },
             modifier = Modifier.size(48.dp)
         ) {
-            if (isInternational) {
+            if (isInternational == true) {
                 Icon(
                     imageVector = Icons.Default.Phone,
                     contentDescription = "Call ${contact.name}",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
-            } else {
+            } else if (isInternational == false) {
                 when (defaultMessagingApp) {
                     MessagingApp.WHATSAPP -> {
                         Icon(
@@ -681,6 +687,8 @@ fun RecentCallVerticalItem(
                         )
                     }
                 }
+            } else {
+                // TODO: Prompt user for country code
             }
         }
     }
@@ -692,19 +700,22 @@ fun RecentCallItem(
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     isInternationalDetectionEnabled: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    homeCountryCode: String? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
+    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     Column(
         modifier = modifier
             .clickable { 
-                if (isInternational) {
+                if (isInternational == true) {
                     onWhatsAppClick(contact)
-                } else {
+                } else if (isInternational == false) {
                     onContactClick(contact)
+                } else {
+                    // TODO: Prompt user for country code
                 }
             }
             .padding(2.dp),

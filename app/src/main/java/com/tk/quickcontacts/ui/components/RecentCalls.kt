@@ -33,7 +33,8 @@ fun RecentCallsSection(
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    homeCountryCode: String? = null
 ) {
     if (recentCalls.isNotEmpty()) {
         var isExpanded by remember { mutableStateOf(false) }
@@ -109,7 +110,8 @@ fun RecentCallsSection(
                                 modifier = Modifier.fillMaxWidth(),
                                 selectedContacts = selectedContacts,
                                 availableMessagingApps = availableMessagingApps,
-                                onExecuteAction = onExecuteAction
+                                onExecuteAction = onExecuteAction,
+                                homeCountryCode = homeCountryCode
                             )
                         }
                     }
@@ -139,7 +141,8 @@ fun RecentCallsSection(
                                     modifier = Modifier.fillMaxWidth(),
                                     selectedContacts = selectedContacts,
                                     availableMessagingApps = availableMessagingApps,
-                                    onExecuteAction = onExecuteAction
+                                    onExecuteAction = onExecuteAction,
+                                    homeCountryCode = homeCountryCode
                                 )
                             }
                         }

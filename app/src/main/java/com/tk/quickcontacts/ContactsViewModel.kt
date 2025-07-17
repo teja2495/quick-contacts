@@ -73,6 +73,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _availableMessagingApps = MutableStateFlow<Set<MessagingApp>>(emptySet())
     val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps.asStateFlow()
     
+    // Home country code state
+    private val _homeCountryCode = MutableStateFlow<String?>(null)
+    val homeCountryCode: StateFlow<String?> = _homeCountryCode.asStateFlow()
+    
     // Backward compatibility
     val useWhatsAppAsDefault: StateFlow<Boolean> = _defaultMessagingApp.map { it == MessagingApp.WHATSAPP }
         .stateIn(
@@ -107,6 +111,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
+        // Load home country code
+        _homeCountryCode.value = preferencesRepository.loadHomeCountryCode()
     }
     
     // First launch and testing methods
@@ -616,6 +622,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error validating state consistency", e)
         }
+    }
+
+    // Public method to update home country code
+    fun setHomeCountryCode(code: String) {
+        _homeCountryCode.value = code
+        preferencesRepository.saveHomeCountryCode(code)
+    }
+
+    // Public method to clear home country code
+    fun clearHomeCountryCode() {
+        _homeCountryCode.value = null
+        preferencesRepository.clearHomeCountryCode()
     }
 
     // Cleanup resources

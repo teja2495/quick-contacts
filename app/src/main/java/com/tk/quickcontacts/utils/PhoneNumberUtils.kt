@@ -14,6 +14,51 @@ object PhoneNumberUtils {
     private val PHONE_PATTERN = Pattern.compile("^[+]?[0-9\\s\\-\\(\\)]{7,20}$")
     private val DIGITS_ONLY_PATTERN = Pattern.compile("^[0-9]+$")
     
+    // Shared map for ISO to dialing code
+    private val countryToDialing = mapOf(
+        "US" to "+1", // US/Canada
+        "CA" to "+1",
+        "GB" to "+44",
+        "DE" to "+49",
+        "FR" to "+33",
+        "IT" to "+39",
+        "ES" to "+34",
+        "RU" to "+7",
+        "JP" to "+81",
+        "KR" to "+82",
+        "CN" to "+86",
+        "IN" to "+91",
+        "AU" to "+61",
+        "BR" to "+55",
+        "MX" to "+52",
+        "NL" to "+31",
+        "SE" to "+46",
+        "NO" to "+47",
+        "DK" to "+45",
+        "CH" to "+41",
+        "AT" to "+43",
+        "BE" to "+32",
+        "PT" to "+351",
+        "GR" to "+30",
+        "PL" to "+48",
+        "CZ" to "+420",
+        "HU" to "+36",
+        "TR" to "+90",
+        "IL" to "+972",
+        "SA" to "+966",
+        "AE" to "+971",
+        "SG" to "+65",
+        "MY" to "+60",
+        "TH" to "+66",
+        "VN" to "+84",
+        "ID" to "+62",
+        "PH" to "+63",
+        "ZA" to "+27",
+        "NG" to "+234",
+        "EG" to "+20",
+        // ... (add more as needed)
+    )
+    
     /**
      * Validate if a phone number is in a valid format
      */
@@ -126,11 +171,12 @@ object PhoneNumberUtils {
     
     /**
      * Get user's country code with error handling
+     * @return ISO country code (e.g., "US"), or null if it cannot be determined. UI should prompt user if null.
      */
-    fun getUserCountryCode(context: Context): String {
+    fun getUserCountryCode(context: Context): String? {
         return try {
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                ?: return Locale.getDefault().country.uppercase()
+                ?: return null
             
             // Try to get country from SIM card first
             var countryCode = telephonyManager.simCountryIso
@@ -146,15 +192,22 @@ object PhoneNumberUtils {
             }
             
             // Validate country code format
-            if (countryCode.length != 2) {
-                return "US" // Default fallback
+            if (countryCode.isNullOrEmpty() || countryCode.length != 2) {
+                return null // No fallback to US
             }
             
             countryCode.uppercase()
         } catch (e: Exception) {
             android.util.Log.w("PhoneNumberUtils", "Error getting user country code", e)
-            "US" // Default fallback
+            null // No fallback to US
         }
+    }
+    
+    /**
+     * Map ISO country code (e.g., "US") to dialing code (e.g., "+1")
+     */
+    fun isoToDialingCode(isoCountryCode: String): String? {
+        return countryToDialing[isoCountryCode.uppercase(Locale.ROOT)]
     }
     
     /**
@@ -392,31 +445,60 @@ object PhoneNumberUtils {
     
     /**
      * Determine if a phone number is international with validation
+     * @param homeCountryCode The user's home country dialing code (e.g., '+1'). If null, fallback to device country code.
+     * @return true if international, false if domestic, or null if user's country code cannot be determined (UI should prompt user)
      */
-    fun isInternationalNumber(context: Context, phoneNumber: String, isDetectionEnabled: Boolean): Boolean {
+    fun isInternationalNumber(
+        context: Context,
+        phoneNumber: String,
+        isDetectionEnabled: Boolean,
+        homeCountryCode: String? = null
+    ): Boolean? {
         if (!isDetectionEnabled) {
             return false
         }
-        
         if (!isValidPhoneNumber(phoneNumber)) {
             return false
         }
-        
+        // If the number does not start with '+', ignore international detection
+        if (!phoneNumber.trim().startsWith("+")) {
+            return false
+        }
         return try {
-            val userCountryCode = getUserCountryCode(context)
-            val phoneCountryCode = getCountryCodeFromPhoneNumber(phoneNumber)
-            
+            val phoneCountryCode = getDialingCodeFromPhoneNumber(phoneNumber)
+            val userDialingCode = homeCountryCode ?: isoToDialingCode(getUserCountryCode(context) ?: return null)
             // If we can't determine the phone's country code, assume it's domestic
-            if (phoneCountryCode == null) {
-                return false
+            if (phoneCountryCode == null || userDialingCode == null) {
+                return null // Signal to UI to prompt user for country code
             }
-            
-            // Compare country codes
-            phoneCountryCode != userCountryCode
+            // Compare dialing codes (e.g., '+1' vs '+91'), trim and ignore case
+            val phoneCode = phoneCountryCode.trim().lowercase(Locale.ROOT)
+            val userCode = userDialingCode.trim().lowercase(Locale.ROOT)
+            android.util.Log.d("PhoneNumberUtils", "Comparing phone code: '$phoneCode' with user code: '$userCode'")
+            phoneCode != userCode
         } catch (e: Exception) {
             android.util.Log.w("PhoneNumberUtils", "Error determining if number is international: $phoneNumber", e)
-            false // Assume domestic as safe fallback
+            null // Signal to UI to prompt user for country code
         }
+    }
+
+    /**
+     * Extract dialing code from phone number (e.g., '+1', '+91')
+     */
+    fun getDialingCodeFromPhoneNumber(phoneNumber: String): String? {
+        val cleaned = phoneNumber.replace(Regex("[^0-9+]"), "")
+        if (!cleaned.startsWith("+")) return null
+        // Try different lengths for country codes (1-4 digits)
+        for (length in 1..4) {
+            if (cleaned.length > length) {
+                val possibleCode = cleaned.substring(1, 1 + length)
+                // Check if this code exists in our map
+                if (countryToDialing.values.contains("+" + possibleCode)) {
+                    return "+" + possibleCode
+                }
+            }
+        }
+        return null
     }
     
     /**
@@ -433,5 +515,13 @@ object PhoneNumberUtils {
             android.util.Log.w("PhoneNumberUtils", "Error cleaning phone number: $phoneNumber", e)
             null
         }
+    }
+
+    /**
+     * Check if a string is a valid country dialing code (e.g., '+1', '+91'). Accepts with or without '+'.
+     */
+    fun isValidCountryDialingCode(code: String): Boolean {
+        val normalized = if (code.startsWith("+")) code else "+$code"
+        return countryToDialing.values.contains(normalized)
     }
 } 
