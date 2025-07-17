@@ -59,7 +59,8 @@ fun ContactItem(
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
-    homeCountryCode: String? = null
+    homeCountryCode: String? = null,
+    onEditContactName: (Contact, String) -> Unit
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -68,6 +69,7 @@ fun ContactItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     var showCallWarningDialog by remember { mutableStateOf(false) }
     var pendingCallNumber by remember { mutableStateOf<String?>(null) }
+    var showEditNameDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     
     val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
@@ -292,11 +294,23 @@ fun ContactItem(
 
             // Contact Info
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = contact.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (editMode) {
+                        Text(
+                            text = contact.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { showEditNameDialog = true }
+                        )
+                    } else {
+                        Text(
+                            text = contact.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
                 
                 // Show primary action text (only in normal mode, not in edit mode)
                 if (!editMode) {
@@ -456,6 +470,16 @@ fun ContactItem(
                 showCallWarningDialog = false
                 pendingCallNumber = null
             }
+        )
+    }
+    if (showEditNameDialog) {
+        EditContactNameDialog(
+            contact = contact,
+            onSave = { newName ->
+                onEditContactName(contact, newName)
+                showEditNameDialog = false
+            },
+            onDismiss = { showEditNameDialog = false }
         )
     }
 }

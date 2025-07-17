@@ -669,7 +669,10 @@ fun QuickContactsApp() {
                                         },
                                         hasSeenCallWarning = hasSeenCallWarning,
                                         onMarkCallWarningSeen = { viewModel.markCallWarningSeen() },
-                                        homeCountryCode = homeCountryCode
+                                        homeCountryCode = homeCountryCode,
+                                        onEditContactName = { contact, newName ->
+                                            viewModel.updateContactName(contact, newName)
+                                        }
                                     )
                                 }
                             }

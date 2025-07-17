@@ -466,6 +466,23 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun updateContactName(contact: Contact, newName: String) {
+        try {
+            val currentList = _selectedContacts.value.toMutableList()
+            val index = currentList.indexOfFirst { it.id == contact.id }
+            if (index != -1) {
+                val updatedContact = contact.copy(name = newName.trim())
+                currentList[index] = updatedContact
+                _selectedContacts.value = currentList
+                saveContacts()
+                filterContacts()
+                validateStateConsistency()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error updating contact name for: ${contact.id}", e)
+        }
+    }
+
     // Action execution with validation
     fun makePhoneCall(context: Context, phoneNumber: String) {
         try {

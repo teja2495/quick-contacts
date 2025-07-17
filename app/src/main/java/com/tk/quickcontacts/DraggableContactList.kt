@@ -119,7 +119,12 @@ fun ContactList(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
+    hasSeenCallWarning: Boolean = true,
+    onMarkCallWarningSeen: (() -> Unit)? = null,
+    homeCountryCode: String? = null,
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> }
 ) {
     com.tk.quickcontacts.ui.components.ContactList(
         contacts = contacts,
@@ -137,7 +142,12 @@ fun ContactList(
         defaultMessagingApp = defaultMessagingApp,
         availableMessagingApps = availableMessagingApps,
         selectedContacts = selectedContacts,
-        onExecuteAction = onExecuteAction
+        onExecuteAction = onExecuteAction,
+        onUpdateContactNumber = onUpdateContactNumber,
+        hasSeenCallWarning = hasSeenCallWarning,
+        onMarkCallWarningSeen = onMarkCallWarningSeen,
+        homeCountryCode = homeCountryCode,
+        onEditContactName = onEditContactName
     )
 }
 
@@ -237,7 +247,8 @@ fun ContactItem(
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null
+    homeCountryCode: String? = null,
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> }
 ) {
     com.tk.quickcontacts.ui.components.ContactItem(
         contact = contact,
@@ -256,7 +267,8 @@ fun ContactItem(
         availableMessagingApps =  availableMessagingApps,
         selectedContacts = selectedContacts,
         onExecuteAction = onExecuteAction,
-        homeCountryCode = homeCountryCode
+        homeCountryCode = homeCountryCode,
+        onEditContactName = onEditContactName
     )
 }
 

@@ -35,7 +35,8 @@ fun ContactList(
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
-    homeCountryCode: String? = null
+    homeCountryCode: String? = null,
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> } // default no-op
 ) {
     // Memoize the reorder state to prevent unnecessary recreations
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
@@ -87,7 +88,8 @@ fun ContactList(
                         onUpdateContactNumber = onUpdateContactNumber,
                         hasSeenCallWarning = hasSeenCallWarning,
                         onMarkCallWarningSeen = onMarkCallWarningSeen,
-                        homeCountryCode = homeCountryCode
+                        homeCountryCode = homeCountryCode,
+                        onEditContactName = onEditContactName
                     )
                 }
             } else {
@@ -111,7 +113,8 @@ fun ContactList(
                     onUpdateContactNumber = onUpdateContactNumber,
                     hasSeenCallWarning = hasSeenCallWarning,
                     onMarkCallWarningSeen = onMarkCallWarningSeen,
-                    homeCountryCode = homeCountryCode
+                    homeCountryCode = homeCountryCode,
+                    onEditContactName = onEditContactName
                 )
             }
         }
