@@ -81,6 +81,19 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             initialValue = true
         )
 
+    // Call warning state
+    private val _hasSeenCallWarning = MutableStateFlow(preferencesRepository.hasSeenCallWarning())
+    val hasSeenCallWarning: StateFlow<Boolean> = _hasSeenCallWarning.asStateFlow()
+
+    fun checkCallWarningSeen() {
+        _hasSeenCallWarning.value = preferencesRepository.hasSeenCallWarning()
+    }
+
+    fun markCallWarningSeen() {
+        preferencesRepository.markCallWarningSeen()
+        _hasSeenCallWarning.value = true
+    }
+
     // Search debouncing
     private var searchJob: kotlinx.coroutines.Job? = null
     private val searchDebounceDelay = 300L // 300ms debounce

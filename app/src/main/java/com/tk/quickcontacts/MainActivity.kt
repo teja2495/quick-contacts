@@ -251,6 +251,7 @@ fun QuickContactsApp() {
     val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
+    val hasSeenCallWarning by viewModel.hasSeenCallWarning.collectAsState()
     
     // Disable international detection when SMS is selected as default messaging app
     val effectiveInternationalDetectionEnabled = isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS
@@ -663,7 +664,9 @@ fun QuickContactsApp() {
                                         },
                                         onUpdateContactNumber = { contact, selectedNumber ->
                                             viewModel.updateContactNumber(contact, selectedNumber)
-                                        }
+                                        },
+                                        hasSeenCallWarning = hasSeenCallWarning,
+                                        onMarkCallWarningSeen = { viewModel.markCallWarningSeen() }
                                     )
                                 }
                             }

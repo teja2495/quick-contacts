@@ -56,13 +56,17 @@ fun ContactItem(
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
-    onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> } // <-- new callback
+    onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
+    hasSeenCallWarning: Boolean = true,
+    onMarkCallWarningSeen: (() -> Unit)? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showActionToggleDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
+    var showCallWarningDialog by remember { mutableStateOf(false) }
+    var pendingCallNumber by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     
     val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled)
@@ -195,8 +199,12 @@ fun ContactItem(
                             dialogAction = primaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
-                            // Use the lambda instead of viewModel directly
-                            onExecuteAction(context, primaryAction, contact.phoneNumber)
+                            if (primaryAction == "Call" && !hasSeenCallWarning) {
+                                pendingCallNumber = contact.phoneNumber
+                                showCallWarningDialog = true
+                            } else {
+                                onExecuteAction(context, primaryAction, contact.phoneNumber)
+                            }
                         }
                     }
                 },
@@ -433,6 +441,21 @@ fun ContactItem(
                 }
             }
         }
+    }
+    // Show call warning dialog if needed
+    if (showCallWarningDialog && pendingCallNumber != null) {
+        CallWarningDialog(
+            onConfirm = {
+                onMarkCallWarningSeen?.invoke()
+                onExecuteAction(context, "Call", pendingCallNumber!!)
+                showCallWarningDialog = false
+                pendingCallNumber = null
+            },
+            onDismiss = {
+                showCallWarningDialog = false
+                pendingCallNumber = null
+            }
+        )
     }
 }
 

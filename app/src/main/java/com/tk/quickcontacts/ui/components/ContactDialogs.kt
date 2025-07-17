@@ -597,4 +597,26 @@ fun ContactActionsDialog(
             }
         }
     )
+}
+
+@Composable
+fun CallWarningDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Warning", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Text("You are about to make a phone call. Carrier charges may apply. This warning will only appear once. Do you want to continue?", style = MaterialTheme.typography.bodyMedium)
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Continue") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 } 

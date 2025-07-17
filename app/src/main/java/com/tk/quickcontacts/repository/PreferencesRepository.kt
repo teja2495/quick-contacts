@@ -266,6 +266,23 @@ class PreferencesRepository(context: Context) {
         }
     }
     
+    fun hasSeenCallWarning(): Boolean {
+        return try {
+            sharedPreferences.getBoolean("has_seen_call_warning", false)
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error checking call warning", e)
+            false // Default to not shown if error
+        }
+    }
+
+    fun markCallWarningSeen() {
+        try {
+            sharedPreferences.edit().putBoolean("has_seen_call_warning", true).apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error marking call warning seen", e)
+        }
+    }
+    
     // Clear cache when needed (e.g., on app restart)
     fun clearCache() {
         try {
