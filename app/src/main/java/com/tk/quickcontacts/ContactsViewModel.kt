@@ -390,23 +390,20 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid contact cannot be added: ${contact.id}")
                 return
             }
-            
             val sanitizedContact = ContactUtils.sanitizeContact(contact)
             if (sanitizedContact == null) {
                 android.util.Log.w("ContactsViewModel", "Contact sanitization failed: ${contact.id}")
                 return
             }
-            
             val currentList = _selectedContacts.value.toMutableList()
-            if (!currentList.any { it.id == sanitizedContact.id }) {
-                currentList.add(sanitizedContact)
-                _selectedContacts.value = currentList
-                saveContacts()
-                filterContacts()
-                
-                // Validate state consistency
-                validateStateConsistency()
-            }
+            // Remove any contact with the same id (regardless of number)
+            val removed = currentList.removeAll { it.id == sanitizedContact.id }
+            currentList.add(sanitizedContact)
+            _selectedContacts.value = currentList
+            saveContacts()
+            filterContacts()
+            // Validate state consistency
+            validateStateConsistency()
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error adding contact: ${contact.id}", e)
         }
@@ -442,6 +439,26 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error moving contact from $fromIndex to $toIndex", e)
+        }
+    }
+
+    fun updateContactNumber(contact: Contact, selectedNumber: String) {
+        try {
+            val currentList = _selectedContacts.value.toMutableList()
+            val index = currentList.indexOfFirst { it.id == contact.id }
+            if (index != -1) {
+                val updatedContact = contact.copy(
+                    phoneNumber = selectedNumber,
+                    phoneNumbers = listOf(selectedNumber)
+                )
+                currentList[index] = updatedContact
+                _selectedContacts.value = currentList
+                saveContacts()
+                filterContacts()
+                validateStateConsistency()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error updating contact number for: ${contact.id}", e)
         }
     }
 

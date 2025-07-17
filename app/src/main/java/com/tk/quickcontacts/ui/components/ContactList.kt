@@ -31,7 +31,8 @@ fun ContactList(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> }
 ) {
     // Memoize the reorder state to prevent unnecessary recreations
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
@@ -79,7 +80,8 @@ fun ContactList(
                         defaultMessagingApp = defaultMessagingApp,
                         availableMessagingApps = availableMessagingApps,
                         selectedContacts = selectedContacts,
-                        onExecuteAction = onExecuteAction
+                        onExecuteAction = onExecuteAction,
+                        onUpdateContactNumber = onUpdateContactNumber
                     )
                 }
             } else {
@@ -99,7 +101,8 @@ fun ContactList(
                     defaultMessagingApp = defaultMessagingApp,
                     availableMessagingApps = availableMessagingApps,
                     selectedContacts = selectedContacts,
-                    onExecuteAction = onExecuteAction
+                    onExecuteAction = onExecuteAction,
+                    onUpdateContactNumber = onUpdateContactNumber
                 )
             }
         }

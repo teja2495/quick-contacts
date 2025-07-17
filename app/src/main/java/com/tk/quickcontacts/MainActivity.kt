@@ -659,6 +659,9 @@ fun QuickContactsApp() {
                                         selectedContacts = selectedContacts,
                                         onExecuteAction = { context, action, phoneNumber ->
                                             viewModel.executeAction(context, action, phoneNumber)
+                                        },
+                                        onUpdateContactNumber = { contact, selectedNumber ->
+                                            viewModel.updateContactNumber(contact, selectedNumber)
                                         }
                                     )
                                 }

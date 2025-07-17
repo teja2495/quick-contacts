@@ -220,7 +220,6 @@ fun SearchResultItem(
             },
             selectedContacts = selectedContacts,
             onAddContact = if (dialogAction == "add") { contactWithSelectedNumber ->
-                // Create a new contact with the selected number
                 val newContact = contact.copy(
                     phoneNumber = contactWithSelectedNumber.phoneNumber,
                     phoneNumbers = listOf(contactWithSelectedNumber.phoneNumber)
@@ -229,7 +228,8 @@ fun SearchResultItem(
             } else null,
             onRemoveContact = if (dialogAction == "add") { contactToRemove ->
                 onRemoveContact(contactToRemove)
-            } else null
+            } else null,
+            hideIcons = dialogAction == "add"
         )
     }
     

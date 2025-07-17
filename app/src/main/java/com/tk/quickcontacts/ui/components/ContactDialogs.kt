@@ -24,6 +24,7 @@ import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.R
 import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.utils.PhoneNumberUtils
 
 @Composable
 fun PhoneNumberSelectionDialog(
@@ -32,7 +33,8 @@ fun PhoneNumberSelectionDialog(
     onDismiss: () -> Unit,
     selectedContacts: List<Contact> = emptyList(),
     onAddContact: ((Contact) -> Unit)? = null,
-    onRemoveContact: ((Contact) -> Unit)? = null
+    onRemoveContact: ((Contact) -> Unit)? = null,
+    hideIcons: Boolean = false // NEW FLAG
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -44,9 +46,10 @@ fun PhoneNumberSelectionDialog(
             )
         },
         text = {
+            val context = LocalContext.current
             Column {
                 Text(
-                    text = "Choose a phone number for ${contact.name}:",
+                    text = "The number you choose will be set as your default for this contact. To change it later, remove and re-add the contact with a different number.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -77,56 +80,26 @@ fun PhoneNumberSelectionDialog(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = phoneNumber,
+                                text = PhoneNumberUtils.formatPhoneNumber(phoneNumber),
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.weight(1f)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            // Only show tick/+ icon when onToggleContact is provided (search results + button)
-                            if (onAddContact != null && onRemoveContact != null) {
-                                Icon(
-                                    imageVector = if (isNumberInQuickList) Icons.Default.Done else Icons.Default.Add,
-                                    contentDescription = if (isNumberInQuickList) 
-                                        "Already in quick list" 
-                                    else 
-                                        "Add to quick list",
-                                    tint = if (isNumberInQuickList) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
-                                        MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .clickable {
-                                            val add = onAddContact
-                                            val remove = onRemoveContact
-                                            
-                                            // Create the contact with selected number
-                                            val contactWithSelectedNumber = contact.copy(
-                                                phoneNumber = phoneNumber,
-                                                phoneNumbers = listOf(phoneNumber)
-                                            )
-                                            
-                                            if (isNumberInQuickList) {
-                                                // If this number is already selected, just remove it
-                                                remove(contactWithSelectedNumber)
-                                            } else {
-                                                // If this number is not selected, remove any existing number for this contact and add this one
-                                                val existingContact = selectedContacts.find { it.id == contact.id }
-                                                if (existingContact != null) {
-                                                    remove(existingContact) // Remove existing
-                                                }
-                                                add(contactWithSelectedNumber) // Add new
-                                            }
-                                        }
-                                )
+                            if (!hideIcons && (onAddContact != null && onRemoveContact != null)) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                if (isNumberInQuickList) {
+                                    Icon(
+                                        imageVector = Icons.Default.Done,
+                                        contentDescription = "In quick list",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add to quick list",
+                                        tint = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
                             }
                         }
                     }

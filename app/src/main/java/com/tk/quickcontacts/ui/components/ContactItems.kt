@@ -55,7 +55,8 @@ fun ContactItem(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> } // <-- new callback
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -75,6 +76,8 @@ fun ContactItem(
                     phoneNumber = selectedNumber,
                     phoneNumbers = listOf(selectedNumber)
                 )
+                // Update the quick list contact to have only the selected number
+                onUpdateContactNumber(contact, selectedNumber)
                 when (dialogAction) {
                     "call" -> onExecuteAction(context, "Call", selectedNumber)
                     "whatsapp" -> onExecuteAction(context, "WhatsApp", selectedNumber)
@@ -89,12 +92,13 @@ fun ContactItem(
                 dialogAction = null
             },
             selectedContacts = selectedContacts,
-            onAddContact = { contactWithSelectedNumber ->
+            onAddContact = if (dialogAction == "add") { contactWithSelectedNumber ->
                 onContactClick(contactWithSelectedNumber)
-            },
-            onRemoveContact = { contactWithSelectedNumber ->
+            } else null,
+            onRemoveContact = if (dialogAction == "add") { contactWithSelectedNumber ->
                 onContactClick(contactWithSelectedNumber)
-            }
+            } else null,
+            hideIcons = dialogAction == "add"
         )
     }
     
