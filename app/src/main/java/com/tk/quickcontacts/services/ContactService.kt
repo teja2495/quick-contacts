@@ -470,6 +470,68 @@ class ContactService {
         }
     }
     
+    fun getAllContacts(context: Context): List<Contact> {
+        val allContacts = mutableListOf<Contact>()
+        val seenContactsMap = mutableMapOf<String, Contact>()
+        try {
+            val phoneCursor: Cursor? = context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                phoneProjection,
+                null,
+                null,
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+            )
+            phoneCursor?.use {
+                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
+                    while (it.moveToNext()) {
+                        val id = it.getString(idColumn)
+                        val name = it.getString(nameColumn)
+                        val number = it.getString(numberColumn)
+                        if (id != null && name != null && number != null &&
+                            id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
+                            PhoneNumberUtils.isValidPhoneNumber(number)) {
+                            if (seenContactsMap.containsKey(id)) {
+                                val existingContact = seenContactsMap[id]!!
+                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
+                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
+                                val alreadyExists = updatedPhoneNumbers.any {
+                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber
+                                }
+                                if (!alreadyExists) {
+                                    updatedPhoneNumbers.add(number)
+                                    val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                    if (ContactUtils.isValidContact(updatedContact)) {
+                                        seenContactsMap[id] = updatedContact
+                                    }
+                                }
+                            } else {
+                                val photoUri = ContactUtils.getContactPhotoUri(context, id)
+                                val contact = Contact(
+                                    id = id,
+                                    name = name,
+                                    phoneNumber = number,
+                                    phoneNumbers = listOf(number),
+                                    photoUri = photoUri
+                                )
+                                if (ContactUtils.isValidContact(contact)) {
+                                    seenContactsMap[id] = contact
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            allContacts.addAll(seenContactsMap.values.mapNotNull { ContactUtils.sanitizeContact(it) })
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("QuickContacts", "Error getting all contacts: ${e.message}")
+        }
+        return allContacts
+    }
+    
     /**
      * Cleanup resources when service is no longer needed
      */

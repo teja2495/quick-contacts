@@ -49,6 +49,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
     val searchResults: StateFlow<List<Contact>> = _searchResults.asStateFlow()
 
+    private val _allContacts = MutableStateFlow<List<Contact>>(emptyList())
+    val allContacts: StateFlow<List<Contact>> = _allContacts.asStateFlow()
+
     // Action preferences
     private val _actionPreferences = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val actionPreferences: StateFlow<Map<String, Boolean>> = _actionPreferences.asStateFlow()
@@ -178,57 +181,20 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     // Search and filtering
     fun updateSearchQuery(query: String) {
-        try {
-            android.util.Log.d("ContactsViewModel", "Updating search query: '$query'")
-            
-            _searchQuery.value = query
-            filterContacts()
-            
-            // Cancel previous search job
-            searchJob?.cancel()
-            
-            // Debounce search for all contacts
-            if (query.isNotEmpty()) {
-                searchJob = CoroutineScope(Dispatchers.IO).launch {
-                    delay(searchDebounceDelay)
-                    if (query == _searchQuery.value) { // Only search if query hasn't changed
-                        try {
-                            android.util.Log.d("ContactsViewModel", "Executing search for: '$query'")
-                            val results = contactService.searchContacts(getApplication(), query)
-                            
-                            android.util.Log.d("ContactsViewModel", "Raw search results: ${results.size} contacts")
-                            results.forEach { contact ->
-                                android.util.Log.d("ContactsViewModel", "Raw result: ${contact.name} (${contact.phoneNumber})")
-                            }
-                            
-                            // Validate search results
-                            val validResults = results.filter { ContactUtils.isValidContact(it) }
-                            
-                            android.util.Log.d("ContactsViewModel", "Valid search results: ${validResults.size} contacts")
-                            validResults.forEach { contact ->
-                                android.util.Log.d("ContactsViewModel", "Valid result: ${contact.name} (${contact.phoneNumber})")
-                            }
-                            
-                            if (validResults.size != results.size) {
-                                android.util.Log.w("ContactsViewModel", "Removing ${results.size - validResults.size} invalid search results")
-                            }
-                            
-                            _searchResults.value = validResults
-                            android.util.Log.d("ContactsViewModel", "Search results updated: ${validResults.size} contacts")
-                        } catch (e: Exception) {
-                            android.util.Log.e("ContactsViewModel", "Error searching contacts", e)
-                            _searchResults.value = emptyList()
-                        }
-                    } else {
-                        android.util.Log.d("ContactsViewModel", "Search query changed, skipping search for: '$query'")
-                    }
-                }
-            } else {
-                android.util.Log.d("ContactsViewModel", "Empty query, clearing search results")
-                _searchResults.value = emptyList()
+        android.util.Log.d("ContactsViewModel", "Updating search query: '$query'")
+        _searchQuery.value = query
+        filterContacts()
+        if (query.isNotEmpty()) {
+            val lowerQuery = query.lowercase().trim()
+            val filtered = _allContacts.value.filter { contact ->
+                contact.name.lowercase().contains(lowerQuery) ||
+                contact.phoneNumbers.any { it.contains(lowerQuery) }
             }
-        } catch (e: Exception) {
-            android.util.Log.e("ContactsViewModel", "Error updating search query", e)
+            _searchResults.value = filtered
+            android.util.Log.d("ContactsViewModel", "Filtered search results: ${filtered.size} contacts")
+        } else {
+            _searchResults.value = emptyList()
+            android.util.Log.d("ContactsViewModel", "Empty query, clearing search results")
         }
     }
     
@@ -569,6 +535,20 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     fun formatPhoneNumber(phoneNumber: String): String {
         return phoneService.formatPhoneNumber(phoneNumber)
+    }
+
+    fun refreshAllContactsFromPhone(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val contacts = contactService.getAllContacts(context)
+                val validContacts = contacts.filter { ContactUtils.isValidContact(it) }
+                _allContacts.value = validContacts
+                android.util.Log.d("ContactsViewModel", "Refreshed all contacts from phone: ${validContacts.size}")
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsViewModel", "Error refreshing all contacts from phone", e)
+                _allContacts.value = emptyList()
+            }
+        }
     }
 
     // State consistency validation

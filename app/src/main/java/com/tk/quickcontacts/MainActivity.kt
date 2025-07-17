@@ -295,6 +295,7 @@ fun QuickContactsApp() {
     LaunchedEffect(isSearching) {
         if (isSearching) {
             focusRequester.requestFocus()
+            viewModel.refreshAllContactsFromPhone(context)
         }
     }
     
