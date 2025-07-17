@@ -192,21 +192,21 @@ class MessagingService {
     
     fun openSmsAppDirectly(context: Context) {
         try {
-            // Try to open the default SMS app directly
-            val intent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_APP_MESSAGING)
+            // Always use ACTION_SENDTO with sms: URI to open the default SMS app's compose screen
+            val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("sms:")
             }
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
+            smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(smsIntent)
         } catch (e: Exception) {
             android.util.Log.w("MessagingService", "Error opening SMS app directly, trying alternative method", e)
             try {
-                // Alternative: try to open with a generic SMS intent
-                val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
-                    data = Uri.parse("sms:")
+                // Alternative: try to open with ACTION_MAIN and CATEGORY_APP_MESSAGING
+                val intent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_APP_MESSAGING)
                 }
-                smsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(smsIntent)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
             } catch (e2: Exception) {
                 android.util.Log.e("MessagingService", "All SMS app opening methods failed", e2)
             }
