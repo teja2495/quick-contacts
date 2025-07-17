@@ -527,11 +527,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         try {
             val recentCalls = contactService.loadRecentCalls(context, _selectedContacts.value)
             
-            // Validate recent calls
-            val validRecentCalls = recentCalls.filter { ContactUtils.isValidContact(it) }
+            // Validate recent calls, but allow short service numbers (3-6 digits)
+            val validRecentCalls = recentCalls.filter { contact ->
+                ContactUtils.isValidContact(contact) ||
+                (contact.phoneNumber.replace(Regex("[^\\d]"), "").length in 3..6)
+            }
             
             if (validRecentCalls.size != recentCalls.size) {
-                android.util.Log.w("ContactsViewModel", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls")
+                android.util.Log.w("ContactsViewModel", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls (except short service numbers)")
             }
             
             _recentCalls.value = validRecentCalls

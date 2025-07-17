@@ -248,7 +248,7 @@ fun ContactItem(
         customActions = customActions,
         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
-        availableMessagingApps = availableMessagingApps,
+        availableMessagingApps =  availableMessagingApps,
         selectedContacts = selectedContacts,
         onExecuteAction = onExecuteAction
     )

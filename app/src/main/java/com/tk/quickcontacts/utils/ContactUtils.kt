@@ -249,23 +249,22 @@ object ContactUtils {
             null
         }
         
-        // Fallback: create contact from cached name if available
-        if (cachedName != null && cachedName.isNotBlank()) {
-            val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
-            if (cleanNumber != null) {
-                val fallbackContact = Contact(
-                    id = "call_history_${phoneNumber.hashCode().toString()}",
-                    name = cachedName.trim(),
-                    phoneNumber = cleanNumber,
-                    phoneNumbers = listOf(cleanNumber),
-                    photoUri = null
-                )
-                
-                if (isValidContact(fallbackContact)) {
-                    return fallbackContact
-                } else {
-                    return null
-                }
+        // Fallback: create contact from cached name if available, otherwise use 'Unknown Number'
+        val fallbackName = if (!cachedName.isNullOrBlank()) cachedName.trim() else "Unknown Number"
+        val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
+        if (cleanNumber != null) {
+            val fallbackContact = Contact(
+                id = "call_history_${phoneNumber.hashCode().toString()}",
+                name = fallbackName,
+                phoneNumber = cleanNumber,
+                phoneNumbers = listOf(cleanNumber),
+                photoUri = null
+            )
+            
+            if (isValidContact(fallbackContact)) {
+                return fallbackContact
+            } else {
+                return null
             }
         }
         

@@ -397,7 +397,7 @@ class ContactService {
         try {
             val recentCallsList = mutableListOf<Contact>()
             val seenNumbers = mutableSetOf<String>()
-            
+
             // Get phone numbers from selected contacts to exclude them from recent calls
             val selectedContactNumbers = selectedContacts.mapNotNull { contact ->
                 val primaryNumber = ContactUtils.getPrimaryPhoneNumber(contact)
@@ -405,10 +405,9 @@ class ContactService {
                     PhoneNumberUtils.normalizePhoneNumber(primaryNumber)
                 } else null
             }.toSet()
-            
-            // Debug logging
+
             android.util.Log.d("QuickContacts", "Selected contact numbers (normalized): $selectedContactNumbers")
-            
+
             val cursor: Cursor? = context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
                 callLogProjection,
@@ -416,42 +415,57 @@ class ContactService {
                 null,
                 "${CallLog.Calls.DATE} DESC"
             )
-            
+
             cursor?.use {
                 val numberColumn = it.getColumnIndex(CallLog.Calls.NUMBER)
                 val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
-                
+
                 if (numberColumn >= 0 && nameColumn >= 0) {
                     while (it.moveToNext() && recentCallsList.size < 10) {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
-                        
-                        if (number != null && number.isNotBlank() && !seenNumbers.contains(number) &&
-                            PhoneNumberUtils.isValidPhoneNumber(number)) {
-                            
+
+                        if (number != null && number.isNotBlank() && !seenNumbers.contains(number)) {
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
-                            
-                            // Debug logging
+
                             android.util.Log.d("QuickContacts", "Call log number: $number -> normalized: $normalizedNumber")
                             android.util.Log.d("QuickContacts", "Is excluded: ${selectedContactNumbers.contains(normalizedNumber)}")
-                            
+
                             // Skip if this number is already in selected contacts
                             if (!selectedContactNumbers.contains(normalizedNumber)) {
                                 seenNumbers.add(number)
-                                
+
                                 // Try to get contact details from contacts provider
                                 val contact = ContactUtils.getContactByPhoneNumber(context, number, cachedName)
-                                contact?.let { validContact ->
+                                if (contact != null) {
                                     // Double-check: also exclude by name if it matches a selected contact
                                     val isNameDuplicate = selectedContacts.any { selectedContact ->
-                                        selectedContact.name.equals(validContact.name, ignoreCase = true)
+                                        selectedContact.name.equals(contact.name, ignoreCase = true)
                                     }
-                                    
                                     if (!isNameDuplicate) {
-                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${validContact.name} - ${validContact.phoneNumber}")
-                                        recentCallsList.add(validContact)
+                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${contact.name} - ${contact.phoneNumber}")
+                                        recentCallsList.add(contact)
                                     } else {
-                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${validContact.name}")
+                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${contact.name}")
+                                    }
+                                } else {
+                                    // If contact is null, create a fallback contact for this number
+                                    val formattedNumber = com.tk.quickcontacts.utils.PhoneNumberUtils.formatPhoneNumber(number)
+                                    // Allow short service numbers (3-6 digits) as recent calls
+                                    val digitsOnly = number.replace(Regex("[^\\d]"), "")
+                                    val isShortServiceNumber = digitsOnly.length in 3..6
+                                    if (isShortServiceNumber || com.tk.quickcontacts.utils.PhoneNumberUtils.isValidPhoneNumber(number)) {
+                                        val fallbackContact = com.tk.quickcontacts.Contact(
+                                            id = "call_history_${number.hashCode().toString()}",
+                                            name = if (!cachedName.isNullOrBlank()) cachedName.trim() else formattedNumber,
+                                            phoneNumber = number,
+                                            phoneNumbers = listOf(number),
+                                            photoUri = null
+                                        )
+                                        android.util.Log.d("QuickContacts", "Adding fallback to recent calls: ${fallbackContact.name} - ${fallbackContact.phoneNumber}")
+                                        recentCallsList.add(fallbackContact)
+                                    } else {
+                                        android.util.Log.d("QuickContacts", "Skipping invalid number: $number")
                                     }
                                 }
                             } else {
@@ -461,7 +475,7 @@ class ContactService {
                     }
                 }
             }
-            
+
             return recentCallsList
         } catch (e: Exception) {
             e.printStackTrace()
