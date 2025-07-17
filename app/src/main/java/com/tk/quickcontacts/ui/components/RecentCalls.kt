@@ -121,11 +121,19 @@ fun RecentCallsSection(
                     enter = expandVertically(animationSpec = tween(300)),
                     exit = shrinkVertically(animationSpec = tween(300))
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .offset(y = (-4).dp)
                             .weight(1f)
                     ) {
+                        // Info text about Quick list contacts
+                        Text(
+                            text = "Quick list contacts won't appear here",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp, start = 0.dp, end = 42.dp)
+                        )
+                        
                         LazyColumn(
                             contentPadding = PaddingValues(vertical = 0.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
