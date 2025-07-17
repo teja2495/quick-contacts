@@ -203,8 +203,27 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 contact.name.lowercase().contains(lowerQuery) ||
                 contact.phoneNumbers.any { it.contains(lowerQuery) }
             }
-            _searchResults.value = filtered
-            android.util.Log.d("ContactsViewModel", "Filtered search results: ${filtered.size} contacts")
+            val mutableResults = filtered.toMutableList()
+            // Inject dummy contact if query is a valid phone number and not already present
+            if (com.tk.quickcontacts.utils.PhoneNumberUtils.isValidPhoneNumber(query)) {
+                val normalizedQuery = com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(query)
+                val alreadyPresent = filtered.any { contact ->
+                    contact.phoneNumbers.any { com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(it) == normalizedQuery }
+                }
+                if (!alreadyPresent) {
+                    val dummyContact = com.tk.quickcontacts.Contact(
+                        id = "search_number_${normalizedQuery}",
+                        name = com.tk.quickcontacts.utils.PhoneNumberUtils.formatPhoneNumber(query),
+                        phoneNumber = query,
+                        phoneNumbers = listOf(query),
+                        photo = null,
+                        photoUri = null
+                    )
+                    mutableResults.add(0, dummyContact)
+                }
+            }
+            _searchResults.value = mutableResults
+            android.util.Log.d("ContactsViewModel", "Filtered search results: ${mutableResults.size} contacts")
         } else {
             _searchResults.value = emptyList()
             android.util.Log.d("ContactsViewModel", "Empty query, clearing search results")
