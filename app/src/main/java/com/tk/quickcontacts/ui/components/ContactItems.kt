@@ -199,7 +199,9 @@ fun ContactItem(
                         } else {
                             "Call"  // Default: Primary = Call
                         }
-                        if (contact.phoneNumbers.size > 1) {
+                        if (primaryAction == "All Options") {
+                            showContactActionsDialog = true
+                        } else if (contact.phoneNumbers.size > 1) {
                             dialogAction = primaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
@@ -379,15 +381,15 @@ fun ContactItem(
                             MessagingApp.SMS -> "SMS"
                             MessagingApp.TELEGRAM -> "Telegram"
                         }
-                        
                         // Use custom secondary action or determine based on new default logic
                         val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
                             "Call"  // International: Secondary = Call
                         } else {
                             messagingAppName  // Default: Secondary = messaging app
                         }
-                        
-                        if (contact.phoneNumbers.size > 1) {
+                        if (secondaryAction == "All Options") {
+                            showContactActionsDialog = true
+                        } else if (contact.phoneNumbers.size > 1) {
                             dialogAction = secondaryAction.lowercase()
                             showPhoneNumberDialog = true
                         } else {
@@ -397,20 +399,17 @@ fun ContactItem(
                     },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    // Get default messaging app name
+                    // Show secondary action icon based on custom actions or new default logic
                     val messagingAppName = when (defaultMessagingApp) {
                         MessagingApp.WHATSAPP -> "WhatsApp"
                         MessagingApp.SMS -> "SMS"
                         MessagingApp.TELEGRAM -> "Telegram"
                     }
-                    
-                    // Show secondary action icon based on custom actions or new default logic
                     val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
                         "Call"  // International: Secondary = Call
                     } else {
                         messagingAppName  // Default: Secondary = messaging app
                     }
-                    
                     when (secondaryAction) {
                         "Call" -> {
                             Icon(
@@ -440,6 +439,14 @@ fun ContactItem(
                             Icon(
                                 painter = painterResource(id = R.drawable.telegram_icon),
                                 contentDescription = "Telegram ${contact.name}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        "All Options" -> {
+                            Icon(
+                                imageVector = Icons.Default.MoreHoriz, // Use a menu or grid icon
+                                contentDescription = "All Options for ${contact.name}",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(28.dp)
                             )

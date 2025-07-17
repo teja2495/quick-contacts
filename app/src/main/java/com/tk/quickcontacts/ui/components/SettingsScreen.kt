@@ -309,6 +309,7 @@ fun SettingsScreen(
                 var showEditCountryCodeDialog by remember { mutableStateOf(false) }
                 var tempCountryCode by remember { mutableStateOf(displayDialingCode) }
                 var pendingEnableInternationalDetection by remember { mutableStateOf(false) }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -350,7 +351,10 @@ fun SettingsScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.primary, // Feedback color
                                         modifier = Modifier
-                                            .clickable { showEditCountryCodeDialog = true }
+                                            .clickable {
+                                                tempCountryCode = displayDialingCode
+                                                showEditCountryCodeDialog = true
+                                            }
                                     )
                                 }
                             }
@@ -372,7 +376,7 @@ fun SettingsScreen(
                                 if (homeCountryCode.isNullOrBlank() && defaultDialingCode.isBlank()) {
                                     // Prompt for country code
                                     pendingEnableInternationalDetection = true
-                                    tempCountryCode = ""
+                                    tempCountryCode = displayDialingCode
                                     showEditCountryCodeDialog = true
                                 } else {
                                     viewModel.toggleInternationalDetection()
@@ -409,7 +413,7 @@ fun SettingsScreen(
                             }
                         },
                         title = {
-                            Text("Edit Home Country Code", style = MaterialTheme.typography.titleMedium)
+                            Text("Set Home Country Code", style = MaterialTheme.typography.titleMedium)
                         },
                         text = {
                             Column {
@@ -450,7 +454,9 @@ fun SettingsScreen(
                                         }
                                     }
                                 } else {
-                                    viewModel.setHomeCountryCode(tempCountryCode.trim())
+                                    // Ensure country code starts with '+'
+                                    val codeToSave = if (tempCountryCode.trim().startsWith("+")) tempCountryCode.trim() else "+" + tempCountryCode.trim()
+                                    viewModel.setHomeCountryCode(codeToSave)
                                     showEditCountryCodeDialog = false
                                     if (pendingEnableInternationalDetection) {
                                         pendingEnableInternationalDetection = false

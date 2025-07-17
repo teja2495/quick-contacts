@@ -181,7 +181,7 @@ fun ActionToggleDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Change Actions",
+                text = "Change Actions for ${contact.name}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -190,227 +190,99 @@ fun ActionToggleDialog(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Set actions for ${contact.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
                 
                 // Primary action selection
                 Text(
-                    text = "Primary (Tap Card)",
+                    text = "Tap Card Action",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 6.dp)
                 )
                 
-                // Two rows of FilterChips for Primary Action
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FilterChip(
-                        onClick = { selectedPrimary = "Call" },
-                        label = { Text("Call") },
-                        selected = selectedPrimary == "Call",
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .weight(1f)
-                    )
-                    FilterChip(
-                        onClick = { selectedPrimary = "Messages" },
-                        label = { Text("Messages") },
-                        selected = selectedPrimary == "Messages",
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .weight(1f)
-                    )
-                }
-                
-                // Only show second row if there are apps to show
-                val hasWhatsApp = availableMessagingApps.contains(MessagingApp.WHATSAPP)
-                val hasTelegram = availableMessagingApps.contains(MessagingApp.TELEGRAM)
-                if (hasWhatsApp || hasTelegram) {
+                // 3x2 grid for Primary Action
+                val primaryChips = listOf(
+                    Pair("Call", true),
+                    Pair("Messages", true),
+                    Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
+                    Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
+                    Pair("All Options", true),
+                    Pair("", false) // blank cell
+                )
+                for (row in 0 until 3) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .padding(bottom = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (hasWhatsApp && hasTelegram) {
-                            FilterChip(
-                                onClick = { selectedPrimary = "WhatsApp" },
-                                label = { Text("WhatsApp") },
-                                selected = selectedPrimary == "WhatsApp",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                            FilterChip(
-                                onClick = { selectedPrimary = "Telegram" },
-                                label = { Text("Telegram") },
-                                selected = selectedPrimary == "Telegram",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                        } else if (hasWhatsApp) {
-                            FilterChip(
-                                onClick = { selectedPrimary = "WhatsApp" },
-                                label = { Text("WhatsApp") },
-                                selected = selectedPrimary == "WhatsApp",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                        } else if (hasTelegram) {
-                            FilterChip(
-                                onClick = { selectedPrimary = "Telegram" },
-                                label = { Text("Telegram") },
-                                selected = selectedPrimary == "Telegram",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
+                        for (col in 0 until 2) {
+                            val idx = row * 2 + col
+                            val (label, show) = primaryChips[idx]
+                            if (show) {
+                                FilterChip(
+                                    onClick = { selectedPrimary = label },
+                                    label = { Text(label) },
+                                    selected = selectedPrimary == label,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .weight(1f)
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }
                 
                 // Secondary action selection
                 Text(
-                    text = "Secondary (Tap Icon)",
+                    text = "Tap Icon Action",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)
                 )
                 
-                // Two rows of FilterChips for Secondary Action
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FilterChip(
-                        onClick = { selectedSecondary = "Call" },
-                        label = { Text("Call") },
-                        selected = selectedSecondary == "Call",
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .weight(1f)
-                    )
-                    FilterChip(
-                        onClick = { selectedSecondary = "Messages" },
-                        label = { Text("Messages") },
-                        selected = selectedSecondary == "Messages",
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .weight(1f)
-                    )
-                }
-                
-                // Only show second row if there are apps to show
-                val hasWhatsAppSec = availableMessagingApps.contains(MessagingApp.WHATSAPP)
-                val hasTelegramSec = availableMessagingApps.contains(MessagingApp.TELEGRAM)
-                if (hasWhatsAppSec || hasTelegramSec) {
+                // 3x2 grid for Secondary Action
+                val secondaryChips = listOf(
+                    Pair("Call", true),
+                    Pair("Messages", true),
+                    Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
+                    Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
+                    Pair("All Options", true),
+                    Pair("", false) // blank cell
+                )
+                for (row in 0 until 3) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp),
+                            .padding(bottom = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (hasWhatsAppSec && hasTelegramSec) {
-                            FilterChip(
-                                onClick = { selectedSecondary = "WhatsApp" },
-                                label = { Text("WhatsApp") },
-                                selected = selectedSecondary == "WhatsApp",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                            FilterChip(
-                                onClick = { selectedSecondary = "Telegram" },
-                                label = { Text("Telegram") },
-                                selected = selectedSecondary == "Telegram",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                        } else if (hasWhatsAppSec) {
-                            FilterChip(
-                                onClick = { selectedSecondary = "WhatsApp" },
-                                label = { Text("WhatsApp") },
-                                selected = selectedSecondary == "WhatsApp",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                        } else if (hasTelegramSec) {
-                            FilterChip(
-                                onClick = { selectedSecondary = "Telegram" },
-                                label = { Text("Telegram") },
-                                selected = selectedSecondary == "Telegram",
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .weight(1f)
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
+                        for (col in 0 until 2) {
+                            val idx = row * 2 + col
+                            val (label, show) = secondaryChips[idx]
+                            if (show) {
+                                FilterChip(
+                                    onClick = { selectedSecondary = label },
+                                    label = { Text(label) },
+                                    selected = selectedSecondary == label,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .weight(1f)
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }
