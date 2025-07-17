@@ -232,7 +232,8 @@ fun SearchResultItem(
             onRemoveContact = if (dialogAction == "add") { contactToRemove ->
                 onRemoveContact(contactToRemove)
             } else null,
-            hideIcons = dialogAction == "add"
+            hideIcons = false,
+            showInstructionText = false
         )
     }
     

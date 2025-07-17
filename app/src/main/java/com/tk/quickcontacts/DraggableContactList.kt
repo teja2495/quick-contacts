@@ -65,7 +65,9 @@ fun PhoneNumberSelectionDialog(
     onDismiss: () -> Unit,
     selectedContacts: List<Contact> = emptyList(),
     onAddContact: ((Contact) -> Unit)? = null,
-    onRemoveContact: ((Contact) -> Unit)? = null
+    onRemoveContact: ((Contact) -> Unit)? = null,
+    hideIcons: Boolean = false,
+    showInstructionText: Boolean = true
 ) {
     com.tk.quickcontacts.ui.components.PhoneNumberSelectionDialog(
         contact = contact,
@@ -73,7 +75,9 @@ fun PhoneNumberSelectionDialog(
         onDismiss = onDismiss,
         selectedContacts = selectedContacts,
         onAddContact = onAddContact,
-        onRemoveContact = onRemoveContact
+        onRemoveContact = onRemoveContact,
+        hideIcons = hideIcons,
+        showInstructionText = showInstructionText
     )
 }
 

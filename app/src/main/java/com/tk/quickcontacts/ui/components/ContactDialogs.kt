@@ -34,7 +34,8 @@ fun PhoneNumberSelectionDialog(
     selectedContacts: List<Contact> = emptyList(),
     onAddContact: ((Contact) -> Unit)? = null,
     onRemoveContact: ((Contact) -> Unit)? = null,
-    hideIcons: Boolean = false // NEW FLAG
+    hideIcons: Boolean = false, // NEW FLAG
+    showInstructionText: Boolean = true // NEW FLAG
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -48,12 +49,14 @@ fun PhoneNumberSelectionDialog(
         text = {
             val context = LocalContext.current
             Column {
-                Text(
-                    text = "The number you choose will be set as your default for this contact. To change it later, remove and re-add the contact with a different number.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                if (showInstructionText) {
+                    Text(
+                        text = "The number you choose will be set as your default for this contact. To change it later, remove and re-add the contact with a different number.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
                 
                 contact.phoneNumbers.forEach { phoneNumber ->
                     // Use remember to make this reactive to selectedContacts changes
@@ -69,7 +72,11 @@ fun PhoneNumberSelectionDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .clickable { onPhoneNumberSelected(phoneNumber) },
+                            .clickable {
+                                // When card is clicked, call onPhoneNumberSelected and dismiss the dialog
+                                onPhoneNumberSelected(phoneNumber)
+                                onDismiss()
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
@@ -88,17 +95,25 @@ fun PhoneNumberSelectionDialog(
                             if (!hideIcons && (onAddContact != null && onRemoveContact != null)) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 if (isNumberInQuickList) {
-                                    Icon(
-                                        imageVector = Icons.Default.Done,
-                                        contentDescription = "In quick list",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                                    IconButton(onClick = {
+                                        onRemoveContact?.invoke(contact.copy(phoneNumber = phoneNumber, phoneNumbers = listOf(phoneNumber)))
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Done,
+                                            contentDescription = "In quick list",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Add to quick list",
-                                        tint = MaterialTheme.colorScheme.secondary
-                                    )
+                                    IconButton(onClick = {
+                                        onAddContact?.invoke(contact.copy(phoneNumber = phoneNumber, phoneNumbers = listOf(phoneNumber)))
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Add to quick list",
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
                                 }
                             }
                         }

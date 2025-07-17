@@ -105,7 +105,8 @@ fun ContactItem(
             onRemoveContact = if (dialogAction == "add") { contactWithSelectedNumber ->
                 onContactClick(contactWithSelectedNumber)
             } else null,
-            hideIcons = dialogAction == "add"
+            hideIcons = dialogAction == "add",
+            showInstructionText = true
         )
     }
     
