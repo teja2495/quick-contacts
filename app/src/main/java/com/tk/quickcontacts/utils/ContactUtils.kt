@@ -223,11 +223,15 @@ object ContactUtils {
                             
                             val photoUri = getContactPhotoUri(context, id)
                             
+                            // Get all phone numbers for this contact
+                            val allPhoneNumbers = getAllPhoneNumbersForContact(context, id)
+                            val primaryNumber = if (allPhoneNumbers.contains(number)) number else allPhoneNumbers.firstOrNull() ?: number
+                            
                             val contact = Contact(
                                 id = id,
                                 name = name,
-                                phoneNumber = number,
-                                phoneNumbers = listOf(number),
+                                phoneNumber = primaryNumber,
+                                phoneNumbers = allPhoneNumbers,
                                 photoUri = photoUri
                             )
                             
@@ -269,6 +273,42 @@ object ContactUtils {
         }
         
         return null
+    }
+    
+    /**
+     * Get all phone numbers for a contact by contact ID
+     */
+    private fun getAllPhoneNumbersForContact(context: Context, contactId: String): List<String> {
+        val phoneNumbers = mutableListOf<String>()
+        
+        try {
+            val selection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?"
+            val selectionArgs = arrayOf(contactId)
+            
+            val cursor = context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                selection,
+                selectionArgs,
+                null
+            )
+            
+            cursor?.use {
+                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                if (numberColumn >= 0) {
+                    while (it.moveToNext()) {
+                        val number = it.getString(numberColumn)
+                        if (number != null && number.isNotBlank() && PhoneNumberUtils.isValidPhoneNumber(number)) {
+                            phoneNumbers.add(number)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ContactUtils", "Error getting all phone numbers for contact: $contactId", e)
+        }
+        
+        return phoneNumbers.distinct()
     }
     
     /**

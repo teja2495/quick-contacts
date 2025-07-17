@@ -396,17 +396,12 @@ class ContactService {
     fun loadRecentCalls(context: Context, selectedContacts: List<Contact>): List<Contact> {
         try {
             val recentCallsList = mutableListOf<Contact>()
-            val seenNumbers = mutableSetOf<String>()
+            val seenContactIds = mutableSetOf<String>()
 
-            // Get phone numbers from selected contacts to exclude them from recent calls
-            val selectedContactNumbers = selectedContacts.mapNotNull { contact ->
-                val primaryNumber = ContactUtils.getPrimaryPhoneNumber(contact)
-                if (primaryNumber.isNotBlank()) {
-                    PhoneNumberUtils.normalizePhoneNumber(primaryNumber)
-                } else null
-            }.toSet()
+            // Get contact IDs from selected contacts to exclude them from recent calls
+            val selectedContactIds = selectedContacts.map { it.id }.toSet()
 
-            android.util.Log.d("QuickContacts", "Selected contact numbers (normalized): $selectedContactNumbers")
+            android.util.Log.d("QuickContacts", "Selected contact IDs: $selectedContactIds")
 
             val cursor: Cursor? = context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
@@ -425,38 +420,35 @@ class ContactService {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
 
-                        if (number != null && number.isNotBlank() && !seenNumbers.contains(number)) {
+                        if (number != null && number.isNotBlank()) {
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
 
                             android.util.Log.d("QuickContacts", "Call log number: $number -> normalized: $normalizedNumber")
-                            android.util.Log.d("QuickContacts", "Is excluded: ${selectedContactNumbers.contains(normalizedNumber)}")
 
-                            // Skip if this number is already in selected contacts
-                            if (!selectedContactNumbers.contains(normalizedNumber)) {
-                                seenNumbers.add(number)
-
-                                // Try to get contact details from contacts provider
-                                val contact = ContactUtils.getContactByPhoneNumber(context, number, cachedName)
-                                if (contact != null) {
-                                    // Double-check: also exclude by name if it matches a selected contact
-                                    val isNameDuplicate = selectedContacts.any { selectedContact ->
-                                        selectedContact.name.equals(contact.name, ignoreCase = true)
-                                    }
-                                    if (!isNameDuplicate) {
-                                        android.util.Log.d("QuickContacts", "Adding to recent calls: ${contact.name} - ${contact.phoneNumber}")
-                                        recentCallsList.add(contact)
-                                    } else {
-                                        android.util.Log.d("QuickContacts", "Skipping duplicate by name: ${contact.name}")
-                                    }
+                            // Try to get contact details from contacts provider
+                            val contact = ContactUtils.getContactByPhoneNumber(context, number, cachedName)
+                            if (contact != null) {
+                                // Skip if this contact is already in selected contacts or already seen
+                                if (!selectedContactIds.contains(contact.id) && !seenContactIds.contains(contact.id)) {
+                                    seenContactIds.add(contact.id)
+                                    android.util.Log.d("QuickContacts", "Adding to recent calls: ${contact.name} (ID: ${contact.id}) - ${contact.phoneNumber}")
+                                    recentCallsList.add(contact)
                                 } else {
-                                    // If contact is null, create a fallback contact for this number
-                                    val formattedNumber = com.tk.quickcontacts.utils.PhoneNumberUtils.formatPhoneNumber(number)
-                                    // Allow short service numbers (3-6 digits) as recent calls
-                                    val digitsOnly = number.replace(Regex("[^\\d]"), "")
-                                    val isShortServiceNumber = digitsOnly.length in 3..6
-                                    if (isShortServiceNumber || com.tk.quickcontacts.utils.PhoneNumberUtils.isValidPhoneNumber(number)) {
+                                    android.util.Log.d("QuickContacts", "Skipping duplicate contact: ${contact.name} (ID: ${contact.id})")
+                                }
+                            } else {
+                                // If contact is null, create a fallback contact for this number
+                                val formattedNumber = com.tk.quickcontacts.utils.PhoneNumberUtils.formatPhoneNumber(number)
+                                // Allow short service numbers (3-6 digits) as recent calls
+                                val digitsOnly = number.replace(Regex("[^\\d]"), "")
+                                val isShortServiceNumber = digitsOnly.length in 3..6
+                                if (isShortServiceNumber || com.tk.quickcontacts.utils.PhoneNumberUtils.isValidPhoneNumber(number)) {
+                                    val fallbackContactId = "call_history_${number.hashCode().toString()}"
+                                    // Skip if this fallback contact is already seen
+                                    if (!seenContactIds.contains(fallbackContactId)) {
+                                        seenContactIds.add(fallbackContactId)
                                         val fallbackContact = com.tk.quickcontacts.Contact(
-                                            id = "call_history_${number.hashCode().toString()}",
+                                            id = fallbackContactId,
                                             name = if (!cachedName.isNullOrBlank()) cachedName.trim() else formattedNumber,
                                             phoneNumber = number,
                                             phoneNumbers = listOf(number),
@@ -465,11 +457,11 @@ class ContactService {
                                         android.util.Log.d("QuickContacts", "Adding fallback to recent calls: ${fallbackContact.name} - ${fallbackContact.phoneNumber}")
                                         recentCallsList.add(fallbackContact)
                                     } else {
-                                        android.util.Log.d("QuickContacts", "Skipping invalid number: $number")
+                                        android.util.Log.d("QuickContacts", "Skipping duplicate fallback contact: $formattedNumber")
                                     }
+                                } else {
+                                    android.util.Log.d("QuickContacts", "Skipping invalid number: $number")
                                 }
-                            } else {
-                                android.util.Log.d("QuickContacts", "Skipping duplicate contact: $cachedName - $number")
                             }
                         }
                     }
