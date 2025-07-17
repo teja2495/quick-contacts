@@ -26,6 +26,44 @@ import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 
+// Helper data class for chip layout
+data class ChipLayout(
+    val rows: Int,
+    val columns: Int,
+    val lastRowAlignment: String = "center" // "center" or "left"
+)
+
+// Helper functions for dynamic chip layout
+private fun buildPrimaryChipsList(availableMessagingApps: Set<MessagingApp>): List<Pair<String, Boolean>> {
+    return listOf(
+        Pair("Call", true),
+        Pair("Messages", true),
+        Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
+        Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
+        Pair("All Options", true)
+    ).filter { it.second } // Only include available options
+}
+
+private fun buildSecondaryChipsList(availableMessagingApps: Set<MessagingApp>): List<Pair<String, Boolean>> {
+    return listOf(
+        Pair("Call", true),
+        Pair("Messages", true),
+        Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
+        Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
+        Pair("All Options", true)
+    ).filter { it.second } // Only include available options
+}
+
+private fun calculateChipLayout(chipCount: Int): ChipLayout {
+    return when (chipCount) {
+        2 -> ChipLayout(rows = 1, columns = 2)
+        3 -> ChipLayout(rows = 2, columns = 2, lastRowAlignment = "left")
+        4 -> ChipLayout(rows = 2, columns = 2)
+        5 -> ChipLayout(rows = 3, columns = 2, lastRowAlignment = "left")
+        else -> ChipLayout(rows = 3, columns = 2) // Default fallback
+    }
+}
+
 @Composable
 fun PhoneNumberSelectionDialog(
     contact: Contact,
@@ -200,38 +238,45 @@ fun ActionToggleDialog(
                     modifier = Modifier.padding(bottom = 6.dp)
                 )
                 
-                // 3x2 grid for Primary Action
-                val primaryChips = listOf(
-                    Pair("Call", true),
-                    Pair("Messages", true),
-                    Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
-                    Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
-                    Pair("All Options", true),
-                    Pair("", false) // blank cell
-                )
-                for (row in 0 until 3) {
+                // Dynamic grid for Primary Action based on available apps
+                val primaryChips = buildPrimaryChipsList(availableMessagingApps)
+                val primaryLayout = calculateChipLayout(primaryChips.size)
+                
+                for (row in 0 until primaryLayout.rows) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        for (col in 0 until 2) {
-                            val idx = row * 2 + col
-                            val (label, show) = primaryChips[idx]
-                            if (show) {
-                                FilterChip(
-                                    onClick = { selectedPrimary = label },
-                                    label = { Text(label) },
-                                    selected = selectedPrimary == label,
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    ),
-                                    modifier = Modifier
-                                        .height(32.dp)
-                                        .weight(1f)
-                                )
+                        val chipsInThisRow = if (row == primaryLayout.rows - 1 && primaryLayout.lastRowAlignment == "left") {
+                            // Last row with left alignment - only show chips that should be in this row
+                            val chipsInLastRow = primaryChips.size - (primaryLayout.rows - 1) * primaryLayout.columns
+                            chipsInLastRow
+                        } else {
+                            primaryLayout.columns
+                        }
+                        
+                        for (col in 0 until primaryLayout.columns) {
+                            val idx = row * primaryLayout.columns + col
+                            if (idx < primaryChips.size && col < chipsInThisRow) {
+                                val (label, show) = primaryChips[idx]
+                                if (show) {
+                                    FilterChip(
+                                        onClick = { selectedPrimary = label },
+                                        label = { Text(label) },
+                                        selected = selectedPrimary == label,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        ),
+                                        modifier = Modifier
+                                            .height(32.dp)
+                                            .weight(1f)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
@@ -248,38 +293,45 @@ fun ActionToggleDialog(
                     modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)
                 )
                 
-                // 3x2 grid for Secondary Action
-                val secondaryChips = listOf(
-                    Pair("Call", true),
-                    Pair("Messages", true),
-                    Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
-                    Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
-                    Pair("All Options", true),
-                    Pair("", false) // blank cell
-                )
-                for (row in 0 until 3) {
+                // Dynamic grid for Secondary Action based on available apps
+                val secondaryChips = buildSecondaryChipsList(availableMessagingApps)
+                val secondaryLayout = calculateChipLayout(secondaryChips.size)
+                
+                for (row in 0 until secondaryLayout.rows) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        for (col in 0 until 2) {
-                            val idx = row * 2 + col
-                            val (label, show) = secondaryChips[idx]
-                            if (show) {
-                                FilterChip(
-                                    onClick = { selectedSecondary = label },
-                                    label = { Text(label) },
-                                    selected = selectedSecondary == label,
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    ),
-                                    modifier = Modifier
-                                        .height(32.dp)
-                                        .weight(1f)
-                                )
+                        val chipsInThisRow = if (row == secondaryLayout.rows - 1 && secondaryLayout.lastRowAlignment == "left") {
+                            // Last row with left alignment - only show chips that should be in this row
+                            val chipsInLastRow = secondaryChips.size - (secondaryLayout.rows - 1) * secondaryLayout.columns
+                            chipsInLastRow
+                        } else {
+                            secondaryLayout.columns
+                        }
+                        
+                        for (col in 0 until secondaryLayout.columns) {
+                            val idx = row * secondaryLayout.columns + col
+                            if (idx < secondaryChips.size && col < chipsInThisRow) {
+                                val (label, show) = secondaryChips[idx]
+                                if (show) {
+                                    FilterChip(
+                                        onClick = { selectedSecondary = label },
+                                        label = { Text(label) },
+                                        selected = selectedSecondary == label,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        ),
+                                        modifier = Modifier
+                                            .height(32.dp)
+                                            .weight(1f)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
