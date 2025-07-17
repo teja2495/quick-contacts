@@ -279,7 +279,7 @@ fun ContactItem(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
@@ -611,7 +611,7 @@ fun RecentCallVerticalItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -736,7 +736,7 @@ fun RecentCallItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
