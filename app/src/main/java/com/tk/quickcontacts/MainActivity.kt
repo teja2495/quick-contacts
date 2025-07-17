@@ -337,6 +337,11 @@ fun QuickContactsApp() {
             context,
             Manifest.permission.READ_CALL_LOG
         ) == PackageManager.PERMISSION_GRANTED
+
+        // hasPhoneStatePermission = ContextCompat.checkSelfPermission(
+        //     context,
+        //     Manifest.permission.READ_PHONE_STATE
+        // ) == PackageManager.PERMISSION_GRANTED
     }
     
     // Refresh permissions when app becomes active

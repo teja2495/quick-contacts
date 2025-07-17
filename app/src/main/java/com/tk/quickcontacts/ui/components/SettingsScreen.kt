@@ -297,17 +297,20 @@ fun SettingsScreen(
                 val context = LocalContext.current
                 // Observe home country code from ViewModel
                 val homeCountryCode by viewModel.homeCountryCode.collectAsState()
-                val isoCountry = remember(isInternationalDetectionEnabled, defaultMessagingApp) {
-                    if (isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS) {
-                        PhoneNumberUtils.getUserCountryCode(context)
-                    } else null
+                val isoCountry = remember(context, isInternationalDetectionEnabled, defaultMessagingApp) {
+                    // Always detect country code, regardless of international detection status
+                    // This allows the dialog to be pre-populated when user tries to enable international detection
+                    val country = PhoneNumberUtils.getUserCountryCode(context)
+                    country
                 }
                 val defaultDialingCode = isoCountry?.let { PhoneNumberUtils.isoToDialingCode(it) } ?: ""
                 val displayDialingCode = homeCountryCode ?: defaultDialingCode
 
                 // Dialog state for editing country code
                 var showEditCountryCodeDialog by remember { mutableStateOf(false) }
-                var tempCountryCode by remember { mutableStateOf(displayDialingCode) }
+                var tempCountryCode by remember(displayDialingCode) { 
+                    mutableStateOf(displayDialingCode) 
+                }
                 var pendingEnableInternationalDetection by remember { mutableStateOf(false) }
 
                 Row(

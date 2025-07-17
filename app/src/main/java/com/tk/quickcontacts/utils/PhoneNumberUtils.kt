@@ -175,20 +175,29 @@ object PhoneNumberUtils {
      */
     fun getUserCountryCode(context: Context): String? {
         return try {
+            // Try to get TelephonyManager, but don't fail if not available
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                ?: return null
             
-            // Try to get country from SIM card first
-            var countryCode = telephonyManager.simCountryIso
+            var countryCode: String? = null
             
-            // If SIM country is not available, try network country
-            if (countryCode.isNullOrEmpty()) {
-                countryCode = telephonyManager.networkCountryIso
+            // Try to get country from SIM card first (if TelephonyManager is available)
+            if (telephonyManager != null) {
+                countryCode = telephonyManager.simCountryIso
+                
+                // If SIM country is not available, try network country
+                if (countryCode.isNullOrEmpty()) {
+                    countryCode = telephonyManager.networkCountryIso
+                }
             }
             
-            // If both are empty, fall back to device locale
+            // If both are empty or TelephonyManager not available, fall back to device locale
             if (countryCode.isNullOrEmpty()) {
                 countryCode = Locale.getDefault().country
+            }
+            
+            // Final fallback: try to get from timezone
+            if (countryCode.isNullOrEmpty()) {
+                countryCode = getCountryCodeFromTimezone()
             }
             
             // Validate country code format
@@ -207,7 +216,8 @@ object PhoneNumberUtils {
      * Map ISO country code (e.g., "US") to dialing code (e.g., "+1")
      */
     fun isoToDialingCode(isoCountryCode: String): String? {
-        return countryToDialing[isoCountryCode.uppercase(Locale.ROOT)]
+        val result = countryToDialing[isoCountryCode.uppercase(Locale.ROOT)]
+        return result
     }
     
     /**
@@ -474,7 +484,6 @@ object PhoneNumberUtils {
             // Compare dialing codes (e.g., '+1' vs '+91'), trim and ignore case
             val phoneCode = phoneCountryCode.trim().lowercase(Locale.ROOT)
             val userCode = userDialingCode.trim().lowercase(Locale.ROOT)
-            android.util.Log.d("PhoneNumberUtils", "Comparing phone code: '$phoneCode' with user code: '$userCode'")
             phoneCode != userCode
         } catch (e: Exception) {
             android.util.Log.w("PhoneNumberUtils", "Error determining if number is international: $phoneNumber", e)
@@ -523,5 +532,303 @@ object PhoneNumberUtils {
     fun isValidCountryDialingCode(code: String): Boolean {
         val normalized = if (code.startsWith("+")) code else "+$code"
         return countryToDialing.values.contains(normalized)
+    }
+
+    /**
+     * Get country code from timezone as fallback
+     */
+    private fun getCountryCodeFromTimezone(): String? {
+        return try {
+            val timeZone = java.util.TimeZone.getDefault()
+            val timeZoneId = timeZone.id
+            
+            // Map common timezone IDs to country codes
+            val timezoneToCountry = mapOf(
+                // North America
+                "America/New_York" to "US",
+                "America/Chicago" to "US",
+                "America/Denver" to "US",
+                "America/Los_Angeles" to "US",
+                "America/Phoenix" to "US",
+                "America/Anchorage" to "US",
+                "Pacific/Honolulu" to "US",
+                "America/Toronto" to "CA",
+                "America/Vancouver" to "CA",
+                "America/Edmonton" to "CA",
+                "America/Winnipeg" to "CA",
+                "America/Halifax" to "CA",
+                "America/St_Johns" to "CA",
+                "America/Mexico_City" to "MX",
+                "America/Tijuana" to "MX",
+                "America/Monterrey" to "MX",
+                
+                // Europe
+                "Europe/London" to "GB",
+                "Europe/Paris" to "FR",
+                "Europe/Berlin" to "DE",
+                "Europe/Rome" to "IT",
+                "Europe/Madrid" to "ES",
+                "Europe/Moscow" to "RU",
+                "Europe/Amsterdam" to "NL",
+                "Europe/Stockholm" to "SE",
+                "Europe/Oslo" to "NO",
+                "Europe/Copenhagen" to "DK",
+                "Europe/Zurich" to "CH",
+                "Europe/Vienna" to "AT",
+                "Europe/Brussels" to "BE",
+                "Europe/Lisbon" to "PT",
+                "Europe/Athens" to "GR",
+                "Europe/Warsaw" to "PL",
+                "Europe/Prague" to "CZ",
+                "Europe/Budapest" to "HU",
+                "Europe/Istanbul" to "TR",
+                "Europe/Dublin" to "IE",
+                "Europe/Helsinki" to "FI",
+                "Europe/Riga" to "LV",
+                "Europe/Tallinn" to "EE",
+                "Europe/Vilnius" to "LT",
+                "Europe/Sofia" to "BG",
+                "Europe/Bucharest" to "RO",
+                "Europe/Belgrade" to "RS",
+                "Europe/Zagreb" to "HR",
+                "Europe/Ljubljana" to "SI",
+                "Europe/Bratislava" to "SK",
+                "Europe/Luxembourg" to "LU",
+                "Europe/Malta" to "MT",
+                "Europe/Cyprus" to "CY",
+                "Europe/Reykjavik" to "IS",
+                "Europe/Kaliningrad" to "RU",
+                "Europe/Samara" to "RU",
+                "Europe/Yekaterinburg" to "RU",
+                "Europe/Novosibirsk" to "RU",
+                "Europe/Krasnoyarsk" to "RU",
+                "Europe/Irkutsk" to "RU",
+                "Europe/Yakutsk" to "RU",
+                "Europe/Vladivostok" to "RU",
+                "Europe/Magadan" to "RU",
+                "Europe/Kamchatka" to "RU",
+                
+                // Asia
+                "Asia/Tokyo" to "JP",
+                "Asia/Seoul" to "KR",
+                "Asia/Shanghai" to "CN",
+                "Asia/Beijing" to "CN",
+                "Asia/Hong_Kong" to "CN",
+                "Asia/Kolkata" to "IN",
+                "Asia/Kolkata" to "IN",
+                "Asia/Dhaka" to "BD",
+                "Asia/Karachi" to "PK",
+                "Asia/Tashkent" to "UZ",
+                "Asia/Almaty" to "KZ",
+                "Asia/Bishkek" to "KG",
+                "Asia/Dushanbe" to "TJ",
+                "Asia/Ashgabat" to "TM",
+                "Asia/Baku" to "AZ",
+                "Asia/Tbilisi" to "GE",
+                "Asia/Yerevan" to "AM",
+                "Asia/Tehran" to "IR",
+                "Asia/Baghdad" to "IQ",
+                "Asia/Kuwait" to "KW",
+                "Asia/Riyadh" to "SA",
+                "Asia/Dubai" to "AE",
+                "Asia/Muscat" to "OM",
+                "Asia/Qatar" to "QA",
+                "Asia/Bahrain" to "BH",
+                "Asia/Aden" to "YE",
+                "Asia/Amman" to "JO",
+                "Asia/Beirut" to "LB",
+                "Asia/Damascus" to "SY",
+                "Asia/Jerusalem" to "IL",
+                "Asia/Gaza" to "PS",
+                "Asia/Hebron" to "PS",
+                "Asia/Jakarta" to "ID",
+                "Asia/Bangkok" to "TH",
+                "Asia/Ho_Chi_Minh" to "VN",
+                "Asia/Phnom_Penh" to "KH",
+                "Asia/Vientiane" to "LA",
+                "Asia/Yangon" to "MM",
+                "Asia/Singapore" to "SG",
+                "Asia/Kuala_Lumpur" to "MY",
+                "Asia/Manila" to "PH",
+                "Asia/Taipei" to "TW",
+                "Asia/Ulaanbaatar" to "MN",
+                "Asia/Pyongyang" to "KP",
+                "Asia/Macau" to "MO",
+                "Asia/Urumqi" to "CN",
+                "Asia/Kashgar" to "CN",
+                "Asia/Chongqing" to "CN",
+                "Asia/Harbin" to "CN",
+                "Asia/Kabul" to "AF",
+                "Asia/Kathmandu" to "NP",
+                "Asia/Thimphu" to "BT",
+                "Asia/Colombo" to "LK",
+                "Asia/Male" to "MV",
+                
+                // Australia/Oceania
+                "Australia/Sydney" to "AU",
+                "Australia/Melbourne" to "AU",
+                "Australia/Brisbane" to "AU",
+                "Australia/Perth" to "AU",
+                "Australia/Adelaide" to "AU",
+                "Australia/Darwin" to "AU",
+                "Australia/Hobart" to "AU",
+                "Pacific/Auckland" to "NZ",
+                "Pacific/Wellington" to "NZ",
+                "Pacific/Fiji" to "FJ",
+                "Pacific/Guam" to "GU",
+                "Pacific/Saipan" to "MP",
+                "Pacific/Port_Moresby" to "PG",
+                "Pacific/Honiara" to "SB",
+                "Pacific/Noumea" to "NC",
+                "Pacific/Tahiti" to "PF",
+                "Pacific/Honolulu" to "US",
+                "Pacific/Midway" to "UM",
+                "Pacific/Wake" to "UM",
+                
+                // South America
+                "America/Sao_Paulo" to "BR",
+                "America/Rio_Branco" to "BR",
+                "America/Manaus" to "BR",
+                "America/Belem" to "BR",
+                "America/Fortaleza" to "BR",
+                "America/Recife" to "BR",
+                "America/Araguaina" to "BR",
+                "America/Maceio" to "BR",
+                "America/Bahia" to "BR",
+                "America/Sao_Paulo" to "BR",
+                "America/Campo_Grande" to "BR",
+                "America/Cuiaba" to "BR",
+                "America/Porto_Velho" to "BR",
+                "America/Boa_Vista" to "BR",
+                "America/Manaus" to "BR",
+                "America/Eirunepe" to "BR",
+                "America/Rio_Branco" to "BR",
+                "America/Argentina/Buenos_Aires" to "AR",
+                "America/Argentina/Cordoba" to "AR",
+                "America/Argentina/Salta" to "AR",
+                "America/Argentina/Jujuy" to "AR",
+                "America/Argentina/Tucuman" to "AR",
+                "America/Argentina/Catamarca" to "AR",
+                "America/Argentina/La_Rioja" to "AR",
+                "America/Argentina/San_Juan" to "AR",
+                "America/Argentina/Mendoza" to "AR",
+                "America/Argentina/San_Luis" to "AR",
+                "America/Argentina/Rio_Gallegos" to "AR",
+                "America/Argentina/Ushuaia" to "AR",
+                "America/Santiago" to "CL",
+                "America/Punta_Arenas" to "CL",
+                "America/Easter" to "CL",
+                "America/Asuncion" to "PY",
+                "America/Montevideo" to "UY",
+                "America/Caracas" to "VE",
+                "America/La_Paz" to "BO",
+                "America/Lima" to "PE",
+                "America/Bogota" to "CO",
+                "America/Guayaquil" to "EC",
+                "America/Galapagos" to "EC",
+                "America/Guatemala" to "GT",
+                "America/Belize" to "BZ",
+                "America/El_Salvador" to "SV",
+                "America/Tegucigalpa" to "HN",
+                "America/Managua" to "NI",
+                "America/Costa_Rica" to "CR",
+                "America/Panama" to "PA",
+                "America/Cayman" to "KY",
+                "America/Jamaica" to "JM",
+                "America/Port-au-Prince" to "HT",
+                "America/Santo_Domingo" to "DO",
+                "America/Puerto_Rico" to "PR",
+                "America/St_Thomas" to "VI",
+                "America/St_Lucia" to "LC",
+                "America/St_Vincent" to "VC",
+                "America/Barbados" to "BB",
+                "America/Grenada" to "GD",
+                "America/Trinidad" to "TT",
+                "America/Guyana" to "GY",
+                "America/Paramaribo" to "SR",
+                "America/Cayenne" to "GF",
+                
+                // Africa
+                "Africa/Cairo" to "EG",
+                "Africa/Tripoli" to "LY",
+                "Africa/Tunis" to "TN",
+                "Africa/Algiers" to "DZ",
+                "Africa/Casablanca" to "MA",
+                "Africa/Rabat" to "MA",
+                "Africa/El_Aaiun" to "EH",
+                "Africa/Nouakchott" to "MR",
+                "Africa/Dakar" to "SN",
+                "Africa/Banjul" to "GM",
+                "Africa/Bissau" to "GW",
+                "Africa/Conakry" to "GN",
+                "Africa/Freetown" to "SL",
+                "Africa/Monrovia" to "LR",
+                "Africa/Abidjan" to "CI",
+                "Africa/Accra" to "GH",
+                "Africa/Lome" to "TG",
+                "Africa/Porto-Novo" to "BJ",
+                "Africa/Lagos" to "NG",
+                "Africa/Douala" to "CM",
+                "Africa/Malabo" to "GQ",
+                "Africa/Libreville" to "GA",
+                "Africa/Brazzaville" to "CG",
+                "Africa/Kinshasa" to "CD",
+                "Africa/Bangui" to "CF",
+                "Africa/Ndjamena" to "TD",
+                "Africa/Khartoum" to "SD",
+                "Africa/Juba" to "SS",
+                "Africa/Addis_Ababa" to "ET",
+                "Africa/Asmara" to "ER",
+                "Africa/Djibouti" to "DJ",
+                "Africa/Mogadishu" to "SO",
+                "Africa/Nairobi" to "KE",
+                "Africa/Dar_es_Salaam" to "TZ",
+                "Africa/Kampala" to "UG",
+                "Africa/Bujumbura" to "BI",
+                "Africa/Kigali" to "RW",
+                "Africa/Luanda" to "AO",
+                "Africa/Lubumbashi" to "CD",
+                "Africa/Lusaka" to "ZM",
+                "Africa/Harare" to "ZW",
+                "Africa/Maputo" to "MZ",
+                "Africa/Blantyre" to "MW",
+                "Africa/Lilongwe" to "MW",
+                "Africa/Gaborone" to "BW",
+                "Africa/Maseru" to "LS",
+                "Africa/Mbabane" to "SZ",
+                "Africa/Johannesburg" to "ZA",
+                "Africa/Pretoria" to "ZA",
+                "Africa/Windhoek" to "NA",
+                "Africa/Luanda" to "AO",
+                "Africa/Sao_Tome" to "ST",
+                "Africa/Brazzaville" to "CG",
+                "Africa/Libreville" to "GA",
+                "Africa/Douala" to "CM",
+                "Africa/Malabo" to "GQ",
+                "Africa/Lagos" to "NG",
+                "Africa/Porto-Novo" to "BJ",
+                "Africa/Lome" to "TG",
+                "Africa/Accra" to "GH",
+                "Africa/Abidjan" to "CI",
+                "Africa/Monrovia" to "LR",
+                "Africa/Freetown" to "SL",
+                "Africa/Bissau" to "GW",
+                "Africa/Banjul" to "GM",
+                "Africa/Dakar" to "SN",
+                "Africa/Nouakchott" to "MR",
+                "Africa/El_Aaiun" to "EH",
+                "Africa/Casablanca" to "MA",
+                "Africa/Rabat" to "MA",
+                "Africa/Algiers" to "DZ",
+                "Africa/Tunis" to "TN",
+                "Africa/Tripoli" to "LY",
+                "Africa/Cairo" to "EG"
+            )
+            
+            timezoneToCountry[timeZoneId]
+        } catch (e: Exception) {
+            android.util.Log.w("PhoneNumberUtils", "Error getting country from timezone", e)
+            null
+        }
     }
 } 
