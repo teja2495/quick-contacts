@@ -131,8 +131,8 @@ fun SearchResultsContent(
                 )
             }
             
-            // Search results (they're already reversed, and with reverseLayout=true, 
-            // most relevant will be closest to search bar)
+            // Search results (they're already sorted by priority in ContactService, 
+            // with reverseLayout=true, most relevant will be closest to search bar)
             items(searchResults) { contact ->
                 SearchResultItem(
                     contact = contact,

@@ -254,99 +254,125 @@ class ContactService {
             val searchResultsList = mutableListOf<Contact>()
             val seenContactsMap = mutableMapOf<String, Contact>()
             val contactRelevanceMap = mutableMapOf<String, Int>() // Track relevance score for each contact
+            val contactMatchTypeMap = mutableMapOf<String, Int>() // Track match type (priority) for each contact
             
-            // Define search patterns with different relevance levels
-            val searchPatterns = listOf(
-                // Level 1: Exact match (highest priority)
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ? COLLATE NOCASE" to 100,
-                // Level 2: Starts with query (high priority)
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE" to 80,
-                // Level 3: Contains query (medium priority)
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE" to 60,
-                // Level 4: Contains query with word boundaries (lower priority)
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE" to 40
+            // Normalized query for case-insensitive comparison
+            val normalizedQuery = query.lowercase().trim()
+            
+            // Define priorities based on requirements
+            val EXACT_MATCH_PRIORITY = 1000
+            val STARTS_WITH_SINGLE_WORD_PRIORITY = 900
+            val STARTS_WITH_MULTI_WORD_PRIORITY = 800
+            val SECOND_WORD_STARTS_WITH_PRIORITY = 700
+            val THIRD_WORD_STARTS_WITH_PRIORITY = 600
+            val FOURTH_WORD_STARTS_WITH_PRIORITY = 500
+            val CONTAINS_PRIORITY = 100
+            
+            // Execute search query to get all potential matches
+            val cursor: Cursor? = context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                phoneProjection,
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE",
+                arrayOf("%$normalizedQuery%"),
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
             )
             
-            val searchArgs = listOf(
-                query, // Exact match
-                "$query%", // Starts with
-                "%$query%", // Contains
-                "% $query %" // Word boundary
-            )
-            
-            android.util.Log.d("ContactService", "Using multiple search patterns for better relevance")
-            
-            // Execute each search pattern
-            searchPatterns.forEachIndexed { index, (pattern, relevance) ->
-                val selectionArgs = arrayOf(searchArgs[index])
+            cursor?.use {
+                val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                 
-                android.util.Log.d("ContactService", "Pattern $index: $pattern (relevance: $relevance)")
-                android.util.Log.d("ContactService", "Args: ${selectionArgs.joinToString()}")
-                
-                val cursor: Cursor? = context.contentResolver.query(
-                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                    phoneProjection,
-                    pattern,
-                    selectionArgs,
-                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
-                )
-                
-                cursor?.use {
-                    val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                    val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                    val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                    
-                    if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
-                        while (it.moveToNext()) {
-                            val id = it.getString(idColumn)
-                            val name = it.getString(nameColumn)
-                            val number = it.getString(numberColumn)
+                if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
+                    while (it.moveToNext()) {
+                        val id = it.getString(idColumn)
+                        val name = it.getString(nameColumn)
+                        val number = it.getString(numberColumn)
+                        
+                        if (id != null && name != null && number != null && 
+                            id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
+                            PhoneNumberUtils.isValidPhoneNumber(number)) {
                             
-                            if (id != null && name != null && number != null && 
-                                id.isNotBlank() && name.isNotBlank() && number.isNotBlank() &&
-                                PhoneNumberUtils.isValidPhoneNumber(number)) {
+                            // Determine match type and priority
+                            val normalizedName = name.lowercase().trim()
+                            val nameParts = normalizedName.split(Regex("\\s+"))
+                            
+                            var priority = CONTAINS_PRIORITY
+                            var matchType = 7 // Default: contains match (lowest priority)
+                            
+                            // 1st priority: exact match
+                            if (normalizedName == normalizedQuery) {
+                                priority = EXACT_MATCH_PRIORITY
+                                matchType = 1
+                            } 
+                            // 2nd priority: starts with search string and has only one word
+                            else if (normalizedName.startsWith(normalizedQuery) && nameParts.size == 1) {
+                                priority = STARTS_WITH_SINGLE_WORD_PRIORITY
+                                matchType = 2
+                            }
+                            // 3rd priority: starts with search string and has multiple words
+                            else if (normalizedName.startsWith(normalizedQuery) && nameParts.size > 1) {
+                                priority = STARTS_WITH_MULTI_WORD_PRIORITY
+                                matchType = 3
+                            }
+                            // 4th priority: 2nd word starts with the search string
+                            else if (nameParts.size >= 2 && nameParts[1].startsWith(normalizedQuery)) {
+                                priority = SECOND_WORD_STARTS_WITH_PRIORITY
+                                matchType = 4
+                            }
+                            // 5th priority: 3rd word starts with the search string
+                            else if (nameParts.size >= 3 && nameParts[2].startsWith(normalizedQuery)) {
+                                priority = THIRD_WORD_STARTS_WITH_PRIORITY
+                                matchType = 5
+                            }
+                            // 6th priority: 4th word starts with the search string
+                            else if (nameParts.size >= 4 && nameParts[3].startsWith(normalizedQuery)) {
+                                priority = FOURTH_WORD_STARTS_WITH_PRIORITY
+                                matchType = 6
+                            }
+                            
+                            // Update contact's priority if this is a higher score or new contact
+                            val currentPriority = contactRelevanceMap[id] ?: 0
+                            val currentMatchType = contactMatchTypeMap[id] ?: Int.MAX_VALUE
+                            
+                            if (matchType < currentMatchType || (matchType == currentMatchType && priority > currentPriority)) {
+                                contactRelevanceMap[id] = priority
+                                contactMatchTypeMap[id] = matchType
+                                android.util.Log.d("ContactService", "Contact '$name' gets match type: $matchType, priority: $priority")
+                            }
+                            
+                            if (seenContactsMap.containsKey(id)) {
+                                // Add phone number to existing contact
+                                val existingContact = seenContactsMap[id]!!
+                                val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
+                                val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
                                 
-                                // Only update relevance if this is a higher score or new contact
-                                val currentRelevance = contactRelevanceMap[id] ?: 0
-                                if (relevance > currentRelevance) {
-                                    contactRelevanceMap[id] = relevance
-                                    android.util.Log.d("ContactService", "Contact '$name' gets relevance score: $relevance")
+                                // Check if this normalized number already exists
+                                val alreadyExists = updatedPhoneNumbers.any { 
+                                    PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
                                 }
                                 
-                                if (seenContactsMap.containsKey(id)) {
-                                    // Add phone number to existing contact
-                                    val existingContact = seenContactsMap[id]!!
-                                    val updatedPhoneNumbers = existingContact.phoneNumbers.toMutableList()
-                                    val normalizedNewNumber = PhoneNumberUtils.normalizePhoneNumber(number)
-                                    
-                                    // Check if this normalized number already exists
-                                    val alreadyExists = updatedPhoneNumbers.any { 
-                                        PhoneNumberUtils.normalizePhoneNumber(it) == normalizedNewNumber 
+                                if (!alreadyExists) {
+                                    updatedPhoneNumbers.add(number)
+                                    val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
+                                    // Validate the updated contact
+                                    if (ContactUtils.isValidContact(updatedContact)) {
+                                        seenContactsMap[id] = updatedContact
                                     }
-                                    
-                                    if (!alreadyExists) {
-                                        updatedPhoneNumbers.add(number)
-                                        val updatedContact = existingContact.copy(phoneNumbers = updatedPhoneNumbers)
-                                        // Validate the updated contact
-                                        if (ContactUtils.isValidContact(updatedContact)) {
-                                            seenContactsMap[id] = updatedContact
-                                        }
-                                    }
-                                } else {
-                                    // Create new contact
-                                    val photoUri = ContactUtils.getContactPhotoUri(context, id)
-                                    val contact = Contact(
-                                        id = id,
-                                        name = name,
-                                        phoneNumber = number,
-                                        phoneNumbers = listOf(number),
-                                        photoUri = photoUri
-                                    )
-                                    
-                                    // Validate the contact before adding
-                                    if (ContactUtils.isValidContact(contact)) {
-                                        seenContactsMap[id] = contact
-                                    }
+                                }
+                            } else {
+                                // Create new contact
+                                val photoUri = ContactUtils.getContactPhotoUri(context, id)
+                                val contact = Contact(
+                                    id = id,
+                                    name = name,
+                                    phoneNumber = number,
+                                    phoneNumbers = listOf(number),
+                                    photoUri = photoUri
+                                )
+                                
+                                // Validate the contact before adding
+                                if (ContactUtils.isValidContact(contact)) {
+                                    seenContactsMap[id] = contact
                                 }
                             }
                         }
@@ -356,7 +382,7 @@ class ContactService {
             
             android.util.Log.d("ContactService", "Found ${seenContactsMap.size} unique contacts")
             
-            // Convert map to list, sanitize contacts, and sort by relevance
+            // Convert map to list, sanitize contacts
             val sanitizedContacts = seenContactsMap.values.mapNotNull { contact ->
                 val sanitized = ContactUtils.sanitizeContact(contact)
                 if (sanitized == null) {
@@ -365,9 +391,11 @@ class ContactService {
                 sanitized
             }
             
-            // Sort by relevance score (highest first), then by name
+            // Sort by match type (lowest first = highest priority), then by priority score (highest first), 
+            // then alphabetically by name for contacts with the same priority
             val sortedContacts = sanitizedContacts.sortedWith(
-                compareByDescending<Contact> { contactRelevanceMap[it.id] ?: 0 }
+                compareBy<Contact> { contactMatchTypeMap[it.id] ?: Int.MAX_VALUE }
+                .thenByDescending { contactRelevanceMap[it.id] ?: 0 }
                 .thenBy { it.name.lowercase() }
             )
             
@@ -375,8 +403,9 @@ class ContactService {
             
             android.util.Log.d("ContactService", "Final sorted results:")
             searchResultsList.forEachIndexed { index, contact ->
-                val relevance = contactRelevanceMap[contact.id] ?: 0
-                android.util.Log.d("ContactService", "${index + 1}. ${contact.name} (relevance: $relevance)")
+                val matchType = contactMatchTypeMap[contact.id] ?: Int.MAX_VALUE
+                val priority = contactRelevanceMap[contact.id] ?: 0
+                android.util.Log.d("ContactService", "${index + 1}. ${contact.name} (match type: $matchType, priority: $priority)")
             }
             
             // Cache the results

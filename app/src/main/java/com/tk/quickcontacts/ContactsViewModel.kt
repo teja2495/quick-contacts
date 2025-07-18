@@ -203,33 +203,41 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         android.util.Log.d("ContactsViewModel", "Updating search query: '$query'")
         _searchQuery.value = query
         filterContacts()
+        
+        // Cancel any ongoing search job
+        searchJob?.cancel()
+        
+        val numberLikeRegex = Regex("^[\\d\\s+\\-()]+$")
+        
         if (query.isNotEmpty()) {
-            val lowerQuery = query.lowercase().trim()
-            val filtered = _allContacts.value.filter { contact ->
-                contact.name.lowercase().contains(lowerQuery) ||
-                contact.phoneNumbers.any { it.contains(lowerQuery) }
-            }
-            val mutableResults = filtered.toMutableList()
-            // Inject dummy contact if query is a valid phone number and not already present
-            if (com.tk.quickcontacts.utils.PhoneNumberUtils.isValidPhoneNumber(query)) {
-                val normalizedQuery = com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(query)
-                val alreadyPresent = filtered.any { contact ->
-                    contact.phoneNumbers.any { com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(it) == normalizedQuery }
+            // If the query looks like a number, show only the dummy contact
+            if (numberLikeRegex.matches(query)) {
+                val normalizedQuery = query.trim()
+                val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
+                val dummyContact = Contact(
+                    id = "search_number_${normalizedQuery}",
+                    name = formattedName,
+                    phoneNumber = query,
+                    phoneNumbers = listOf(query),
+                    photo = null,
+                    photoUri = null
+                )
+                _searchResults.value = listOf(dummyContact)
+                android.util.Log.d("ContactsViewModel", "Query looks like a number, showing only dummy contact")
+            } else {
+                // Use debouncing to avoid excessive database queries
+                searchJob = viewModelScope.launch {
+                    delay(searchDebounceDelay) // Wait for user to finish typing
+                    
+                    // Use the ContactService for advanced search functionality
+                    val context = getApplication<Application>().applicationContext
+                    val searchResults = contactService.searchContacts(context, query)
+                    
+                    val mutableResults = searchResults.toMutableList()
+                    _searchResults.value = mutableResults
+                    android.util.Log.d("ContactsViewModel", "Search completed: ${mutableResults.size} contacts found")
                 }
-                if (!alreadyPresent) {
-                    val dummyContact = com.tk.quickcontacts.Contact(
-                        id = "search_number_${normalizedQuery}",
-                        name = com.tk.quickcontacts.utils.PhoneNumberUtils.formatPhoneNumber(query),
-                        phoneNumber = query,
-                        phoneNumbers = listOf(query),
-                        photo = null,
-                        photoUri = null
-                    )
-                    mutableResults.add(0, dummyContact)
-                }
             }
-            _searchResults.value = mutableResults
-            android.util.Log.d("ContactsViewModel", "Filtered search results: ${mutableResults.size} contacts")
         } else {
             _searchResults.value = emptyList()
             android.util.Log.d("ContactsViewModel", "Empty query, clearing search results")
