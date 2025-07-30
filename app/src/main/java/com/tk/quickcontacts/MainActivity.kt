@@ -80,9 +80,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Refresh recent calls when app comes back to foreground
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-            android.util.Log.d("MainActivity", "onResume: Refreshing recent calls")
+        if (viewModel.shouldRefreshRecentCalls()) {
             viewModel.refreshRecentCallsOnAppResume(this)
         }
     }
@@ -90,9 +88,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         // Also refresh recent calls when app starts (handles cases where app was in background)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-            android.util.Log.d("MainActivity", "onStart: Refreshing recent calls")
+        if (viewModel.shouldRefreshRecentCalls()) {
             viewModel.refreshRecentCallsOnAppResume(this)
         }
     }
@@ -301,8 +297,8 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     }
     
     // Load recent calls when permissions are available or selected contacts change
-    LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts) {
-        if (hasCallLogPermission && hasContactsPermission) {
+    LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts, isRecentCallsVisible) {
+        if (isRecentCallsVisible) {
             viewModel.loadRecentCalls(context)
         }
     }

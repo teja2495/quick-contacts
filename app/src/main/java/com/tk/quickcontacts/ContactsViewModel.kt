@@ -629,18 +629,24 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun refreshRecentCallsOnAppResume(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                android.util.Log.d("ContactsViewModel", "Refreshing recent calls on app resume")
+                // Only refresh if recent calls is enabled in settings
+                if (!_isRecentCallsVisible.value) {
+                    return@launch
+                }
+                
                 loadRecentCalls(context)
                 // Also refresh all recent calls if they were previously loaded
                 if (_allRecentCalls.value.isNotEmpty()) {
-                    android.util.Log.d("ContactsViewModel", "Also refreshing all recent calls")
                     loadAllRecentCalls(context)
                 }
-                android.util.Log.d("ContactsViewModel", "Successfully refreshed recent calls on app resume")
             } catch (e: Exception) {
                 android.util.Log.e("ContactsViewModel", "Error refreshing recent calls on app resume", e)
             }
         }
+    }
+    
+    fun shouldRefreshRecentCalls(): Boolean {
+        return _isRecentCallsVisible.value
     }
     
     private fun loadSavedRecentCalls() {
