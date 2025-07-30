@@ -309,6 +309,75 @@ class PreferencesRepository(context: Context) {
         }
     }
     
+    // Recent calls persistence
+    fun saveRecentCalls(recentCalls: List<Contact>) {
+        try {
+            android.util.Log.d("PreferencesRepository", "Saving ${recentCalls.size} recent calls to storage")
+            
+            // Validate contacts before saving
+            val validRecentCalls = recentCalls.filter { ContactUtils.isValidContact(it) }
+            
+            if (validRecentCalls.size != recentCalls.size) {
+                android.util.Log.w("PreferencesRepository", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls before saving")
+            }
+            
+            val json = gson.toJson(validRecentCalls)
+            android.util.Log.d("PreferencesRepository", "Serialized recent calls to JSON: ${json.length} characters")
+            
+            sharedPreferences.edit().putString("recent_calls", json).apply()
+            
+            android.util.Log.d("PreferencesRepository", "Successfully saved ${validRecentCalls.size} recent calls to SharedPreferences")
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error saving recent calls", e)
+        }
+    }
+
+    fun loadRecentCalls(): List<Contact> {
+        return try {
+            android.util.Log.d("PreferencesRepository", "Loading recent calls from SharedPreferences")
+            val json = sharedPreferences.getString("recent_calls", null)
+            if (json != null) {
+                android.util.Log.d("PreferencesRepository", "Found JSON data: ${json.length} characters")
+                val type = object : TypeToken<List<Contact>>() {}.type
+                val recentCalls = gson.fromJson<List<Contact>>(json, type) ?: emptyList()
+                
+                android.util.Log.d("PreferencesRepository", "Deserialized ${recentCalls.size} recent calls from JSON")
+                
+                // Validate loaded recent calls
+                val validRecentCalls = recentCalls.filter { ContactUtils.isValidContact(it) }
+                
+                if (validRecentCalls.size != recentCalls.size) {
+                    android.util.Log.w("PreferencesRepository", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls from storage")
+                    // Save the cleaned list back
+                    saveRecentCalls(validRecentCalls)
+                }
+                
+                android.util.Log.d("PreferencesRepository", "Successfully loaded ${validRecentCalls.size} valid recent calls")
+                validRecentCalls
+            } else {
+                android.util.Log.d("PreferencesRepository", "No recent calls found in SharedPreferences")
+                emptyList()
+            }
+        } catch (e: JsonSyntaxException) {
+            android.util.Log.e("PreferencesRepository", "Error parsing recent calls JSON", e)
+            // Clear corrupted data
+            sharedPreferences.edit().remove("recent_calls").apply()
+            emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error loading recent calls", e)
+            emptyList()
+        }
+    }
+    
+    fun clearRecentCalls() {
+        try {
+            sharedPreferences.edit().remove("recent_calls").apply()
+            android.util.Log.d("PreferencesRepository", "Cleared saved recent calls")
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error clearing recent calls", e)
+        }
+    }
+    
     // Clear cache when needed (e.g., on app restart)
     fun clearCache() {
         try {

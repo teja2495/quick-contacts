@@ -15,5 +15,7 @@ data class Contact(
     @Expose(serialize = false, deserialize = false)
     val photo: Bitmap? = null,
     @Expose
-    val photoUri: String? = null
+    val photoUri: String? = null,
+    @Expose
+    val callType: String? = null // Call type: "missed", "incoming", "outgoing", or null for non-call contacts
 ) 

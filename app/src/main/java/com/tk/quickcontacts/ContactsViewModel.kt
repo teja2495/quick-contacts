@@ -46,6 +46,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _filteredRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
     val filteredRecentCalls: StateFlow<List<Contact>> = _filteredRecentCalls.asStateFlow()
     
+    private val _allRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
+    val allRecentCalls: StateFlow<List<Contact>> = _allRecentCalls.asStateFlow()
+    
     private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
     val searchResults: StateFlow<List<Contact>> = _searchResults.asStateFlow()
 
@@ -108,6 +111,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         loadCustomActionPreferences()
         loadSettings()
         checkAvailableMessagingApps()
+        // Load saved recent calls
+        loadSavedRecentCalls()
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
@@ -220,7 +225,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     phoneNumber = query,
                     phoneNumbers = listOf(query),
                     photo = null,
-                    photoUri = null
+                    photoUri = null,
+                    callType = null
                 )
                 _searchResults.value = listOf(dummyContact)
                 android.util.Log.d("ContactsViewModel", "Query looks like a number, showing only dummy contact")
@@ -588,10 +594,70 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
             
             _recentCalls.value = validRecentCalls
+            
+            // Save the first two recent calls to local storage
+            saveFirstTwoRecentCalls(validRecentCalls)
+            
             filterContacts()
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error loading recent calls", e)
             _recentCalls.value = emptyList()
+        }
+    }
+    
+    fun loadAllRecentCalls(context: Context) {
+        try {
+            val allRecentCalls = contactService.loadAllRecentCalls(context)
+            
+            // Validate recent calls, but allow short service numbers (3-6 digits)
+            val validRecentCalls = allRecentCalls.filter { contact ->
+                ContactUtils.isValidContact(contact) ||
+                (contact.phoneNumber.replace(Regex("[^\\d]"), "").length in 3..6)
+            }
+            
+            if (validRecentCalls.size != allRecentCalls.size) {
+                android.util.Log.w("ContactsViewModel", "Removing ${allRecentCalls.size - validRecentCalls.size} invalid all recent calls (except short service numbers)")
+            }
+            
+            _allRecentCalls.value = validRecentCalls
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error loading all recent calls", e)
+            _allRecentCalls.value = emptyList()
+        }
+    }
+    
+    private fun loadSavedRecentCalls() {
+        try {
+            val savedRecentCalls = preferencesRepository.loadRecentCalls()
+            android.util.Log.d("ContactsViewModel", "Loaded ${savedRecentCalls.size} saved recent calls")
+            
+            // Set the saved recent calls as initial value
+            _recentCalls.value = savedRecentCalls
+            filterContacts()
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error loading saved recent calls", e)
+            _recentCalls.value = emptyList()
+        }
+    }
+    
+    private fun saveFirstTwoRecentCalls(recentCalls: List<Contact>) {
+        try {
+            val firstTwoCalls = recentCalls.take(2)
+            android.util.Log.d("ContactsViewModel", "Saving first ${firstTwoCalls.size} recent calls to local storage")
+            preferencesRepository.saveRecentCalls(firstTwoCalls)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error saving first two recent calls", e)
+        }
+    }
+    
+    fun clearSavedRecentCalls() {
+        try {
+            preferencesRepository.clearRecentCalls()
+            _recentCalls.value = emptyList()
+            filterContacts()
+            android.util.Log.d("ContactsViewModel", "Cleared saved recent calls")
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error clearing saved recent calls", e)
         }
     }
     

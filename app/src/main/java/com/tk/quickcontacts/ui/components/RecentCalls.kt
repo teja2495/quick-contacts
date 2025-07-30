@@ -36,6 +36,8 @@ fun RecentCallsSection(
     onExecuteAction: (Context, String, String) -> Unit,
     homeCountryCode: String? = null
 ) {
+
+    
     if (recentCalls.isNotEmpty()) {
         var isExpanded by remember { mutableStateOf(false) }
         val rotationAngle by animateFloatAsState(
@@ -73,23 +75,25 @@ fun RecentCallsSection(
                     )
                     
                     // Expand/Collapse arrow (only show if more than 2 items)
-                    if (recentCalls.size > 2) {
-                        IconButton(
-                            onClick = { 
+                    // Expand/Collapse arrow - always show when there are recent calls, but only enable when more than 2 items
+                    IconButton(
+                        onClick = { 
+                            if (recentCalls.size > 2) {
                                 isExpanded = !isExpanded
                                 onExpandedChange(isExpanded)
-                            },
-                            modifier = Modifier.padding(end = 5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = if (isExpanded) "Collapse" else "Expand",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .rotate(rotationAngle)
-                            )
-                        }
+                            }
+                        },
+                        modifier = Modifier.padding(end = 5.dp),
+                        enabled = recentCalls.size > 2
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isExpanded) "Collapse" else "Expand",
+                            tint = if (recentCalls.size > 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(rotationAngle)
+                        )
                     }
                 }
                 
@@ -126,14 +130,6 @@ fun RecentCallsSection(
                             .offset(y = (-4).dp)
                             .weight(1f)
                     ) {
-                        // Info text about Quick list contacts
-                        Text(
-                            text = "Quick list contacts won't appear here",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 8.dp, start = 0.dp, end = 42.dp)
-                        )
-                        
                         LazyColumn(
                             contentPadding = PaddingValues(vertical = 0.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)

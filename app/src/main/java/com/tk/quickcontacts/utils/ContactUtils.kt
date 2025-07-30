@@ -76,7 +76,8 @@ object ContactUtils {
                 phoneNumber = primaryPhoneNumber,
                 phoneNumbers = validPhoneNumbers,
                 photo = contact.photo,
-                photoUri = contact.photoUri?.takeIf { it.isNotBlank() }
+                photoUri = contact.photoUri?.takeIf { it.isNotBlank() },
+                callType = contact.callType
             )
         } catch (e: Exception) {
             android.util.Log.w("ContactUtils", "Error sanitizing contact: ${contact.id}", e)
@@ -162,7 +163,8 @@ object ContactUtils {
                                 name = name,
                                 phoneNumber = number,
                                 phoneNumbers = listOf(number),
-                                photoUri = photoUri
+                                photoUri = photoUri,
+                                callType = null
                             )
                             
                             // Validate the created contact
@@ -232,7 +234,8 @@ object ContactUtils {
                                 name = name,
                                 phoneNumber = primaryNumber,
                                 phoneNumbers = allPhoneNumbers,
-                                photoUri = photoUri
+                                photoUri = photoUri,
+                                callType = null
                             )
                             
                             // Validate the created contact
@@ -262,7 +265,8 @@ object ContactUtils {
                 name = fallbackName,
                 phoneNumber = cleanNumber,
                 phoneNumbers = listOf(cleanNumber),
-                photoUri = null
+                photoUri = null,
+                callType = null
             )
             
             if (isValidContact(fallbackContact)) {

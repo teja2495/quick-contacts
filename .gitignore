@@ -47,6 +47,7 @@ deploymentTargetSelector/
 
 # Android baseline profiles (.dm files)
 *.dm
+*.salive
 **/baselineProfiles/
 
 # Temporary files

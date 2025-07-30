@@ -12,6 +12,20 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
+/**
+ * Convert call log type integer to readable string
+ */
+private fun getCallTypeString(callType: Int): String {
+    return when (callType) {
+        CallLog.Calls.INCOMING_TYPE -> "incoming"
+        CallLog.Calls.OUTGOING_TYPE -> "outgoing"
+        CallLog.Calls.MISSED_TYPE -> "missed"
+        CallLog.Calls.REJECTED_TYPE -> "missed"
+        CallLog.Calls.BLOCKED_TYPE -> "missed"
+        else -> "unknown"
+    }
+}
+
 class ContactService {
     
     // Cache for search results to avoid repeated queries
@@ -97,7 +111,8 @@ class ContactService {
     private val callLogProjection = arrayOf(
         CallLog.Calls.NUMBER,
         CallLog.Calls.CACHED_NAME,
-        CallLog.Calls.DATE
+        CallLog.Calls.DATE,
+        CallLog.Calls.TYPE
     )
     
     fun getFavoriteContacts(context: Context): List<Contact> {
@@ -423,14 +438,22 @@ class ContactService {
     }
     
     fun loadRecentCalls(context: Context, selectedContacts: List<Contact>): List<Contact> {
+        return loadRecentCallsInternal(context, selectedContacts, filterQuickContacts = true)
+    }
+    
+    fun loadAllRecentCalls(context: Context): List<Contact> {
+        return loadRecentCallsInternal(context, emptyList(), filterQuickContacts = false)
+    }
+    
+    private fun loadRecentCallsInternal(context: Context, selectedContacts: List<Contact>, filterQuickContacts: Boolean): List<Contact> {
         try {
             val recentCallsList = mutableListOf<Contact>()
             val seenContactIds = mutableSetOf<String>()
 
-            // Get contact IDs from selected contacts to exclude them from recent calls
-            val selectedContactIds = selectedContacts.map { it.id }.toSet()
+            // Get contact IDs from selected contacts to exclude them from recent calls (only if filtering is enabled)
+            val selectedContactIds = if (filterQuickContacts) selectedContacts.map { it.id }.toSet() else emptySet()
 
-            android.util.Log.d("QuickContacts", "Selected contact IDs: $selectedContactIds")
+            android.util.Log.d("QuickContacts", "Selected contact IDs: $selectedContactIds, filterQuickContacts: $filterQuickContacts")
 
             val cursor: Cursor? = context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
@@ -443,11 +466,13 @@ class ContactService {
             cursor?.use {
                 val numberColumn = it.getColumnIndex(CallLog.Calls.NUMBER)
                 val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
+                val typeColumn = it.getColumnIndex(CallLog.Calls.TYPE)
 
-                if (numberColumn >= 0 && nameColumn >= 0) {
+                if (numberColumn >= 0 && nameColumn >= 0 && typeColumn >= 0) {
                     while (it.moveToNext() && recentCallsList.size < 10) {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
+                        val callType = it.getInt(typeColumn)
 
                         if (number != null && number.isNotBlank()) {
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
@@ -460,8 +485,10 @@ class ContactService {
                                 // Skip if this contact is already in selected contacts or already seen
                                 if (!selectedContactIds.contains(contact.id) && !seenContactIds.contains(contact.id)) {
                                     seenContactIds.add(contact.id)
-                                    android.util.Log.d("QuickContacts", "Adding to recent calls: ${contact.name} (ID: ${contact.id}) - ${contact.phoneNumber}")
-                                    recentCallsList.add(contact)
+                                    // Add call type to the contact
+                                    val contactWithCallType = contact.copy(callType = getCallTypeString(callType))
+                                    android.util.Log.d("QuickContacts", "Adding to recent calls: ${contactWithCallType.name} (ID: ${contactWithCallType.id}) - ${contactWithCallType.phoneNumber} - ${contactWithCallType.callType}")
+                                    recentCallsList.add(contactWithCallType)
                                 } else {
                                     android.util.Log.d("QuickContacts", "Skipping duplicate contact: ${contact.name} (ID: ${contact.id})")
                                 }
@@ -481,9 +508,10 @@ class ContactService {
                                             name = if (!cachedName.isNullOrBlank()) cachedName.trim() else formattedNumber,
                                             phoneNumber = number,
                                             phoneNumbers = listOf(number),
-                                            photoUri = null
+                                            photoUri = null,
+                                            callType = getCallTypeString(callType)
                                         )
-                                        android.util.Log.d("QuickContacts", "Adding fallback to recent calls: ${fallbackContact.name} - ${fallbackContact.phoneNumber}")
+                                        android.util.Log.d("QuickContacts", "Adding fallback to recent calls: ${fallbackContact.name} - ${fallbackContact.phoneNumber} - ${fallbackContact.callType}")
                                         recentCallsList.add(fallbackContact)
                                     } else {
                                         android.util.Log.d("QuickContacts", "Skipping duplicate fallback contact: $formattedNumber")

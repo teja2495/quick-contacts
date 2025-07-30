@@ -244,6 +244,7 @@ fun QuickContactsApp() {
     val recentCalls by viewModel.recentCalls.collectAsState()
     val filteredSelectedContacts by viewModel.filteredSelectedContacts.collectAsState()
     val filteredRecentCalls by viewModel.filteredRecentCalls.collectAsState()
+    val allRecentCalls by viewModel.allRecentCalls.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val customActionPreferences by viewModel.customActionPreferences.collectAsState()
@@ -507,7 +508,7 @@ fun QuickContactsApp() {
                             // Recent calls section (only show if enabled and permission granted)
                             if (isRecentCallsVisible && hasCallLogPermission) {
                                 RecentCallsSection(
-                                    recentCalls = filteredRecentCalls,
+                                    recentCalls = if (isRecentCallsExpanded) allRecentCalls else filteredRecentCalls,
                                     onContactClick = { contact ->
                                         viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
@@ -522,6 +523,8 @@ fun QuickContactsApp() {
                                         // Reset edit mode when expanding recent calls
                                         if (expanded) {
                                             editMode = false
+                                            // Load all recent calls when expanded
+                                            viewModel.loadAllRecentCalls(context)
                                         }
                                     },
                                     isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,

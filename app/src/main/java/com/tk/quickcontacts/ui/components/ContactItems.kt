@@ -657,15 +657,33 @@ fun RecentCallVerticalItem(
         
         Spacer(modifier = Modifier.width(12.dp))
         
-        // Contact Name - removed clickable modifier since entire row is now clickable
-        Text(
-            text = contact.name,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
+        // Contact Name and Call Type
+        Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(vertical = 4.dp)
-        )
+        ) {
+            Text(
+                text = contact.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            // Display call type as subtext if available
+            contact.callType?.let { callType ->
+                Text(
+                    text = callType.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (callType) {
+                        "missed" -> MaterialTheme.colorScheme.error
+                        "incoming" -> MaterialTheme.colorScheme.primary
+                        "outgoing" -> MaterialTheme.colorScheme.secondary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        }
         
         // For international: Phone button (to call), for domestic: messaging app button
         IconButton(
