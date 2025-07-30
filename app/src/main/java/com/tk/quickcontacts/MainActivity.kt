@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
@@ -54,11 +55,16 @@ import coil.memory.MemoryCache
 import coil.util.DebugLogger
 
 class MainActivity : ComponentActivity() {
+    private lateinit var viewModel: ContactsViewModel
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         // Switch to main theme after splash screen
         setTheme(R.style.Theme_QuickContacts)
+        
+        // Initialize ViewModel
+        viewModel = ViewModelProvider(this)[ContactsViewModel::class.java]
         
         // Configure Coil for better performance
         configureImageLoader()
@@ -66,8 +72,28 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             QuickContactsTheme {
-                QuickContactsApp()
+                QuickContactsApp(viewModel)
             }
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Refresh recent calls when app comes back to foreground
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.d("MainActivity", "onResume: Refreshing recent calls")
+            viewModel.refreshRecentCallsOnAppResume(this)
+        }
+    }
+    
+    override fun onStart() {
+        super.onStart()
+        // Also refresh recent calls when app starts (handles cases where app was in background)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.d("MainActivity", "onStart: Refreshing recent calls")
+            viewModel.refreshRecentCallsOnAppResume(this)
         }
     }
     
@@ -97,11 +123,8 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuickContactsApp() {
+fun QuickContactsApp(viewModel: ContactsViewModel) {
     val context = LocalContext.current
-    val viewModel: ContactsViewModel = viewModel(
-        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
-    )
     
     // Navigation state - replace isSearchScreenOpen with isSearching
     var currentScreen by remember { mutableStateOf("home") }
@@ -283,6 +306,8 @@ fun QuickContactsApp() {
             viewModel.loadRecentCalls(context)
         }
     }
+    
+
     
     // Check and load favorite contacts on first launch when permissions are granted
     LaunchedEffect(hasContactsPermission) {
