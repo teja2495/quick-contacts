@@ -65,7 +65,7 @@ fun RecentCallsSection(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 0.dp)
+                        .padding(top = 8.dp, bottom = 0.dp)
                 ) {
                     Text(
                         text = "Recent Calls",
