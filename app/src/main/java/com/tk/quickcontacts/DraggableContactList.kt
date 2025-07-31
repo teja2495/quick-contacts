@@ -162,12 +162,14 @@ fun RecentCallsSection(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
+    isExpanded: Boolean = false,
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    homeCountryCode: String? = null
 ) {
     com.tk.quickcontacts.ui.components.RecentCallsSection(
         recentCalls = recentCalls,
@@ -175,12 +177,14 @@ fun RecentCallsSection(
         onWhatsAppClick = onWhatsAppClick,
         onContactImageClick = onContactImageClick,
         onExpandedChange = onExpandedChange,
+        isExpanded = isExpanded,
         isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
         modifier = modifier,
         selectedContacts = selectedContacts,
         availableMessagingApps = availableMessagingApps,
-        onExecuteAction = onExecuteAction
+        onExecuteAction = onExecuteAction,
+        homeCountryCode = homeCountryCode
     )
 }
 

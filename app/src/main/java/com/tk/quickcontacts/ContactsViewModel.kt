@@ -613,9 +613,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             try {
                 _isLoadingRecentCalls.value = true
                 
-                // Small delay to ensure loading state is visible
-                delay(100)
-                
                 val allRecentCalls = contactService.loadAllRecentCalls(context)
                 
                 // Validate recent calls, but allow short service numbers (3-6 digits)

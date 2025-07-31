@@ -300,6 +300,8 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts, isRecentCallsVisible) {
         if (isRecentCallsVisible) {
             viewModel.loadRecentCalls(context)
+            // Pre-load all recent calls to make expansion smoother
+            viewModel.loadAllRecentCalls(context)
         }
     }
     
@@ -529,7 +531,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                             // Recent calls section (only show if enabled and permission granted)
                             if (isRecentCallsVisible && hasCallLogPermission) {
                                 RecentCallsSection(
-                                    recentCalls = if (isRecentCallsExpanded) allRecentCalls else filteredRecentCalls,
+                                    recentCalls = allRecentCalls,
                                     onContactClick = { contact ->
                                         viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
@@ -539,6 +541,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                     onContactImageClick = { contact ->
                                         viewModel.openContactInContactsApp(context, contact)
                                     },
+                                    isExpanded = isRecentCallsExpanded,
                                     onExpandedChange = { expanded ->
                                         isRecentCallsExpanded = expanded
                                         // Reset edit mode when expanding recent calls

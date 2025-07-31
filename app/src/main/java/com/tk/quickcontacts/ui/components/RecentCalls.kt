@@ -17,6 +17,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.models.MessagingApp
@@ -28,6 +33,7 @@ fun RecentCallsSection(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
+    isExpanded: Boolean = false,
     isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
@@ -39,10 +45,9 @@ fun RecentCallsSection(
 
     
     if (recentCalls.isNotEmpty()) {
-        var isExpanded by remember { mutableStateOf(false) }
         val rotationAngle by animateFloatAsState(
             targetValue = if (isExpanded) 180f else 0f,
-            animationSpec = tween(300),
+            animationSpec = tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
             label = "arrow_rotation"
         )
         
@@ -79,8 +84,7 @@ fun RecentCallsSection(
                     IconButton(
                         onClick = { 
                             if (recentCalls.size > 2) {
-                                isExpanded = !isExpanded
-                                onExpandedChange(isExpanded)
+                                onExpandedChange(!isExpanded)
                             }
                         },
                         modifier = Modifier.padding(end = 5.dp),
@@ -97,57 +101,64 @@ fun RecentCallsSection(
                     }
                 }
                 
-                // Vertical list of recent calls
-                if (!isExpanded) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.offset(y = (-4).dp)
-                    ) {
-                        recentCalls.take(2).forEach { contact ->
-                            RecentCallVerticalItem(
-                                contact = contact,
-                                onContactClick = onContactClick,
-                                onWhatsAppClick = onWhatsAppClick,
-                                onContactImageClick = onContactImageClick,
-                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-                                defaultMessagingApp = defaultMessagingApp,
-                                modifier = Modifier.fillMaxWidth(),
-                                selectedContacts = selectedContacts,
-                                availableMessagingApps = availableMessagingApps,
-                                onExecuteAction = onExecuteAction,
-                                homeCountryCode = homeCountryCode
+                // Content container
+                Column(
+                    modifier = Modifier.offset(y = (-4).dp)
+                ) {
+                    AnimatedContent(
+                        targetState = isExpanded,
+                        transitionSpec = {
+                            slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                            ) togetherWith slideOutVertically(
+                                targetOffsetY = { it },
+                                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                             )
                         }
-                    }
-                }
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(animationSpec = tween(300)),
-                    exit = shrinkVertically(animationSpec = tween(300))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .offset(y = (-4).dp)
-                            .weight(1f)
-                    ) {
-                        LazyColumn(
-                            contentPadding = PaddingValues(vertical = 0.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            items(recentCalls) { contact ->
-                                RecentCallVerticalItem(
-                                    contact = contact,
-                                    onContactClick = onContactClick,
-                                    onWhatsAppClick = onWhatsAppClick,
-                                    onContactImageClick = onContactImageClick,
-                                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-                                    defaultMessagingApp = defaultMessagingApp,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    selectedContacts = selectedContacts,
-                                    availableMessagingApps = availableMessagingApps,
-                                    onExecuteAction = onExecuteAction,
-                                    homeCountryCode = homeCountryCode
-                                )
+                    ) { isExpanded ->
+                        if (!isExpanded) {
+                            // Collapsed view - show only first 2 items
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                recentCalls.take(2).forEach { contact ->
+                                    RecentCallVerticalItem(
+                                        contact = contact,
+                                        onContactClick = onContactClick,
+                                        onWhatsAppClick = onWhatsAppClick,
+                                        onContactImageClick = onContactImageClick,
+                                        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                        defaultMessagingApp = defaultMessagingApp,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        selectedContacts = selectedContacts,
+                                        availableMessagingApps = availableMessagingApps,
+                                        onExecuteAction = onExecuteAction,
+                                        homeCountryCode = homeCountryCode
+                                    )
+                                }
+                            }
+                        } else {
+                            // Expanded view - show all items in LazyColumn
+                            LazyColumn(
+                                contentPadding = PaddingValues(vertical = 0.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                items(recentCalls) { contact ->
+                                    RecentCallVerticalItem(
+                                        contact = contact,
+                                        onContactClick = onContactClick,
+                                        onWhatsAppClick = onWhatsAppClick,
+                                        onContactImageClick = onContactImageClick,
+                                        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                        defaultMessagingApp = defaultMessagingApp,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        selectedContacts = selectedContacts,
+                                        availableMessagingApps = availableMessagingApps,
+                                        onExecuteAction = onExecuteAction,
+                                        homeCountryCode = homeCountryCode
+                                    )
+                                }
                             }
                         }
                     }
