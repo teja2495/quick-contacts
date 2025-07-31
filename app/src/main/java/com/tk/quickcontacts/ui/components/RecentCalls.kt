@@ -22,6 +22,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.models.MessagingApp
@@ -101,28 +103,28 @@ fun RecentCallsSection(
                     }
                 }
                 
-                // Content container
-                Column(
-                    modifier = Modifier.offset(y = (-4).dp)
-                ) {
+                // Content container - only animate data changes when expanded
+                if (isExpanded) {
+                    // Animated content for expanded state
                     AnimatedContent(
-                        targetState = isExpanded,
+                        targetState = recentCalls,
                         transitionSpec = {
-                            slideInVertically(
-                                initialOffsetY = { it },
-                                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                            ) togetherWith slideOutVertically(
-                                targetOffsetY = { it },
+                            fadeIn(
+                                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                            ) togetherWith fadeOut(
                                 animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                             )
                         }
-                    ) { isExpanded ->
-                        if (!isExpanded) {
-                            // Collapsed view - show only first 2 items
-                            Column(
+                    ) { currentRecentCalls ->
+                        Column(
+                            modifier = Modifier.offset(y = (-4).dp)
+                        ) {
+                            // Expanded view - show all items in LazyColumn
+                            LazyColumn(
+                                contentPadding = PaddingValues(vertical = 0.dp),
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                recentCalls.take(2).forEach { contact ->
+                                items(currentRecentCalls) { contact ->
                                     RecentCallVerticalItem(
                                         contact = contact,
                                         onContactClick = onContactClick,
@@ -138,27 +140,31 @@ fun RecentCallsSection(
                                     )
                                 }
                             }
-                        } else {
-                            // Expanded view - show all items in LazyColumn
-                            LazyColumn(
-                                contentPadding = PaddingValues(vertical = 0.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                items(recentCalls) { contact ->
-                                    RecentCallVerticalItem(
-                                        contact = contact,
-                                        onContactClick = onContactClick,
-                                        onWhatsAppClick = onWhatsAppClick,
-                                        onContactImageClick = onContactImageClick,
-                                        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-                                        defaultMessagingApp = defaultMessagingApp,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        selectedContacts = selectedContacts,
-                                        availableMessagingApps = availableMessagingApps,
-                                        onExecuteAction = onExecuteAction,
-                                        homeCountryCode = homeCountryCode
-                                    )
-                                }
+                        }
+                    }
+                } else {
+                    // Non-animated content for collapsed state
+                    Column(
+                        modifier = Modifier.offset(y = (-4).dp)
+                    ) {
+                        // Collapsed view - show only first 2 items
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            recentCalls.take(2).forEach { contact ->
+                                RecentCallVerticalItem(
+                                    contact = contact,
+                                    onContactClick = onContactClick,
+                                    onWhatsAppClick = onWhatsAppClick,
+                                    onContactImageClick = onContactImageClick,
+                                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                    defaultMessagingApp = defaultMessagingApp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    selectedContacts = selectedContacts,
+                                    availableMessagingApps = availableMessagingApps,
+                                    onExecuteAction = onExecuteAction,
+                                    homeCountryCode = homeCountryCode
+                                )
                             }
                         }
                     }

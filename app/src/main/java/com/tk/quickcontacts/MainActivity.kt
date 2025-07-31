@@ -303,7 +303,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     
     // Load recent calls when permissions are available or selected contacts change
     LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts, isRecentCallsVisible) {
-        if (isRecentCallsVisible) {
+        if (isRecentCallsVisible && hasCallLogPermission) {
             viewModel.loadRecentCalls(context)
             // Pre-load all recent calls to make expansion smoother
             viewModel.loadAllRecentCalls(context)
@@ -536,7 +536,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                             // Recent calls section (only show if enabled and permission granted)
                             if (isRecentCallsVisible && hasCallLogPermission) {
                                 RecentCallsSection(
-                                    recentCalls = allRecentCalls,
+                                    recentCalls = if (isRecentCallsExpanded) allRecentCalls else recentCalls,
                                     onContactClick = { contact ->
                                         viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
@@ -554,6 +554,9 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                             editMode = false
                                             // Load all recent calls when expanded
                                             viewModel.loadAllRecentCalls(context)
+                                        } else {
+                                            // Load filtered recent calls when collapsed
+                                            viewModel.loadRecentCalls(context)
                                         }
                                     },
                                     isInternationalDetectionEnabled = effectiveInternationalDetectionEnabled,

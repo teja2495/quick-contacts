@@ -37,6 +37,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _recentCalls = MutableStateFlow<List<Contact>>(emptyList())
     val recentCalls: StateFlow<List<Contact>> = _recentCalls.asStateFlow()
     
+    // New state flow for cached recent calls
+    private val _cachedRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
+    val cachedRecentCalls: StateFlow<List<Contact>> = _cachedRecentCalls.asStateFlow()
+    
+    // New state flow for cached all recent calls
+    private val _cachedAllRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
+    val cachedAllRecentCalls: StateFlow<List<Contact>> = _cachedAllRecentCalls.asStateFlow()
+    
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     
@@ -114,7 +122,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         loadCustomActionPreferences()
         loadSettings()
         checkAvailableMessagingApps()
-        // Load saved recent calls
+        // Load saved recent calls (this will populate both recent calls and cached calls)
         loadSavedRecentCalls()
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
@@ -583,28 +591,50 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun loadRecentCalls(context: Context) {
-        try {
-            val recentCalls = contactService.loadRecentCalls(context, _selectedContacts.value)
-            
-            // Validate recent calls, but allow short service numbers (3-6 digits)
-            val validRecentCalls = recentCalls.filter { contact ->
-                ContactUtils.isValidContact(contact) ||
-                (contact.phoneNumber.replace(Regex("[^\\d]"), "").length in 3..6)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _isLoadingRecentCalls.value = true
+                android.util.Log.d("ContactsViewModel", "Starting loadRecentCalls - cached calls: ${_cachedRecentCalls.value.size}")
+                
+                // First, show cached recent calls immediately if available
+                if (_cachedRecentCalls.value.isNotEmpty()) {
+                    _recentCalls.value = _cachedRecentCalls.value
+                    filterContacts()
+                    android.util.Log.d("ContactsViewModel", "Showed cached recent calls: ${_recentCalls.value.size}")
+                }
+                
+                // Load fresh recent calls from call log
+                val recentCalls = contactService.loadRecentCalls(context, _selectedContacts.value)
+                
+                // Validate recent calls, but allow short service numbers (3-6 digits)
+                val validRecentCalls = recentCalls.filter { contact ->
+                    ContactUtils.isValidContact(contact) ||
+                    (contact.phoneNumber.replace(Regex("[^\\d]"), "").length in 3..6)
+                }
+                
+                if (validRecentCalls.size != recentCalls.size) {
+                    android.util.Log.w("ContactsViewModel", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls (except short service numbers)")
+                }
+                
+                // Update both recent calls and cached calls
+                _recentCalls.value = validRecentCalls
+                _cachedRecentCalls.value = validRecentCalls
+                
+                // Save the first two recent calls to local storage
+                saveFirstTwoRecentCalls(validRecentCalls)
+                
+                filterContacts()
+                
+                android.util.Log.d("ContactsViewModel", "Successfully loaded ${validRecentCalls.size} recent calls")
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsViewModel", "Error loading recent calls", e)
+                // Keep cached calls if available, otherwise set empty list
+                if (_cachedRecentCalls.value.isEmpty()) {
+                    _recentCalls.value = emptyList()
+                }
+            } finally {
+                _isLoadingRecentCalls.value = false
             }
-            
-            if (validRecentCalls.size != recentCalls.size) {
-                android.util.Log.w("ContactsViewModel", "Removing ${recentCalls.size - validRecentCalls.size} invalid recent calls (except short service numbers)")
-            }
-            
-            _recentCalls.value = validRecentCalls
-            
-            // Save the first two recent calls to local storage
-            saveFirstTwoRecentCalls(validRecentCalls)
-            
-            filterContacts()
-        } catch (e: Exception) {
-            android.util.Log.e("ContactsViewModel", "Error loading recent calls", e)
-            _recentCalls.value = emptyList()
         }
     }
     
@@ -612,6 +642,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoadingRecentCalls.value = true
+                android.util.Log.d("ContactsViewModel", "Starting loadAllRecentCalls - cached all calls: ${_cachedAllRecentCalls.value.size}")
+                
+                // Show cached all recent calls immediately if available
+                if (_cachedAllRecentCalls.value.isNotEmpty()) {
+                    _allRecentCalls.value = _cachedAllRecentCalls.value
+                    filterContacts()
+                    android.util.Log.d("ContactsViewModel", "Showed cached all recent calls: ${_allRecentCalls.value.size}")
+                }
                 
                 val allRecentCalls = contactService.loadAllRecentCalls(context)
                 
@@ -626,6 +664,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 }
                 
                 _allRecentCalls.value = validRecentCalls
+                _cachedAllRecentCalls.value = validRecentCalls
             } catch (e: Exception) {
                 android.util.Log.e("ContactsViewModel", "Error loading all recent calls", e)
                 _allRecentCalls.value = emptyList()
@@ -641,6 +680,17 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 // Only refresh if recent calls is enabled in settings
                 if (!_isRecentCallsVisible.value) {
                     return@launch
+                }
+                
+                // Show cached calls immediately if available
+                if (_cachedRecentCalls.value.isNotEmpty()) {
+                    _recentCalls.value = _cachedRecentCalls.value
+                    filterContacts()
+                }
+                
+                // Show cached all recent calls immediately if available
+                if (_cachedAllRecentCalls.value.isNotEmpty()) {
+                    _allRecentCalls.value = _cachedAllRecentCalls.value
                 }
                 
                 loadRecentCalls(context)
@@ -663,12 +713,20 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             val savedRecentCalls = preferencesRepository.loadRecentCalls()
             android.util.Log.d("ContactsViewModel", "Loaded ${savedRecentCalls.size} saved recent calls")
             
-            // Set the saved recent calls as initial value
+            // Set the saved recent calls as initial value for both recent calls and cached calls
             _recentCalls.value = savedRecentCalls
+            _cachedRecentCalls.value = savedRecentCalls
+            _allRecentCalls.value = savedRecentCalls
+            _cachedAllRecentCalls.value = savedRecentCalls
             filterContacts()
+            
+            android.util.Log.d("ContactsViewModel", "Cached data set - recentCalls: ${_recentCalls.value.size}, allRecentCalls: ${_allRecentCalls.value.size}")
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error loading saved recent calls", e)
             _recentCalls.value = emptyList()
+            _cachedRecentCalls.value = emptyList()
+            _allRecentCalls.value = emptyList()
+            _cachedAllRecentCalls.value = emptyList()
         }
     }
     
@@ -686,6 +744,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         try {
             preferencesRepository.clearRecentCalls()
             _recentCalls.value = emptyList()
+            _cachedRecentCalls.value = emptyList()
+            _allRecentCalls.value = emptyList()
+            _cachedAllRecentCalls.value = emptyList()
             filterContacts()
             android.util.Log.d("ContactsViewModel", "Cleared saved recent calls")
         } catch (e: Exception) {
