@@ -296,6 +296,11 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         }
     }
     
+    // Handle Android system back button when recent calls is expanded
+    BackHandler(enabled = isRecentCallsExpanded) {
+        isRecentCallsExpanded = false
+    }
+    
     // Load recent calls when permissions are available or selected contacts change
     LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts, isRecentCallsVisible) {
         if (isRecentCallsVisible) {
