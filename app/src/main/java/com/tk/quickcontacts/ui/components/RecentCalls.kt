@@ -103,28 +103,28 @@ fun RecentCallsSection(
                     }
                 }
                 
-                // Content container - only animate data changes when expanded
-                if (isExpanded) {
-                    // Animated content for expanded state
-                    AnimatedContent(
-                        targetState = recentCalls,
-                        transitionSpec = {
-                            fadeIn(
-                                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
-                            ) togetherWith fadeOut(
-                                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                            )
-                        }
-                    ) { currentRecentCalls ->
+                // Content container with expansion animation but no data refresh animation when minimized
+                AnimatedContent(
+                    targetState = isExpanded,
+                    transitionSpec = {
+                        slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                        ) togetherWith slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                        )
+                    }
+                ) { isExpanded ->
+                    if (!isExpanded) {
+                        // Collapsed view - show only first 2 items (no data refresh animation)
                         Column(
                             modifier = Modifier.offset(y = (-4).dp)
                         ) {
-                            // Expanded view - show all items in LazyColumn
-                            LazyColumn(
-                                contentPadding = PaddingValues(vertical = 0.dp),
+                            Column(
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                items(currentRecentCalls) { contact ->
+                                recentCalls.take(2).forEach { contact ->
                                     RecentCallVerticalItem(
                                         contact = contact,
                                         onContactClick = onContactClick,
@@ -141,30 +141,41 @@ fun RecentCallsSection(
                                 }
                             }
                         }
-                    }
-                } else {
-                    // Non-animated content for collapsed state
-                    Column(
-                        modifier = Modifier.offset(y = (-4).dp)
-                    ) {
-                        // Collapsed view - show only first 2 items
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            recentCalls.take(2).forEach { contact ->
-                                RecentCallVerticalItem(
-                                    contact = contact,
-                                    onContactClick = onContactClick,
-                                    onWhatsAppClick = onWhatsAppClick,
-                                    onContactImageClick = onContactImageClick,
-                                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-                                    defaultMessagingApp = defaultMessagingApp,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    selectedContacts = selectedContacts,
-                                    availableMessagingApps = availableMessagingApps,
-                                    onExecuteAction = onExecuteAction,
-                                    homeCountryCode = homeCountryCode
+                    } else {
+                        // Expanded view - show all items with data refresh animation
+                        AnimatedContent(
+                            targetState = recentCalls,
+                            transitionSpec = {
+                                fadeIn(
+                                    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                                ) togetherWith fadeOut(
+                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                                 )
+                            }
+                        ) { currentRecentCalls ->
+                            Column(
+                                modifier = Modifier.offset(y = (-4).dp)
+                            ) {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(vertical = 0.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    items(currentRecentCalls) { contact ->
+                                        RecentCallVerticalItem(
+                                            contact = contact,
+                                            onContactClick = onContactClick,
+                                            onWhatsAppClick = onWhatsAppClick,
+                                            onContactImageClick = onContactImageClick,
+                                            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                            defaultMessagingApp = defaultMessagingApp,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            selectedContacts = selectedContacts,
+                                            availableMessagingApps = availableMessagingApps,
+                                            onExecuteAction = onExecuteAction,
+                                            homeCountryCode = homeCountryCode
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
