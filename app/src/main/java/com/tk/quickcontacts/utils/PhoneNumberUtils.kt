@@ -831,4 +831,38 @@ object PhoneNumberUtils {
             null
         }
     }
+    
+    /**
+     * Append country code to phone number if it doesn't already have one
+     * @param phoneNumber The phone number to process
+     * @param context The context to get user's country code
+     * @param homeCountryCode Optional home country code (e.g., "+1"). If null, will be detected from context.
+     * @return Phone number with country code appended, or original if already has country code or cannot determine user's country
+     */
+    fun appendCountryCodeIfNeeded(
+        phoneNumber: String,
+        context: Context,
+        homeCountryCode: String? = null
+    ): String {
+        if (!isValidPhoneNumber(phoneNumber)) {
+            return phoneNumber // Return original if invalid
+        }
+        
+        val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
+        
+        // If number already starts with +, it has a country code
+        if (cleaned.startsWith("+")) {
+            return phoneNumber
+        }
+        
+        // Get user's country dialing code
+        val userDialingCode = homeCountryCode ?: isoToDialingCode(getUserCountryCode(context) ?: return phoneNumber)
+        
+        if (userDialingCode.isNullOrBlank()) {
+            return phoneNumber // Return original if we can't determine country code
+        }
+        
+        // Append country code to the number
+        return "$userDialingCode$cleaned"
+    }
 } 

@@ -515,7 +515,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for call: $phoneNumber")
                 return
             }
-            phoneService.makePhoneCall(context, phoneNumber)
+            // Append country code if needed
+            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            phoneService.makePhoneCall(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error making phone call to: $phoneNumber", e)
         }
@@ -535,7 +537,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for WhatsApp: $phoneNumber")
                 return
             }
-            messagingService.openWhatsAppChat(context, phoneNumber)
+            // Append country code if needed
+            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            messagingService.openWhatsAppChat(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening WhatsApp chat for: $phoneNumber", e)
         }
@@ -547,7 +551,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for SMS: $phoneNumber")
                 return
             }
-            messagingService.openSmsApp(context, phoneNumber)
+            // Append country code if needed
+            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            messagingService.openSmsApp(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening SMS app for: $phoneNumber", e)
         }
@@ -559,21 +565,25 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for Telegram: $phoneNumber")
                 return
             }
-            messagingService.openTelegramChat(context, phoneNumber)
+            // Append country code if needed
+            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            messagingService.openTelegramChat(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening Telegram chat for: $phoneNumber", e)
         }
     }
 
     fun openMessagingApp(context: Context, phoneNumber: String) {
-        messagingService.openMessagingApp(context, phoneNumber, _defaultMessagingApp.value)
+        // Append country code if needed
+        val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+        messagingService.openMessagingApp(context, phoneNumberWithCountryCode, _defaultMessagingApp.value)
     }
 
     fun executeAction(context: Context, action: String, phoneNumber: String) {
         when (action) {
             "Call" -> makePhoneCall(context, phoneNumber)
             "WhatsApp" -> openWhatsAppChat(context, phoneNumber)
-            "SMS" -> openSmsApp(context, phoneNumber)
+            "SMS", "Messages" -> openSmsApp(context, phoneNumber)
             "Telegram" -> openTelegramChat(context, phoneNumber)
         }
     }
