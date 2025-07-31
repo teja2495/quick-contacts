@@ -96,7 +96,12 @@ fun PhoneNumberSelectionDialog(
                     )
                 }
                 
-                contact.phoneNumbers.forEach { phoneNumber ->
+                // Filter out duplicate phone numbers (when normalized)
+                val uniquePhoneNumbers = contact.phoneNumbers.distinctBy { phoneNumber ->
+                    com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(phoneNumber)
+                }
+                
+                uniquePhoneNumbers.forEach { phoneNumber ->
                     // Use remember to make this reactive to selectedContacts changes
                     val isNumberInQuickList by remember(selectedContacts, contact.id, phoneNumber) {
                         mutableStateOf(

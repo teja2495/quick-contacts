@@ -467,12 +467,14 @@ class ContactService {
                 val numberColumn = it.getColumnIndex(CallLog.Calls.NUMBER)
                 val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
                 val typeColumn = it.getColumnIndex(CallLog.Calls.TYPE)
+                val dateColumn = it.getColumnIndex(CallLog.Calls.DATE)
 
                 if (numberColumn >= 0 && nameColumn >= 0 && typeColumn >= 0) {
-                    while (it.moveToNext() && recentCallsList.size < 10) {
+                    while (it.moveToNext() && recentCallsList.size < 25) {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
                         val callType = it.getInt(typeColumn)
+                        val callTimestamp = if (dateColumn >= 0) it.getLong(dateColumn) else null
 
                         if (number != null && number.isNotBlank()) {
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
@@ -485,10 +487,13 @@ class ContactService {
                                 // Skip if this contact is already in selected contacts or already seen
                                 if (!selectedContactIds.contains(contact.id) && !seenContactIds.contains(contact.id)) {
                                     seenContactIds.add(contact.id)
-                                    // Add call type to the contact
-                                    val contactWithCallType = contact.copy(callType = getCallTypeString(callType))
-                                    android.util.Log.d("QuickContacts", "Adding to recent calls: ${contactWithCallType.name} (ID: ${contactWithCallType.id}) - ${contactWithCallType.phoneNumber} - ${contactWithCallType.callType}")
-                                    recentCallsList.add(contactWithCallType)
+                                    // Add call type and timestamp to the contact
+                                    val contactWithCallData = contact.copy(
+                                        callType = getCallTypeString(callType),
+                                        callTimestamp = callTimestamp
+                                    )
+                                    android.util.Log.d("QuickContacts", "Adding to recent calls: ${contactWithCallData.name} (ID: ${contactWithCallData.id}) - ${contactWithCallData.phoneNumber} - ${contactWithCallData.callType} - ${contactWithCallData.callTimestamp}")
+                                    recentCallsList.add(contactWithCallData)
                                 } else {
                                     android.util.Log.d("QuickContacts", "Skipping duplicate contact: ${contact.name} (ID: ${contact.id})")
                                 }
@@ -509,7 +514,8 @@ class ContactService {
                                             phoneNumber = number,
                                             phoneNumbers = listOf(number),
                                             photoUri = null,
-                                            callType = getCallTypeString(callType)
+                                            callType = getCallTypeString(callType),
+                                            callTimestamp = callTimestamp
                                         )
                                         android.util.Log.d("QuickContacts", "Adding fallback to recent calls: ${fallbackContact.name} - ${fallbackContact.phoneNumber} - ${fallbackContact.callType}")
                                         recentCallsList.add(fallbackContact)

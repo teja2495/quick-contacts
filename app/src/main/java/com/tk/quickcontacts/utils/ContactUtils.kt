@@ -5,6 +5,8 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import com.tk.quickcontacts.Contact
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * Utility functions for contact operations
@@ -77,7 +79,8 @@ object ContactUtils {
                 phoneNumbers = validPhoneNumbers,
                 photo = contact.photo,
                 photoUri = contact.photoUri?.takeIf { it.isNotBlank() },
-                callType = contact.callType
+                callType = contact.callType,
+                callTimestamp = contact.callTimestamp
             )
         } catch (e: Exception) {
             android.util.Log.w("ContactUtils", "Error sanitizing contact: ${contact.id}", e)
@@ -312,7 +315,10 @@ object ContactUtils {
             android.util.Log.e("ContactUtils", "Error getting all phone numbers for contact: $contactId", e)
         }
         
-        return phoneNumbers.distinct()
+        // Remove duplicates based on normalized phone numbers
+        return phoneNumbers.distinctBy { phoneNumber ->
+            PhoneNumberUtils.normalizePhoneNumber(phoneNumber)
+        }
     }
     
     /**
@@ -376,5 +382,48 @@ object ContactUtils {
             android.util.Log.w("ContactUtils", "Error extracting contact ID from: $contactId", e)
             null
         }
+    }
+    
+    /**
+     * Format call timestamp according to the specified requirements:
+     * - "time in AM, PM" for today's calls
+     * - "Yesterday" for yesterday's calls
+     * - day name (Monday, Tuesday, etc.) for calls in the last week
+     * - date format (May 24) for calls beyond 1 week
+     */
+    fun formatCallTimestamp(timestamp: Long): String {
+        val now = Calendar.getInstance()
+        val callDate = Calendar.getInstance().apply { timeInMillis = timestamp }
+        
+        // Check if it's today
+        if (isSameDay(now, callDate)) {
+            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            return timeFormat.format(callDate.time)
+        }
+        
+        // Check if it's yesterday
+        val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        if (isSameDay(yesterday, callDate)) {
+            return "Yesterday"
+        }
+        
+        // Check if it's within the last week
+        val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }
+        if (callDate.after(weekAgo)) {
+            val dayFormat = SimpleDateFormat("EEEE", Locale.getDefault())
+            return dayFormat.format(callDate.time)
+        }
+        
+        // Beyond 1 week, show date
+        val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+        return dateFormat.format(callDate.time)
+    }
+    
+    /**
+     * Check if two Calendar instances represent the same day
+     */
+    private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 } 

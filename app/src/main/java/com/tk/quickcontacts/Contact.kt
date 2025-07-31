@@ -17,5 +17,7 @@ data class Contact(
     @Expose
     val photoUri: String? = null,
     @Expose
-    val callType: String? = null // Call type: "missed", "incoming", "outgoing", or null for non-call contacts
+    val callType: String? = null, // Call type: "missed", "incoming", "outgoing", or null for non-call contacts
+    @Expose
+    val callTimestamp: Long? = null // Timestamp of the call in milliseconds
 ) 

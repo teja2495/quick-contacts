@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallReceived
+import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -669,19 +672,42 @@ fun RecentCallVerticalItem(
                 fontWeight = FontWeight.Medium
             )
             
-            // Display call type as subtext if available
-            contact.callType?.let { callType ->
-                Text(
-                    text = callType.replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (callType) {
-                        "missed" -> MaterialTheme.colorScheme.error
-                        "incoming" -> MaterialTheme.colorScheme.primary
-                        "outgoing" -> MaterialTheme.colorScheme.secondary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontWeight = FontWeight.Normal
-                )
+            // Display call type icon and timestamp if available
+            if (contact.callType != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = when (contact.callType) {
+                            "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                            "incoming" -> Icons.AutoMirrored.Filled.CallReceived
+                            "outgoing" -> Icons.AutoMirrored.Filled.CallMade
+                            else -> Icons.Default.Call
+                        },
+                        contentDescription = contact.callType.replaceFirstChar { it.uppercase() },
+                        tint = when (contact.callType) {
+                            "missed" -> MaterialTheme.colorScheme.error
+                            "incoming" -> MaterialTheme.colorScheme.secondary
+                            "outgoing" -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = contact.callTimestamp?.let { timestamp ->
+                            com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(timestamp)
+                        } ?: contact.callType.replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (contact.callType) {
+                            "missed" -> MaterialTheme.colorScheme.error
+                            "incoming" -> MaterialTheme.colorScheme.secondary
+                            "outgoing" -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontWeight = FontWeight.Normal
+                    )
+                }
             }
         }
         
