@@ -449,6 +449,7 @@ class ContactService {
         try {
             val recentCallsList = mutableListOf<Contact>()
             val seenContactIds = mutableSetOf<String>()
+            val contactCache = mutableMapOf<String, Contact>() // Cache for contact lookups
 
             // Get contact IDs from selected contacts to exclude them from recent calls (only if filtering is enabled)
             val selectedContactIds = if (filterQuickContacts) selectedContacts.map { it.id }.toSet() else emptySet()
@@ -481,8 +482,16 @@ class ContactService {
 
                             android.util.Log.d("QuickContacts", "Call log number: $number -> normalized: $normalizedNumber")
 
-                            // Try to get contact details from contacts provider
-                            val contact = ContactUtils.getContactByPhoneNumber(context, number, cachedName)
+                            // Check cache first
+                            val contact = contactCache[normalizedNumber] ?: run {
+                                // Try to get contact details from contacts provider using optimized method
+                                val foundContact = ContactUtils.getContactByPhoneNumberForRecentCalls(context, number, cachedName)
+                                if (foundContact != null) {
+                                    contactCache[normalizedNumber] = foundContact
+                                }
+                                foundContact
+                            }
+
                             if (contact != null) {
                                 // Skip if this contact is already in selected contacts or already seen
                                 if (!selectedContactIds.contains(contact.id) && !seenContactIds.contains(contact.id)) {

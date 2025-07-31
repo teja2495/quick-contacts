@@ -49,6 +49,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _allRecentCalls = MutableStateFlow<List<Contact>>(emptyList())
     val allRecentCalls: StateFlow<List<Contact>> = _allRecentCalls.asStateFlow()
     
+    private val _isLoadingRecentCalls = MutableStateFlow(false)
+    val isLoadingRecentCalls: StateFlow<Boolean> = _isLoadingRecentCalls.asStateFlow()
+    
     private val _searchResults = MutableStateFlow<List<Contact>>(emptyList())
     val searchResults: StateFlow<List<Contact>> = _searchResults.asStateFlow()
 
@@ -606,23 +609,32 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     fun loadAllRecentCalls(context: Context) {
-        try {
-            val allRecentCalls = contactService.loadAllRecentCalls(context)
-            
-            // Validate recent calls, but allow short service numbers (3-6 digits)
-            val validRecentCalls = allRecentCalls.filter { contact ->
-                ContactUtils.isValidContact(contact) ||
-                (contact.phoneNumber.replace(Regex("[^\\d]"), "").length in 3..6)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _isLoadingRecentCalls.value = true
+                
+                // Small delay to ensure loading state is visible
+                delay(100)
+                
+                val allRecentCalls = contactService.loadAllRecentCalls(context)
+                
+                // Validate recent calls, but allow short service numbers (3-6 digits)
+                val validRecentCalls = allRecentCalls.filter { contact ->
+                    ContactUtils.isValidContact(contact) ||
+                    (contact.phoneNumber.replace(Regex("[^\\d]"), "").length in 3..6)
+                }
+                
+                if (validRecentCalls.size != allRecentCalls.size) {
+                    android.util.Log.w("ContactsViewModel", "Removing ${allRecentCalls.size - validRecentCalls.size} invalid all recent calls (except short service numbers)")
+                }
+                
+                _allRecentCalls.value = validRecentCalls
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsViewModel", "Error loading all recent calls", e)
+                _allRecentCalls.value = emptyList()
+            } finally {
+                _isLoadingRecentCalls.value = false
             }
-            
-            if (validRecentCalls.size != allRecentCalls.size) {
-                android.util.Log.w("ContactsViewModel", "Removing ${allRecentCalls.size - validRecentCalls.size} invalid all recent calls (except short service numbers)")
-            }
-            
-            _allRecentCalls.value = validRecentCalls
-        } catch (e: Exception) {
-            android.util.Log.e("ContactsViewModel", "Error loading all recent calls", e)
-            _allRecentCalls.value = emptyList()
         }
     }
     

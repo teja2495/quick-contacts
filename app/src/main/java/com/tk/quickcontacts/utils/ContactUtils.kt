@@ -190,6 +190,66 @@ object ContactUtils {
     }
     
     /**
+     * Get contact by phone number lookup optimized for recent calls
+     * This method skips some validation and database queries for better performance
+     */
+    fun getContactByPhoneNumberForRecentCalls(context: Context, phoneNumber: String, cachedName: String? = null): Contact? {
+        if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+            return null
+        }
+        
+        return try {
+            val uri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(phoneNumber)
+            )
+            
+            val projection = arrayOf(
+                ContactsContract.PhoneLookup._ID,
+                ContactsContract.PhoneLookup.DISPLAY_NAME,
+                ContactsContract.PhoneLookup.NUMBER
+            )
+            
+            val cursor = context.contentResolver.query(uri, projection, null, null, null)
+            
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val idColumnIndex = it.getColumnIndex(ContactsContract.PhoneLookup._ID)
+                    val nameColumnIndex = it.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
+                    val numberColumnIndex = it.getColumnIndex(ContactsContract.PhoneLookup.NUMBER)
+                    
+                    if (idColumnIndex >= 0 && nameColumnIndex >= 0 && numberColumnIndex >= 0) {
+                        val id = it.getString(idColumnIndex)
+                        val name = it.getString(nameColumnIndex)
+                        val number = it.getString(numberColumnIndex)
+                        
+                        if (id != null && name != null && number != null && 
+                            id.isNotBlank() && name.isNotBlank() && number.isNotBlank()) {
+                            
+                            val photoUri = getContactPhotoUri(context, id)
+                            
+                            return Contact(
+                                id = id,
+                                name = name,
+                                phoneNumber = number,
+                                phoneNumbers = listOf(number),
+                                photoUri = photoUri,
+                                callType = null
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // If we reach here, no contact was found
+            null
+        } catch (e: Exception) {
+            android.util.Log.e("ContactUtils", "Error getting contact by phone number for recent calls: $phoneNumber", e)
+            null
+        }
+    }
+
+    /**
      * Get contact by phone number lookup with validation
      */
     fun getContactByPhoneNumber(context: Context, phoneNumber: String, cachedName: String? = null): Contact? {
@@ -228,15 +288,13 @@ object ContactUtils {
                             
                             val photoUri = getContactPhotoUri(context, id)
                             
-                            // Get all phone numbers for this contact
-                            val allPhoneNumbers = getAllPhoneNumbersForContact(context, id)
-                            val primaryNumber = if (allPhoneNumbers.contains(number)) number else allPhoneNumbers.firstOrNull() ?: number
-                            
+                            // For recent calls, we can skip getting all phone numbers to improve performance
+                            // since we already have the specific number we need
                             val contact = Contact(
                                 id = id,
                                 name = name,
-                                phoneNumber = primaryNumber,
-                                phoneNumbers = allPhoneNumbers,
+                                phoneNumber = number,
+                                phoneNumbers = listOf(number), // Use the current number as the only one for performance
                                 photoUri = photoUri,
                                 callType = null
                             )
