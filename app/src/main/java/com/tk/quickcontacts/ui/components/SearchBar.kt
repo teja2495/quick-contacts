@@ -141,77 +141,77 @@ fun FakeSearchBar(
                 Text(
                     text = stringResource(R.string.menu_open_app),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             },
             text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     // Phone option
-                    Row(
+                    Card(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
+                            .height(80.dp)
                             .clickable {
                                 phoneService.openPhoneApp(context)
                                 showMenu = false
-                            }
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
                     ) {
                         Box(
-                            modifier = Modifier.width(28.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
+                                contentDescription = stringResource(R.string.menu_phone_default),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.menu_phone_default),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
                     }
                     
                     // SMS option
-                    Row(
+                    Card(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
+                            .height(80.dp)
                             .clickable {
                                 messagingService.openSmsAppDirectly(context)
                                 showMenu = false
-                            }
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
                     ) {
                         Box(
-                            modifier = Modifier.width(28.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.sms_icon),
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                                contentDescription = stringResource(R.string.menu_sms_default),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.menu_sms_default),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
                     }
                     
                     // WhatsApp option
                     if (availableMessagingApps.value.contains(MessagingApp.WHATSAPP)) {
-                        Row(
+                        Card(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1f)
+                                .height(80.dp)
                                 .clickable {
                                     try {
                                         val intent = context.packageManager.getLaunchIntentForPackage("com.whatsapp")
@@ -223,34 +223,33 @@ fun FakeSearchBar(
                                         // Handle case where WhatsApp is not installed
                                     }
                                     showMenu = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
                         ) {
                             Box(
-                                modifier = Modifier.width(28.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.whatsapp_icon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
+                                    contentDescription = stringResource(R.string.menu_whatsapp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.menu_whatsapp),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
                         }
                     }
                     
                     // Telegram option
                     if (availableMessagingApps.value.contains(MessagingApp.TELEGRAM)) {
-                        Row(
+                        Card(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1f)
+                                .height(80.dp)
                                 .clickable {
                                     try {
                                         val intent = context.packageManager.getLaunchIntentForPackage("org.telegram.messenger")
@@ -262,26 +261,24 @@ fun FakeSearchBar(
                                         // Handle case where Telegram is not installed
                                     }
                                     showMenu = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
                         ) {
                             Box(
-                                modifier = Modifier.width(28.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.telegram_icon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
+                                    contentDescription = stringResource(R.string.menu_telegram),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.menu_telegram),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
                         }
                     }
                 }
