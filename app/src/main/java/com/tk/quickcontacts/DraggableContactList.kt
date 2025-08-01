@@ -128,7 +128,8 @@ fun ContactList(
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
     homeCountryCode: String? = null,
-    onEditContactName: (Contact, String) -> Unit = { _, _ -> }
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> },
+    callActivityMap: Map<String, Contact> = emptyMap()
 ) {
     com.tk.quickcontacts.ui.components.ContactList(
         contacts = contacts,
@@ -151,7 +152,8 @@ fun ContactList(
         hasSeenCallWarning = hasSeenCallWarning,
         onMarkCallWarningSeen = onMarkCallWarningSeen,
         homeCountryCode = homeCountryCode,
-        onEditContactName = onEditContactName
+        onEditContactName = onEditContactName,
+        callActivityMap = callActivityMap
     )
 }
 

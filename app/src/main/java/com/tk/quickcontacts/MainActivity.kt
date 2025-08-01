@@ -273,6 +273,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
     val hasSeenCallWarning by viewModel.hasSeenCallWarning.collectAsState()
     val homeCountryCode by viewModel.homeCountryCode.collectAsState()
+    val callActivityMap by viewModel.callActivityMap.collectAsState()
     
     // Disable international detection when SMS is selected as default messaging app
     val effectiveInternationalDetectionEnabled = isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS
@@ -307,6 +308,13 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
             viewModel.loadRecentCalls(context)
             // Pre-load all recent calls to make expansion smoother
             viewModel.loadAllRecentCalls(context)
+        }
+    }
+    
+    // Load call activity data for quick list contacts when selected contacts change
+    LaunchedEffect(selectedContacts, hasCallLogPermission) {
+        if (selectedContacts.isNotEmpty() && hasCallLogPermission) {
+            viewModel.loadCallActivityForQuickList(context)
         }
     }
     
@@ -712,7 +720,8 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                         homeCountryCode = homeCountryCode,
                                         onEditContactName = { contact, newName ->
                                             viewModel.updateContactName(contact, newName)
-                                        }
+                                        },
+                                        callActivityMap = callActivityMap
                                     )
                                 }
                             }

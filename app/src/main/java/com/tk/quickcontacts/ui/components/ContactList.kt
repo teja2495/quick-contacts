@@ -36,7 +36,8 @@ fun ContactList(
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
     homeCountryCode: String? = null,
-    onEditContactName: (Contact, String) -> Unit = { _, _ -> } // default no-op
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> }, // default no-op
+    callActivityMap: Map<String, Contact> = emptyMap() // New parameter for call activity data
 ) {
     // Memoize the reorder state to prevent unnecessary recreations
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
@@ -66,6 +67,7 @@ fun ContactList(
             items = contactItems,
             key = { (contact, _) -> contact.id }
         ) { (contact, customActions) ->
+            val callActivity = callActivityMap[contact.id]
             if (editMode) {
                 ReorderableItem(reorderState, key = contact.id) { isDragging ->
                     ContactItem(
@@ -89,7 +91,8 @@ fun ContactList(
                         hasSeenCallWarning = hasSeenCallWarning,
                         onMarkCallWarningSeen = onMarkCallWarningSeen,
                         homeCountryCode = homeCountryCode,
-                        onEditContactName = onEditContactName
+                        onEditContactName = onEditContactName,
+                        callActivity = callActivity
                     )
                 }
             } else {
@@ -114,7 +117,8 @@ fun ContactList(
                     hasSeenCallWarning = hasSeenCallWarning,
                     onMarkCallWarningSeen = onMarkCallWarningSeen,
                     homeCountryCode = homeCountryCode,
-                    onEditContactName = onEditContactName
+                    onEditContactName = onEditContactName,
+                    callActivity = callActivity
                 )
             }
         }

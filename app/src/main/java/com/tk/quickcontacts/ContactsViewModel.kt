@@ -91,6 +91,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _homeCountryCode = MutableStateFlow<String?>(null)
     val homeCountryCode: StateFlow<String?> = _homeCountryCode.asStateFlow()
     
+    // Call activity data for quick list contacts
+    private val _callActivityMap = MutableStateFlow<Map<String, Contact>>(emptyMap())
+    val callActivityMap: StateFlow<Map<String, Contact>> = _callActivityMap.asStateFlow()
+    
     // Backward compatibility
     val useWhatsAppAsDefault: StateFlow<Boolean> = _defaultMessagingApp.map { it == MessagingApp.WHATSAPP }
         .stateIn(
@@ -687,27 +691,29 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun refreshRecentCallsOnAppResume(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Only refresh if recent calls is enabled in settings
+                // Only refresh if recent calls are visible
                 if (!_isRecentCallsVisible.value) {
                     return@launch
                 }
                 
-                // Show cached calls immediately if available
+                // Show cached data immediately if available
                 if (_cachedRecentCalls.value.isNotEmpty()) {
                     _recentCalls.value = _cachedRecentCalls.value
-                    filterContacts()
                 }
                 
-                // Show cached all recent calls immediately if available
                 if (_cachedAllRecentCalls.value.isNotEmpty()) {
                     _allRecentCalls.value = _cachedAllRecentCalls.value
                 }
                 
+                // Load fresh data in background
                 loadRecentCalls(context)
-                // Also refresh all recent calls if they were previously loaded
                 if (_allRecentCalls.value.isNotEmpty()) {
                     loadAllRecentCalls(context)
                 }
+                
+                // Also refresh call activity data for quick list contacts
+                loadCallActivityForQuickList(context)
+                
             } catch (e: Exception) {
                 android.util.Log.e("ContactsViewModel", "Error refreshing recent calls on app resume", e)
             }
@@ -822,12 +828,78 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun setHomeCountryCode(code: String) {
         _homeCountryCode.value = code
         preferencesRepository.saveHomeCountryCode(code)
+        // Refresh call activity data with new home country code
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>()
+                loadCallActivityForQuickList(context)
+            } catch (e: Exception) {
+            }
+        }
     }
 
     // Public method to clear home country code
     fun clearHomeCountryCode() {
         _homeCountryCode.value = null
         preferencesRepository.clearHomeCountryCode()
+        // Refresh call activity data with cleared home country code
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>()
+                loadCallActivityForQuickList(context)
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsViewModel", "Error refreshing call activity after clearing home country code", e)
+            }
+        }
+    }
+    
+    /**
+     * Load call activity data for quick list contacts
+     * This function efficiently loads the latest call activity for each contact in the quick list
+     * Only loads call activity for contacts whose primary action is "Call"
+     */
+    fun loadCallActivityForQuickList(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val selectedContacts = _selectedContacts.value
+                if (selectedContacts.isEmpty()) {
+                    _callActivityMap.value = emptyMap()
+                    return@launch
+                }
+                
+                val callActivityMap = mutableMapOf<String, Contact>()
+                
+                // Load call activity only for contacts whose primary action is "Call"
+                selectedContacts.forEach { contact ->
+                    // Check if this contact's primary action is "Call"
+                    val customActions = _customActionPreferences.value[contact.id]
+                    val primaryAction = customActions?.primaryAction ?: if (_isInternationalDetectionEnabled.value && 
+                        PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), _isInternationalDetectionEnabled.value, _homeCountryCode.value) == true) {
+                        when (_defaultMessagingApp.value) {
+                            MessagingApp.WHATSAPP -> "WhatsApp"
+                            MessagingApp.SMS -> "SMS"
+                            MessagingApp.TELEGRAM -> "Telegram"
+                        }
+                    } else {
+                        "Call"
+                    }
+                    
+                    // Only load call activity if primary action is "Call"
+                    if (primaryAction == "Call") {
+                        val callActivity = contactService.getLatestCallActivityForContact(context, contact.phoneNumbers)
+                        if (callActivity != null) {
+                            callActivityMap[contact.id] = callActivity
+                        }
+                    }
+                }
+                
+                _callActivityMap.value = callActivityMap
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsViewModel", "Error loading call activity for quick list", e)
+                _callActivityMap.value = emptyMap()
+            }
+        }
     }
 
     // Cleanup resources

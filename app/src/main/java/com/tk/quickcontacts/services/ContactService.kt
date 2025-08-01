@@ -611,6 +611,61 @@ class ContactService {
     }
     
     /**
+     * Get the latest call activity for a specific contact by phone number
+     * Returns a Contact with callType and callTimestamp if found, null otherwise
+     */
+    fun getLatestCallActivityForContact(context: Context, phoneNumbers: List<String>): Contact? {
+        try {
+            val cursor: Cursor? = context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                callLogProjection,
+                null,
+                null,
+                "${CallLog.Calls.DATE} DESC"
+            )
+
+            cursor?.use {
+                val numberColumn = it.getColumnIndex(CallLog.Calls.NUMBER)
+                val nameColumn = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
+                val typeColumn = it.getColumnIndex(CallLog.Calls.TYPE)
+                val dateColumn = it.getColumnIndex(CallLog.Calls.DATE)
+
+                if (numberColumn >= 0 && nameColumn >= 0 && typeColumn >= 0) {
+                    while (it.moveToNext()) {
+                        val number = it.getString(numberColumn)
+                        val cachedName = it.getString(nameColumn)
+                        val callType = it.getInt(typeColumn)
+                        val callTimestamp = if (dateColumn >= 0) it.getLong(dateColumn) else null
+
+                        if (number != null && number.isNotBlank()) {
+                            // Check if this number matches any of the contact's phone numbers
+                            val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
+                            val matchesContact = phoneNumbers.any { contactNumber ->
+                                PhoneNumberUtils.normalizePhoneNumber(contactNumber) == normalizedNumber
+                            }
+
+                            if (matchesContact) {
+                                // Found a match, return the contact with call data
+                                val contact = ContactUtils.getContactByPhoneNumberForRecentCalls(context, number, cachedName)
+                                return contact?.copy(
+                                    callType = getCallTypeString(callType),
+                                    callTimestamp = callTimestamp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("QuickContacts", "Error getting latest call activity: ${e.message}")
+            return null
+        }
+    }
+
+    /**
      * Cleanup resources when service is no longer needed
      */
     fun cleanup() {

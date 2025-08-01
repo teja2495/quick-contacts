@@ -63,7 +63,8 @@ fun ContactItem(
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
     homeCountryCode: String? = null,
-    onEditContactName: (Contact, String) -> Unit
+    onEditContactName: (Contact, String) -> Unit,
+    callActivity: Contact? = null // New parameter for call activity data
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -318,7 +319,7 @@ fun ContactItem(
                     }
                 }
                 
-                // Show primary action text (only in normal mode, not in edit mode)
+                // Show primary action text or call status (only in normal mode, not in edit mode)
                 if (!editMode) {
                     Spacer(modifier = Modifier.height(2.dp))
                     
@@ -333,12 +334,46 @@ fun ContactItem(
                         "Call"
                     }
                     
-                    Text(
-                        text = "$primaryAction",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        fontSize = 11.sp
-                    )
+                    // Show call status if available, otherwise show primary action
+                    // Only show call activity if primary action is "Call"
+                    if (callActivity?.callType != null && callActivity.callTimestamp != null && primaryAction == "Call") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            // Show call activity information only
+                            Icon(
+                                imageVector = when (callActivity.callType) {
+                                    "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                                    "incoming" -> Icons.AutoMirrored.Filled.CallReceived
+                                    "outgoing" -> Icons.AutoMirrored.Filled.CallMade
+                                    else -> Icons.Default.Call
+                                },
+                                contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
+                                tint = when (callActivity.callType) {
+                                    "missed" -> Color(0xFFE57373) // Subtle red
+                                    "incoming" -> Color(0xFF81C784) // Subtle green
+                                    "outgoing" -> Color(0xFF64B5F6) // Subtle blue
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                fontSize = 11.sp
+                            )
+                        }
+                    } else {
+                        // Show only primary action when no call activity is available or for international contacts
+                        Text(
+                            text = "$primaryAction",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontSize = 11.sp
+                        )
+                    }
                 }
                 
                 // Show phone number in edit mode
@@ -687,12 +722,12 @@ fun RecentCallVerticalItem(
                         },
                         contentDescription = contact.callType.replaceFirstChar { it.uppercase() },
                         tint = when (contact.callType) {
-                            "missed" -> MaterialTheme.colorScheme.error
-                            "incoming" -> MaterialTheme.colorScheme.secondary
-                            "outgoing" -> MaterialTheme.colorScheme.secondary
+                            "missed" -> Color(0xFFE57373) // Subtle red
+                            "incoming" -> Color(0xFF81C784) // Subtle green
+                            "outgoing" -> Color(0xFF64B5F6) // Subtle blue
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = contact.callTimestamp?.let { timestamp ->
