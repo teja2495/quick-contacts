@@ -30,7 +30,7 @@ class ContactService {
     
     // Common constant for recent calls limit
     companion object {
-        const val RECENT_CALLS_LIMIT = 25
+        const val RECENT_CALLS_LIMIT = 50
     }
     
     // Cache for search results to avoid repeated queries
