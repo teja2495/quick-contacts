@@ -444,6 +444,8 @@ object ContactUtils {
     
     /**
      * Format call timestamp according to the specified requirements:
+     * - "Just now" for calls less than a minute ago
+     * - "X minutes ago" for calls less than an hour ago
      * - "time in AM, PM" for today's calls
      * - "Yesterday" for yesterday's calls
      * - day name (Monday, Tuesday, etc.) for calls in the last week
@@ -453,7 +455,22 @@ object ContactUtils {
         val now = Calendar.getInstance()
         val callDate = Calendar.getInstance().apply { timeInMillis = timestamp }
         
-        // Check if it's today
+        // Calculate time difference in milliseconds
+        val timeDiff = now.timeInMillis - callDate.timeInMillis
+        val minutesDiff = timeDiff / (1000 * 60)
+        val hoursDiff = timeDiff / (1000 * 60 * 60)
+        
+        // Check if it's less than a minute ago
+        if (minutesDiff < 1) {
+            return "Just now"
+        }
+        
+        // Check if it's less than an hour ago
+        if (hoursDiff < 1) {
+            return "${minutesDiff} minute${if (minutesDiff == 1L) "" else "s"} ago"
+        }
+        
+        // Check if it's today (but more than an hour ago)
         if (isSameDay(now, callDate)) {
             val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
             return timeFormat.format(callDate.time)
