@@ -158,22 +158,35 @@ fun RecentCallsSection(
                             ) {
                                 LazyColumn(
                                     contentPadding = PaddingValues(vertical = 0.dp),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    verticalArrangement = Arrangement.spacedBy(0.dp)
                                 ) {
-                                    items(currentRecentCalls) { contact ->
-                                        RecentCallVerticalItem(
-                                            contact = contact,
-                                            onContactClick = onContactClick,
-                                            onWhatsAppClick = onWhatsAppClick,
-                                            onContactImageClick = onContactImageClick,
-                                            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-                                            defaultMessagingApp = defaultMessagingApp,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            selectedContacts = selectedContacts,
-                                            availableMessagingApps = availableMessagingApps,
-                                            onExecuteAction = onExecuteAction,
-                                            homeCountryCode = homeCountryCode
-                                        )
+                                    items(currentRecentCalls.size) { index ->
+                                        val contact = currentRecentCalls[index]
+                                        Column {
+                                            RecentCallVerticalItem(
+                                                contact = contact,
+                                                onContactClick = onContactClick,
+                                                onWhatsAppClick = onWhatsAppClick,
+                                                onContactImageClick = onContactImageClick,
+                                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
+                                                defaultMessagingApp = defaultMessagingApp,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                selectedContacts = selectedContacts,
+                                                availableMessagingApps = availableMessagingApps,
+                                                onExecuteAction = onExecuteAction,
+                                                homeCountryCode = homeCountryCode
+                                            )
+                                            // Add subtle divider between items (except after the last item)
+                                            if (index < currentRecentCalls.size - 1) {
+                                                HorizontalDivider(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 4.dp),
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                                                    thickness = 0.5.dp
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
