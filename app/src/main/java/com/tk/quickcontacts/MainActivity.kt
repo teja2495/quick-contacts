@@ -574,7 +574,10 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                     onExecuteAction = { context, action, phoneNumber ->
                                         viewModel.executeAction(context, action, phoneNumber)
                                     },
-                                    homeCountryCode = homeCountryCode
+                                    homeCountryCode = homeCountryCode,
+                                    onAddToQuickList = { contact ->
+                                        viewModel.addContact(contact)
+                                    }
                                 )
                             }
                             

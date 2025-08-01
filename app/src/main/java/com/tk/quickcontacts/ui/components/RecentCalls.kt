@@ -42,7 +42,8 @@ fun RecentCallsSection(
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null
+    homeCountryCode: String? = null,
+    onAddToQuickList: ((Contact) -> Unit)? = null
 ) {
 
     
@@ -136,7 +137,8 @@ fun RecentCallsSection(
                                         selectedContacts = selectedContacts,
                                         availableMessagingApps = availableMessagingApps,
                                         onExecuteAction = onExecuteAction,
-                                        homeCountryCode = homeCountryCode
+                                        homeCountryCode = homeCountryCode,
+                                        onAddToQuickList = onAddToQuickList
                                     )
                                 }
                             }
@@ -174,7 +176,8 @@ fun RecentCallsSection(
                                                 selectedContacts = selectedContacts,
                                                 availableMessagingApps = availableMessagingApps,
                                                 onExecuteAction = onExecuteAction,
-                                                homeCountryCode = homeCountryCode
+                                                homeCountryCode = homeCountryCode,
+                                                onAddToQuickList = onAddToQuickList
                                             )
                                             // Add subtle divider between items (except after the last item)
                                             if (index < currentRecentCalls.size - 1) {

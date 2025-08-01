@@ -280,7 +280,11 @@ fun SearchResultItem(
             onDismiss = {
                 showContactActionsDialog = false
             },
-            availableMessagingApps = availableMessagingApps
+            availableMessagingApps = availableMessagingApps,
+            onAddToQuickList = { contactToAdd ->
+                onAddContact(contactToAdd)
+            },
+            isInQuickList = selectedContacts.any { it.id == contact.id }
         )
     }
     

@@ -193,7 +193,9 @@ fun ContactItem(
                 showContactActionsDialog = false
             },
             availableMessagingApps = availableMessagingApps,
-            callActivity = if (shouldShowCallActivity) callActivity else null
+            callActivity = if (shouldShowCallActivity) callActivity else null,
+            onAddToQuickList = null, // Quick list contacts don't need add to quick list option
+            isInQuickList = true // Quick list contacts are already in the quick list
         )
     }
     
@@ -559,7 +561,8 @@ fun RecentCallVerticalItem(
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null
+    homeCountryCode: String? = null,
+    onAddToQuickList: ((Contact) -> Unit)? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -645,7 +648,9 @@ fun RecentCallVerticalItem(
                 showContactActionsDialog = false
             },
             availableMessagingApps = availableMessagingApps,
-            callActivity = null // No call activity for search results
+            callActivity = null, // No call activity for search results
+            onAddToQuickList = onAddToQuickList,
+            isInQuickList = selectedContacts.any { it.id == contact.id }
         )
     }
     
