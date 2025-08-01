@@ -391,17 +391,20 @@ fun ContactActionsDialog(
             Text(
                 text = contact.name,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
         },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 // Call option - always available
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
+                        .height(80.dp)
                         .clickable {
                             onCall(contact)
                             onDismiss()
@@ -410,23 +413,17 @@ fun ContactActionsDialog(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                     )
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Phone,
                             contentDescription = stringResource(R.string.cd_phone),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(R.string.action_call),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
@@ -434,7 +431,8 @@ fun ContactActionsDialog(
                 // SMS option - always available
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
+                        .height(80.dp)
                         .clickable {
                             onSms(contact)
                             onDismiss()
@@ -443,23 +441,17 @@ fun ContactActionsDialog(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                     )
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.sms_icon),
                             contentDescription = stringResource(R.string.cd_sms),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = stringResource(R.string.action_sms),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -468,7 +460,8 @@ fun ContactActionsDialog(
                 if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
                     Card(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
+                            .height(80.dp)
                             .clickable {
                                 onWhatsApp(contact)
                                 onDismiss()
@@ -477,23 +470,17 @@ fun ContactActionsDialog(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                     ) {
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                                 .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.whatsapp_icon),
                                 contentDescription = stringResource(R.string.cd_whatsapp),
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(R.string.action_whatsapp),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                     }
@@ -503,7 +490,8 @@ fun ContactActionsDialog(
                 if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
                     Card(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
+                            .height(80.dp)
                             .clickable {
                                 onTelegram(contact)
                                 onDismiss()
@@ -512,23 +500,17 @@ fun ContactActionsDialog(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                     ) {
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                                 .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.telegram_icon),
                                 contentDescription = stringResource(R.string.cd_telegram),
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(R.string.action_telegram),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
