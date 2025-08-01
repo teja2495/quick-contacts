@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -383,7 +384,8 @@ fun ContactActionsDialog(
     onWhatsApp: (Contact) -> Unit,
     onTelegram: (Contact) -> Unit,
     onDismiss: () -> Unit,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS)
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    callActivity: Contact? = null // New parameter for recent call activity
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -396,74 +398,68 @@ fun ContactActionsDialog(
             )
         },
         text = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Call option - always available
-                Card(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(80.dp)
-                        .clickable {
-                            onCall(contact)
-                            onDismiss()
-                        },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
+                // Recent call activity section
+                if (callActivity?.callType != null && callActivity.callTimestamp != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = stringResource(R.string.cd_phone),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = when (callActivity.callType) {
+                                    "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                                    "incoming" -> Icons.AutoMirrored.Filled.CallReceived
+                                    "outgoing" -> Icons.AutoMirrored.Filled.CallMade
+                                    else -> Icons.Default.Call
+                                },
+                                contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
+                                tint = when (callActivity.callType) {
+                                    "missed" -> Color(0xFFE57373) // Subtle red
+                                    "incoming" -> Color(0xFF81C784) // Subtle green
+                                    "outgoing" -> Color(0xFF64B5F6) // Subtle blue
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.size(20.dp)
+                            )
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Recent Call",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
                     }
                 }
                 
-                // SMS option - always available
-                Card(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(80.dp)
-                        .clickable {
-                            onSms(contact)
-                            onDismiss()
-                        },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    )
+                // Action buttons section
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.sms_icon),
-                            contentDescription = stringResource(R.string.cd_sms),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                
-                // WhatsApp option - only if available
-                if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
+                    // Call option - always available
                     Card(
                         modifier = Modifier
                             .weight(1f)
                             .height(80.dp)
                             .clickable {
-                                onWhatsApp(contact)
+                                onCall(contact)
                                 onDismiss()
                             },
                         colors = CardDefaults.cardColors(
@@ -477,23 +473,21 @@ fun ContactActionsDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.whatsapp_icon),
-                                contentDescription = stringResource(R.string.cd_whatsapp),
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = stringResource(R.string.cd_phone),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
                     }
-                }
-                
-                // Telegram option - only if available
-                if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
+                    
+                    // SMS option - always available
                     Card(
                         modifier = Modifier
                             .weight(1f)
                             .height(80.dp)
                             .clickable {
-                                onTelegram(contact)
+                                onSms(contact)
                                 onDismiss()
                             },
                         colors = CardDefaults.cardColors(
@@ -507,11 +501,71 @@ fun ContactActionsDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.telegram_icon),
-                                contentDescription = stringResource(R.string.cd_telegram),
+                                painter = painterResource(id = R.drawable.sms_icon),
+                                contentDescription = stringResource(R.string.cd_sms),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(22.dp)
                             )
+                        }
+                    }
+                    
+                    // WhatsApp option - only if available
+                    if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(80.dp)
+                                .clickable {
+                                    onWhatsApp(contact)
+                                    onDismiss()
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.whatsapp_icon),
+                                    contentDescription = stringResource(R.string.cd_whatsapp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Telegram option - only if available
+                    if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(80.dp)
+                                .clickable {
+                                    onTelegram(contact)
+                                    onDismiss()
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.telegram_icon),
+                                    contentDescription = stringResource(R.string.cd_telegram),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
                     }
                 }

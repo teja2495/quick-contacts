@@ -28,6 +28,11 @@ private fun getCallTypeString(callType: Int): String {
 
 class ContactService {
     
+    // Common constant for recent calls limit
+    companion object {
+        const val RECENT_CALLS_LIMIT = 25
+    }
+    
     // Cache for search results to avoid repeated queries
     private val searchCache = ConcurrentHashMap<String, List<Contact>>()
     private val cacheMaxSize = 50
@@ -471,7 +476,7 @@ class ContactService {
                 val dateColumn = it.getColumnIndex(CallLog.Calls.DATE)
 
                 if (numberColumn >= 0 && nameColumn >= 0 && typeColumn >= 0) {
-                    while (it.moveToNext() && recentCallsList.size < 25) {
+                    while (it.moveToNext() && recentCallsList.size < RECENT_CALLS_LIMIT) {
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
                         val callType = it.getInt(typeColumn)
@@ -612,6 +617,7 @@ class ContactService {
     
     /**
      * Get the latest call activity for a specific contact by phone number
+     * Only checks the latest 25 items in the call log for better performance
      * Returns a Contact with callType and callTimestamp if found, null otherwise
      */
     fun getLatestCallActivityForContact(context: Context, phoneNumbers: List<String>): Contact? {
@@ -631,7 +637,9 @@ class ContactService {
                 val dateColumn = it.getColumnIndex(CallLog.Calls.DATE)
 
                 if (numberColumn >= 0 && nameColumn >= 0 && typeColumn >= 0) {
-                    while (it.moveToNext()) {
+                    var checkedItems = 0
+                    while (it.moveToNext() && checkedItems < RECENT_CALLS_LIMIT) {
+                        checkedItems++
                         val number = it.getString(numberColumn)
                         val cachedName = it.getString(nameColumn)
                         val callType = it.getInt(typeColumn)

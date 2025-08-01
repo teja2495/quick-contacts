@@ -258,7 +258,8 @@ fun ContactItem(
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
     homeCountryCode: String? = null,
-    onEditContactName: (Contact, String) -> Unit = { _, _ -> }
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> },
+    callActivity: Contact? = null
 ) {
     com.tk.quickcontacts.ui.components.ContactItem(
         contact = contact,
@@ -278,7 +279,8 @@ fun ContactItem(
         selectedContacts = selectedContacts,
         onExecuteAction = onExecuteAction,
         homeCountryCode = homeCountryCode,
-        onEditContactName = onEditContactName
+        onEditContactName = onEditContactName,
+        callActivity = callActivity
     )
 }
 

@@ -856,7 +856,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     /**
      * Load call activity data for quick list contacts
      * This function efficiently loads the latest call activity for each contact in the quick list
-     * Only loads call activity for contacts whose primary action is "Call"
+     * Loads call activity for ALL quick list contacts to show in long press dialog
      */
     fun loadCallActivityForQuickList(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -869,27 +869,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 
                 val callActivityMap = mutableMapOf<String, Contact>()
                 
-                // Load call activity only for contacts whose primary action is "Call"
+                // Load call activity for ALL quick list contacts (not just those with "Call" as primary action)
                 selectedContacts.forEach { contact ->
-                    // Check if this contact's primary action is "Call"
-                    val customActions = _customActionPreferences.value[contact.id]
-                    val primaryAction = customActions?.primaryAction ?: if (_isInternationalDetectionEnabled.value && 
-                        PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), _isInternationalDetectionEnabled.value, _homeCountryCode.value) == true) {
-                        when (_defaultMessagingApp.value) {
-                            MessagingApp.WHATSAPP -> "WhatsApp"
-                            MessagingApp.SMS -> "SMS"
-                            MessagingApp.TELEGRAM -> "Telegram"
-                        }
-                    } else {
-                        "Call"
-                    }
-                    
-                    // Only load call activity if primary action is "Call"
-                    if (primaryAction == "Call") {
-                        val callActivity = contactService.getLatestCallActivityForContact(context, contact.phoneNumbers)
-                        if (callActivity != null) {
-                            callActivityMap[contact.id] = callActivity
-                        }
+                    val callActivity = contactService.getLatestCallActivityForContact(context, contact.phoneNumbers)
+                    if (callActivity != null) {
+                        callActivityMap[contact.id] = callActivity
                     }
                 }
                 

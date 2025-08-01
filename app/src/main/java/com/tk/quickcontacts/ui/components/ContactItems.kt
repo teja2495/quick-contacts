@@ -136,6 +136,21 @@ fun ContactItem(
     
     // Contact actions dialog for long press
     if (showContactActionsDialog) {
+        // Determine if we should show call activity based on primary action
+        val messagingAppName = when (defaultMessagingApp) {
+            MessagingApp.WHATSAPP -> "WhatsApp"
+            MessagingApp.SMS -> "SMS"
+            MessagingApp.TELEGRAM -> "Telegram"
+        }
+        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
+            messagingAppName  // International: Primary = messaging app
+        } else {
+            "Call"  // Default: Primary = Call
+        }
+        
+        // Only show call activity if primary action is NOT "Call"
+        val shouldShowCallActivity = primaryAction != "Call"
+        
         ContactActionsDialog(
             contact = contact,
             onCall = { contactToCall ->
@@ -177,7 +192,8 @@ fun ContactItem(
             onDismiss = {
                 showContactActionsDialog = false
             },
-            availableMessagingApps = availableMessagingApps
+            availableMessagingApps = availableMessagingApps,
+            callActivity = if (shouldShowCallActivity) callActivity else null
         )
     }
     
@@ -628,7 +644,8 @@ fun RecentCallVerticalItem(
             onDismiss = {
                 showContactActionsDialog = false
             },
-            availableMessagingApps = availableMessagingApps
+            availableMessagingApps = availableMessagingApps,
+            callActivity = null // No call activity for search results
         )
     }
     
