@@ -363,6 +363,7 @@ fun ContactItem(
                             Icon(
                                 imageVector = when (callActivity.callType) {
                                     "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                                    "rejected" -> Icons.AutoMirrored.Filled.CallReceived
                                     "incoming" -> Icons.AutoMirrored.Filled.CallReceived
                                     "outgoing" -> Icons.AutoMirrored.Filled.CallMade
                                     else -> Icons.Default.Call
@@ -370,6 +371,7 @@ fun ContactItem(
                                 contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
                                 tint = when (callActivity.callType) {
                                     "missed" -> Color(0xFFE57373) // Subtle red
+                                    "rejected" -> Color(0xFFE57373) // Subtle red (same as missed)
                                     "incoming" -> Color(0xFF81C784) // Subtle green
                                     "outgoing" -> Color(0xFF64B5F6) // Subtle blue
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -738,6 +740,7 @@ fun RecentCallVerticalItem(
                     Icon(
                         imageVector = when (contact.callType) {
                             "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                            "rejected" -> Icons.AutoMirrored.Filled.CallReceived
                             "incoming" -> Icons.AutoMirrored.Filled.CallReceived
                             "outgoing" -> Icons.AutoMirrored.Filled.CallMade
                             else -> Icons.Default.Call
@@ -745,6 +748,7 @@ fun RecentCallVerticalItem(
                         contentDescription = contact.callType.replaceFirstChar { it.uppercase() },
                         tint = when (contact.callType) {
                             "missed" -> Color(0xFFE57373) // Subtle red
+                            "rejected" -> Color(0xFFE57373) // Subtle red (same as missed)
                             "incoming" -> Color(0xFF81C784) // Subtle green
                             "outgoing" -> Color(0xFF64B5F6) // Subtle blue
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -758,6 +762,7 @@ fun RecentCallVerticalItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = when (contact.callType) {
                             "missed" -> MaterialTheme.colorScheme.error
+                            "rejected" -> MaterialTheme.colorScheme.secondary
                             "incoming" -> MaterialTheme.colorScheme.secondary
                             "outgoing" -> MaterialTheme.colorScheme.secondary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant

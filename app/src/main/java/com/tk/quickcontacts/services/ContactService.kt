@@ -20,8 +20,8 @@ private fun getCallTypeString(callType: Int): String {
         CallLog.Calls.INCOMING_TYPE -> "incoming"
         CallLog.Calls.OUTGOING_TYPE -> "outgoing"
         CallLog.Calls.MISSED_TYPE -> "missed"
-        CallLog.Calls.REJECTED_TYPE -> "missed"
-        CallLog.Calls.BLOCKED_TYPE -> "missed"
+        CallLog.Calls.REJECTED_TYPE -> "rejected"
+        CallLog.Calls.BLOCKED_TYPE -> "blocked"
         else -> "unknown"
     }
 }
@@ -481,6 +481,12 @@ class ContactService {
                         val cachedName = it.getString(nameColumn)
                         val callType = it.getInt(typeColumn)
                         val callTimestamp = if (dateColumn >= 0) it.getLong(dateColumn) else null
+
+                        // Skip blocked calls
+                        if (callType == CallLog.Calls.BLOCKED_TYPE) {
+                            android.util.Log.d("QuickContacts", "Skipping blocked call: $number")
+                            continue
+                        }
 
                         if (number != null && number.isNotBlank()) {
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
