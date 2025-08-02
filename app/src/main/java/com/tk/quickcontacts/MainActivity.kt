@@ -303,6 +303,11 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         isRecentCallsExpanded = false
     }
     
+    // Handle Android system back button when in edit mode
+    BackHandler(enabled = editMode) {
+        editMode = false
+    }
+    
     // Load recent calls when permissions are available or selected contacts change
     LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts, isRecentCallsVisible) {
         if (isRecentCallsVisible && hasCallLogPermission) {
