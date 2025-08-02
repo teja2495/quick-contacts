@@ -176,6 +176,20 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         android.util.Log.d("QuickContacts", "Edit hint flag reset for testing")
     }
     
+    fun hasShownRecentCallsHint(): Boolean {
+        return preferencesRepository.hasShownRecentCallsHint()
+    }
+    
+    fun markRecentCallsHintShown() {
+        preferencesRepository.markRecentCallsHintShown()
+        android.util.Log.d("QuickContacts", "Recent calls hint marked as shown")
+    }
+    
+    fun resetRecentCallsHintFlag() {
+        preferencesRepository.resetRecentCallsHintFlag()
+        android.util.Log.d("QuickContacts", "Recent calls hint flag reset for testing")
+    }
+    
     // Private helper methods
     private fun loadFavoriteContactsOnFirstLaunch(context: Context) {
         try {

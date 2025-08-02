@@ -280,6 +280,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     var editMode by remember { mutableStateOf(false) }
     var isRecentCallsExpanded by remember { mutableStateOf(false) }
     var showEditBanner by remember { mutableStateOf(false) }
+    var showRecentCallsHint by remember { mutableStateOf(false) }
     
     // Focus requester for search
     val focusRequester = remember { FocusRequester() }
@@ -350,6 +351,13 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         val onQuickListScreen = !isSearching && !isSettingsScreenOpen && !isRecentCallsExpanded && selectedContacts.isNotEmpty()
         if (onQuickListScreen && !viewModel.hasShownEditHint()) {
             showEditBanner = true
+        }
+    }
+    
+    // Show recent calls hint when user expands recent calls for the first time
+    LaunchedEffect(isRecentCallsExpanded) {
+        if (isRecentCallsExpanded && !viewModel.hasShownRecentCallsHint()) {
+            showRecentCallsHint = true
         }
     }
     
@@ -577,6 +585,11 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                     homeCountryCode = homeCountryCode,
                                     onAddToQuickList = { contact ->
                                         viewModel.addContact(contact)
+                                    },
+                                    showRecentCallsHint = showRecentCallsHint,
+                                    onDismissRecentCallsHint = {
+                                        showRecentCallsHint = false
+                                        viewModel.markRecentCallsHintShown()
                                     }
                                 )
                             }

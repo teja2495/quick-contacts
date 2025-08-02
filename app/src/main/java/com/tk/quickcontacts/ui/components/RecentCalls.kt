@@ -27,6 +27,13 @@ import androidx.compose.animation.fadeOut
 import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.models.MessagingApp
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.res.stringResource
+import com.tk.quickcontacts.R
+import androidx.compose.material.icons.automirrored.filled.CallReceived
+import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallMissed
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun RecentCallsSection(
@@ -43,7 +50,9 @@ fun RecentCallsSection(
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
     homeCountryCode: String? = null,
-    onAddToQuickList: ((Contact) -> Unit)? = null
+    onAddToQuickList: ((Contact) -> Unit)? = null,
+    showRecentCallsHint: Boolean = false,
+    onDismissRecentCallsHint: () -> Unit = {}
 ) {
 
     
@@ -101,6 +110,131 @@ fun RecentCallsSection(
                                 .size(20.dp)
                                 .rotate(rotationAngle)
                         )
+                    }
+                }
+                
+                // Show recent calls hint banner when expanded for the first time
+                if (showRecentCallsHint && isExpanded) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 0.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            // Header with title and close button
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.recent_calls_hint_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                IconButton(
+                                    onClick = onDismissRecentCallsHint,
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Dismiss hint",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            
+                            // Call type icons with descriptions
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                // Incoming call
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.CallReceived,
+                                        contentDescription = "Incoming call",
+                                        tint = Color(0xFF81C784), // Subtle green
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Incoming call",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                // Outgoing call
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.CallMade,
+                                        contentDescription = "Outgoing call",
+                                        tint = Color(0xFF64B5F6), // Subtle blue
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Outgoing call",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                // Missed call
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.CallMissed,
+                                        contentDescription = "Missed call",
+                                        tint = Color(0xFFE57373), // Subtle red
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Missed call",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                // Rejected call
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.CallReceived,
+                                        contentDescription = "Rejected call",
+                                        tint = Color(0xFFE57373), // Subtle red (same as missed)
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Rejected call",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 

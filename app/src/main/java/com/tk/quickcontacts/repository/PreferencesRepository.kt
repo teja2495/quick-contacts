@@ -266,6 +266,31 @@ class PreferencesRepository(context: Context) {
         }
     }
     
+    fun hasShownRecentCallsHint(): Boolean {
+        return try {
+            sharedPreferences.getBoolean("has_shown_recent_calls_hint", false)
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error checking recent calls hint", e)
+            false // Default to not shown if error
+        }
+    }
+
+    fun markRecentCallsHintShown() {
+        try {
+            sharedPreferences.edit().putBoolean("has_shown_recent_calls_hint", true).apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error marking recent calls hint shown", e)
+        }
+    }
+
+    fun resetRecentCallsHintFlag() {
+        try {
+            sharedPreferences.edit().putBoolean("has_shown_recent_calls_hint", false).apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error resetting recent calls hint flag", e)
+        }
+    }
+    
     fun hasSeenCallWarning(): Boolean {
         return try {
             sharedPreferences.getBoolean("has_seen_call_warning", false)
