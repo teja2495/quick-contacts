@@ -488,6 +488,12 @@ class ContactService {
                             continue
                         }
 
+                        // Skip voicemails (call type 4)
+                        if (callType == 4) {
+                            android.util.Log.d("QuickContacts", "Skipping voicemail: $number")
+                            continue
+                        }
+
                         if (number != null && number.isNotBlank()) {
                             val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
 
