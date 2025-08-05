@@ -4,7 +4,7 @@ import com.tk.quickcontacts.Contact
 
 object Mocks {
     // Mock mode flag - set to true to enable mock data for demonstration purposes
-    const val ENABLE_MOCK_MODE = false
+    const val ENABLE_MOCK_MODE = true
     
     // Mock contact data for demonstration
     object MockData {
