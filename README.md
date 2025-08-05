@@ -11,6 +11,12 @@ A fast and privacy-focused Android app for quick access to your most important c
 - **Customizable Actions**: Set different actions for each contact
 - **Offline Operation**: Works entirely offline - no internet required
 
+## Screenshots
+
+| Homescreen | Recent Calls | Settings |
+|------------|--------------|----------|
+| ![Homescreen](screenshots/homescreen.jpg) | ![Recent Calls](screenshots/recent-calls.jpg) | ![Settings](screenshots/settings.jpg) |
+
 ## Privacy-First Design
 
 Quick Contacts is built with your privacy in mind:
