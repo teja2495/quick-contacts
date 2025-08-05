@@ -73,6 +73,17 @@ If you have questions or need support:
 - Use the feedback feature in the app
 - Check the privacy policy for contact information
 
+## Development Features
+
+### Mock Mode
+
+For demonstration and testing purposes, the app includes a mock mode that provides sample data without requiring real contacts or call permissions.
+
+**To enable mock mode:**
+1. Open `app/src/main/java/com/tk/quickcontacts/utils/Mock.kt`
+2. Change `Mocks.ENABLE_MOCK_MODE` from `false` to `true`
+3. Rebuild and run the app
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

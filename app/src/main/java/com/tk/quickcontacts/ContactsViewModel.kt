@@ -12,6 +12,7 @@ import com.tk.quickcontacts.services.MessagingService
 import com.tk.quickcontacts.services.PhoneService
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
+import com.tk.quickcontacts.utils.Mocks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -121,13 +122,17 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val searchDebounceDelay = 300L // 300ms debounce
 
     init {
-        loadContacts()
-        loadActionPreferences()
-        loadCustomActionPreferences()
-        loadSettings()
-        checkAvailableMessagingApps()
-        // Load saved recent calls (this will populate both recent calls and cached calls)
-        loadSavedRecentCalls()
+        if (Mocks.ENABLE_MOCK_MODE) {
+            loadMockData()
+        } else {
+            loadContacts()
+            loadActionPreferences()
+            loadCustomActionPreferences()
+            loadSettings()
+            checkAvailableMessagingApps()
+            // Load saved recent calls (this will populate both recent calls and cached calls)
+            loadSavedRecentCalls()
+        }
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
@@ -135,8 +140,154 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _homeCountryCode.value = preferencesRepository.loadHomeCountryCode()
     }
     
+    // Mock mode methods
+    private fun loadMockData() {
+        android.util.Log.d("QuickContacts", "Loading mock data for demonstration")
+        
+        // Load mock contacts to quick list
+        _selectedContacts.value = Mocks.MockData.MOCK_QUICK_LIST_CONTACTS
+        
+        // Create mock recent calls that include current quick list contacts
+        val quickListContacts = Mocks.MockData.MOCK_QUICK_LIST_CONTACTS
+        val mockRecentCalls = createMockRecentCallsWithQuickList(quickListContacts)
+        
+        // Load mock recent calls
+        _recentCalls.value = mockRecentCalls
+        _cachedRecentCalls.value = mockRecentCalls
+        _allRecentCalls.value = mockRecentCalls
+        _cachedAllRecentCalls.value = mockRecentCalls
+        
+        // Load all mock contacts for search
+        _allContacts.value = Mocks.MockData.MOCK_CONTACTS
+        
+        // Set default settings for mock mode
+        _isInternationalDetectionEnabled.value = true
+        _isRecentCallsVisible.value = true
+        _defaultMessagingApp.value = com.tk.quickcontacts.models.MessagingApp.WHATSAPP
+        _availableMessagingApps.value = setOf(
+            com.tk.quickcontacts.models.MessagingApp.WHATSAPP,
+            com.tk.quickcontacts.models.MessagingApp.SMS,
+            com.tk.quickcontacts.models.MessagingApp.TELEGRAM
+        )
+        
+        // Load mock call activity for quick list contacts
+        loadMockCallActivityForQuickList()
+        
+        android.util.Log.d("QuickContacts", "Mock data loaded: ${_selectedContacts.value.size} quick list contacts, ${_recentCalls.value.size} recent calls")
+    }
+    
+    private fun createMockRecentCallsWithQuickList(quickListContacts: List<Contact>): List<Contact> {
+        val currentTime = System.currentTimeMillis()
+        val mockRecentCalls = mutableListOf<Contact>()
+        
+        // Add quick list contacts to recent calls with recent timestamps
+        quickListContacts.forEachIndexed { index, contact ->
+            val callType = when (index) {
+                0 -> "outgoing"  // First contact - outgoing call
+                1 -> "incoming"  // Second contact - incoming call
+                else -> "missed"  // Third contact - missed call
+            }
+            val timestamp = currentTime - (index + 1) * 300000 // 5, 10, 15 minutes ago
+            
+            val recentCallContact = contact.copy(
+                id = "mock_recent_quick_${contact.id}",
+                callType = callType,
+                callTimestamp = timestamp
+            )
+            mockRecentCalls.add(recentCallContact)
+        }
+        
+        // Add some additional mock recent calls from other contacts
+        val additionalCalls = listOf(
+            Contact(
+                id = "mock_recent_4",
+                name = "Emily Davis",
+                phoneNumber = "+1-555-0104",
+                phoneNumbers = listOf("+1-555-0104"),
+                photo = null,
+                photoUri = null,
+                callType = "outgoing",
+                callTimestamp = currentTime - 3600000 // 1 hour ago
+            ),
+            Contact(
+                id = "mock_recent_5",
+                name = "David Wilson",
+                phoneNumber = "+1-555-0105",
+                phoneNumbers = listOf("+1-555-0105"),
+                photo = null,
+                photoUri = null,
+                callType = "incoming",
+                callTimestamp = currentTime - 7200000 // 2 hours ago
+            ),
+            Contact(
+                id = "mock_recent_6",
+                name = "Lisa Anderson",
+                phoneNumber = "+1-555-0106",
+                phoneNumbers = listOf("+1-555-0106"),
+                photo = null,
+                photoUri = null,
+                callType = "missed",
+                callTimestamp = currentTime - 10800000 // 3 hours ago
+            ),
+            Contact(
+                id = "mock_recent_7",
+                name = "Robert Taylor",
+                phoneNumber = "+1-555-0107",
+                phoneNumbers = listOf("+1-555-0107"),
+                photo = null,
+                photoUri = null,
+                callType = "outgoing",
+                callTimestamp = currentTime - 14400000 // 4 hours ago
+            ),
+            Contact(
+                id = "mock_recent_8",
+                name = "Jennifer Martinez",
+                phoneNumber = "+1-555-0108",
+                phoneNumbers = listOf("+1-555-0108"),
+                photo = null,
+                photoUri = null,
+                callType = "incoming",
+                callTimestamp = currentTime - 18000000 // 5 hours ago
+            ),
+            Contact(
+                id = "mock_recent_9",
+                name = "Christopher Garcia",
+                phoneNumber = "+1-555-0109",
+                phoneNumbers = listOf("+1-555-0109"),
+                photo = null,
+                photoUri = null,
+                callType = "missed",
+                callTimestamp = currentTime - 21600000 // 6 hours ago
+            )
+        )
+        
+        mockRecentCalls.addAll(additionalCalls)
+        return mockRecentCalls
+    }
+    
+    private fun refreshMockRecentCalls() {
+        if (!Mocks.ENABLE_MOCK_MODE) return
+        
+        val currentQuickList = _selectedContacts.value
+        val updatedRecentCalls = createMockRecentCallsWithQuickList(currentQuickList)
+        
+        _recentCalls.value = updatedRecentCalls
+        _cachedRecentCalls.value = updatedRecentCalls
+        _allRecentCalls.value = updatedRecentCalls
+        _cachedAllRecentCalls.value = updatedRecentCalls
+        
+        // Refresh mock call activity for quick list contacts
+        loadMockCallActivityForQuickList()
+        
+        android.util.Log.d("ContactsViewModel", "Refreshed mock recent calls with ${currentQuickList.size} quick list contacts")
+    }
+    
     // First launch and testing methods
     fun checkAndLoadFavoriteContactsOnFirstLaunch(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Skip in mock mode
+            return
+        }
         if (preferencesRepository.isFirstTimeLaunch() && _selectedContacts.value.isEmpty()) {
             android.util.Log.d("QuickContacts", "First time launch detected, loading favorite contacts...")
             loadFavoriteContactsOnFirstLaunch(context)
@@ -264,13 +415,23 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 searchJob = viewModelScope.launch {
                     delay(searchDebounceDelay) // Wait for user to finish typing
                     
-                    // Use the ContactService for advanced search functionality
-                    val context = getApplication<Application>().applicationContext
-                    val searchResults = contactService.searchContacts(context, query)
-                    
-                    val mutableResults = searchResults.toMutableList()
-                    _searchResults.value = mutableResults
-                    android.util.Log.d("ContactsViewModel", "Search completed: ${mutableResults.size} contacts found")
+                    if (Mocks.ENABLE_MOCK_MODE) {
+                        // Search in mock contacts
+                        val searchResults = _allContacts.value.filter { contact ->
+                            contact.name.lowercase().contains(query.lowercase()) ||
+                            contact.phoneNumber.contains(query)
+                        }
+                        _searchResults.value = searchResults
+                        android.util.Log.d("ContactsViewModel", "Mock search completed: ${searchResults.size} contacts found")
+                    } else {
+                        // Use the ContactService for advanced search functionality
+                        val context = getApplication<Application>().applicationContext
+                        val searchResults = contactService.searchContacts(context, query)
+                        
+                        val mutableResults = searchResults.toMutableList()
+                        _searchResults.value = mutableResults
+                        android.util.Log.d("ContactsViewModel", "Search completed: ${mutableResults.size} contacts found")
+                    }
                 }
             }
         } else {
@@ -328,6 +489,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun saveContacts() {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Skip saving in mock mode
+            android.util.Log.d("ContactsViewModel", "Skipping saveContacts in mock mode")
+            return
+        }
+        
         try {
             val contacts = _selectedContacts.value
             
@@ -447,7 +614,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             val removed = currentList.removeAll { it.id == sanitizedContact.id }
             currentList.add(sanitizedContact)
             _selectedContacts.value = currentList
-            saveContacts()
+            if (!Mocks.ENABLE_MOCK_MODE) {
+                saveContacts()
+            } else {
+                // In mock mode, refresh recent calls to include new quick list contacts
+                refreshMockRecentCalls()
+            }
             filterContacts()
             // Validate state consistency
             validateStateConsistency()
@@ -461,7 +633,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             val currentList = _selectedContacts.value.toMutableList()
             currentList.removeAll { it.id == contact.id }
             _selectedContacts.value = currentList
-            saveContacts()
+            if (!Mocks.ENABLE_MOCK_MODE) {
+                saveContacts()
+            } else {
+                // In mock mode, refresh recent calls to reflect updated quick list
+                refreshMockRecentCalls()
+            }
             filterContacts()
             
             // Validate state consistency
@@ -478,7 +655,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 val contact = currentList.removeAt(fromIndex)
                 currentList.add(toIndex, contact)
                 _selectedContacts.value = currentList
-                saveContacts()
+                if (!Mocks.ENABLE_MOCK_MODE) {
+                    saveContacts()
+                }
                 filterContacts()
                 
                 // Validate state consistency
@@ -500,7 +679,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 )
                 currentList[index] = updatedContact
                 _selectedContacts.value = currentList
-                saveContacts()
+                if (!Mocks.ENABLE_MOCK_MODE) {
+                    saveContacts()
+                }
                 filterContacts()
                 validateStateConsistency()
             }
@@ -517,7 +698,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 val updatedContact = contact.copy(name = newName.trim())
                 currentList[index] = updatedContact
                 _selectedContacts.value = currentList
-                saveContacts()
+                if (!Mocks.ENABLE_MOCK_MODE) {
+                    saveContacts()
+                }
                 filterContacts()
                 validateStateConsistency()
             }
@@ -533,6 +716,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for call: $phoneNumber")
                 return
             }
+            
+            if (Mocks.ENABLE_MOCK_MODE) {
+                // Show toast in mock mode instead of making actual call
+                android.widget.Toast.makeText(context, "Mock: Calling $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.d("ContactsViewModel", "Mock: Would call $phoneNumber")
+                return
+            }
+            
             // Append country code if needed
             val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
             phoneService.makePhoneCall(context, phoneNumberWithCountryCode)
@@ -555,6 +746,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for WhatsApp: $phoneNumber")
                 return
             }
+            
+            if (Mocks.ENABLE_MOCK_MODE) {
+                // Show toast in mock mode instead of opening WhatsApp
+                android.widget.Toast.makeText(context, "Mock: Opening WhatsApp chat for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.d("ContactsViewModel", "Mock: Would open WhatsApp chat for $phoneNumber")
+                return
+            }
+            
             // Append country code if needed
             val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
             messagingService.openWhatsAppChat(context, phoneNumberWithCountryCode)
@@ -569,6 +768,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for SMS: $phoneNumber")
                 return
             }
+            
+            if (Mocks.ENABLE_MOCK_MODE) {
+                // Show toast in mock mode instead of opening SMS
+                android.widget.Toast.makeText(context, "Mock: Opening SMS for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.d("ContactsViewModel", "Mock: Would open SMS for $phoneNumber")
+                return
+            }
+            
             // Append country code if needed
             val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
             messagingService.openSmsApp(context, phoneNumberWithCountryCode)
@@ -583,6 +790,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid phone number for Telegram: $phoneNumber")
                 return
             }
+            
+            if (Mocks.ENABLE_MOCK_MODE) {
+                // Show toast in mock mode instead of opening Telegram
+                android.widget.Toast.makeText(context, "Mock: Opening Telegram chat for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.d("ContactsViewModel", "Mock: Would open Telegram chat for $phoneNumber")
+                return
+            }
+            
             // Append country code if needed
             val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
             messagingService.openTelegramChat(context, phoneNumberWithCountryCode)
@@ -592,6 +807,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openMessagingApp(context: Context, phoneNumber: String) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Show toast in mock mode instead of opening messaging app
+            val appName = when (_defaultMessagingApp.value) {
+                com.tk.quickcontacts.models.MessagingApp.WHATSAPP -> "WhatsApp"
+                com.tk.quickcontacts.models.MessagingApp.SMS -> "SMS"
+                com.tk.quickcontacts.models.MessagingApp.TELEGRAM -> "Telegram"
+            }
+            android.widget.Toast.makeText(context, "Mock: Opening $appName for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+            android.util.Log.d("ContactsViewModel", "Mock: Would open $appName for $phoneNumber")
+            return
+        }
+        
         // Append country code if needed
         val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
         messagingService.openMessagingApp(context, phoneNumberWithCountryCode, _defaultMessagingApp.value)
@@ -612,6 +839,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.w("ContactsViewModel", "Invalid contact for opening in contacts app: ${contact.id}")
                 return
             }
+            
+            if (Mocks.ENABLE_MOCK_MODE) {
+                // Show toast in mock mode instead of opening contacts app
+                android.widget.Toast.makeText(context, "Mock: Opening contact ${contact.name} in contacts app", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.d("ContactsViewModel", "Mock: Would open contact ${contact.name} in contacts app")
+                return
+            }
+            
             phoneService.openContactInContactsApp(context, contact)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening contact in contacts app: ${contact.id}", e)
@@ -619,6 +854,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun loadRecentCalls(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Skip loading real recent calls in mock mode
+            android.util.Log.d("ContactsViewModel", "Skipping loadRecentCalls in mock mode")
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoadingRecentCalls.value = true
@@ -667,6 +908,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     fun loadAllRecentCalls(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Skip loading real all recent calls in mock mode
+            android.util.Log.d("ContactsViewModel", "Skipping loadAllRecentCalls in mock mode")
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoadingRecentCalls.value = true
@@ -703,6 +950,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
     
     fun refreshRecentCallsOnAppResume(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Skip refreshing in mock mode
+            android.util.Log.d("ContactsViewModel", "Skipping refreshRecentCallsOnAppResume in mock mode")
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Only refresh if recent calls are visible
@@ -793,6 +1046,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun refreshAllContactsFromPhone(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Skip refreshing real contacts in mock mode
+            android.util.Log.d("ContactsViewModel", "Skipping refreshAllContactsFromPhone in mock mode")
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val contacts = contactService.getAllContacts(context)
@@ -873,6 +1132,13 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
      * Loads call activity for ALL quick list contacts to show in long press dialog
      */
     fun loadCallActivityForQuickList(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) {
+            // Load mock call activity data for quick list contacts
+            android.util.Log.d("ContactsViewModel", "Loading mock call activity for quick list contacts")
+            loadMockCallActivityForQuickList()
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val selectedContacts = _selectedContacts.value
@@ -897,6 +1163,46 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.e("ContactsViewModel", "Error loading call activity for quick list", e)
                 _callActivityMap.value = emptyMap()
             }
+        }
+    }
+    
+    /**
+     * Load mock call activity data for quick list contacts in mock mode
+     */
+    private fun loadMockCallActivityForQuickList() {
+        try {
+            val selectedContacts = _selectedContacts.value
+            if (selectedContacts.isEmpty()) {
+                _callActivityMap.value = emptyMap()
+                return
+            }
+            
+            val callActivityMap = mutableMapOf<String, Contact>()
+            val currentTime = System.currentTimeMillis()
+            
+            // Create mock call activity for each quick list contact
+            selectedContacts.forEachIndexed { index, contact ->
+                val callType = when (index) {
+                    0 -> "outgoing"  // First contact - outgoing call
+                    1 -> "incoming"  // Second contact - incoming call
+                    else -> "missed"  // Third contact - missed call
+                }
+                val timestamp = currentTime - (index + 1) * 300000 // 5, 10, 15 minutes ago
+                
+                val callActivityContact = contact.copy(
+                    id = "mock_call_activity_${contact.id}",
+                    callType = callType,
+                    callTimestamp = timestamp
+                )
+                callActivityMap[contact.id] = callActivityContact
+            }
+            
+            _callActivityMap.value = callActivityMap
+            android.util.Log.d("ContactsViewModel", "Loaded mock call activity for ${callActivityMap.size} quick list contacts")
+            
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error loading mock call activity for quick list", e)
+            _callActivityMap.value = emptyMap()
         }
     }
 
