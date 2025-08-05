@@ -1,6 +1,10 @@
 # Gradle files
 .gradle/
 build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
 
 # Local configuration file (sdk path, etc)
 local.properties
@@ -16,8 +20,10 @@ captures/
 *.apk
 output-metadata.json
 
-# IntelliJ
+# IntelliJ and Android Studio
 *.iml
+*.ipr
+*.iws
 .idea/
 misc.xml
 deploymentTargetDropDown.xml
@@ -37,10 +43,14 @@ google-services.json
 .DS_Store
 .DS_Store?
 ._*
+.AppleDouble
+.LSOverride
+Icon
 .Spotlight-V100
 .Trashes
 ehthumbs.db
 Thumbs.db
+.fseventsd
 
 # Android Studio deployment target files
 deploymentTargetSelector/
@@ -56,6 +66,8 @@ deploymentTargetSelector/
 *.swp
 *.swo
 *~
+*.orig
+*.rej
 
 # Backup files
 *.bak
@@ -64,6 +76,33 @@ deploymentTargetSelector/
 # IDE specific files
 .vscode/
 *.code-workspace
+.atom/
+.brackets.json
+.sublime-project
+.sublime-workspace
 
-# OS generated files
-.fseventsd
+# Build and dependency files
+node_modules/
+.npm/
+.yarn/
+.pnp.*
+
+# Android specific build artifacts
+*.dex
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# Additional system and cache files
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.dylib
+*.dll
