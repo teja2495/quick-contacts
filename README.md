@@ -13,9 +13,9 @@ A fast and privacy-focused Android app for quick access to your most important c
 
 ## Screenshots
 
-| Homescreen | Recent Calls | Settings | Tap Actions |
-|------------|--------------|----------|-------------|
-| ![Homescreen](screenshots/homescreen.jpg) | ![Recent Calls](screenshots/recent-calls.jpg) | ![Settings](screenshots/settings.jpg) | ![Tap Actions](screenshots/tap-actions.jpg) |
+| Homescreen | Recent Calls | Tap Actions | Settings |
+|------------|--------------|-------------|----------|
+| ![Homescreen](screenshots/homescreen.jpg) | ![Recent Calls](screenshots/recent-calls.jpg) | ![Tap Actions](screenshots/tap-actions.jpg) | ![Settings](screenshots/settings.jpg) |
 
 ## Privacy-First Design
 
