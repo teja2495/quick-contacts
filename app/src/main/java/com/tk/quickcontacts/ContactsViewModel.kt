@@ -451,7 +451,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     }
                     
                     _searchResults.value = finalResults
-                    android.util.Log.d("ContactsViewModel", "Search completed: ${finalResults.size} contacts found (${searchResults.size} real contacts, ${if (isPhoneNumberQuery && searchResults.isEmpty()) "1 dummy" else "0 dummy"})")
                 }
             }
         } else {
@@ -846,6 +845,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     fun executeAction(context: Context, action: String, phoneNumber: String) {
         when (action) {
+            "None" -> {
+                // Do nothing when "None" is selected
+            }
             "Call" -> makePhoneCall(context, phoneNumber)
             "WhatsApp" -> openWhatsAppChat(context, phoneNumber)
             "SMS", "Messages" -> openSmsApp(context, phoneNumber)

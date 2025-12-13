@@ -695,7 +695,9 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                             // Check if contact has custom actions
                                             val customActions = customActionPreferences[contact.id]
                                             if (customActions != null) {
-                                                viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
+                                                if (customActions.primaryAction != "None") {
+                                                    viewModel.executeAction(context, customActions.primaryAction, contact.phoneNumber)
+                                                }
                                             } else {
                                                 viewModel.makePhoneCall(context, contact.phoneNumber)
                                             }
@@ -711,7 +713,9 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                                             // Check if contact has custom actions
                                             val customActions = customActionPreferences[contact.id]
                                             if (customActions != null) {
-                                                viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
+                                                if (customActions.secondaryAction != "None") {
+                                                    viewModel.executeAction(context, customActions.secondaryAction, contact.phoneNumber)
+                                                }
                                             } else {
                                                 viewModel.openMessagingApp(context, contact.phoneNumber)
                                             }

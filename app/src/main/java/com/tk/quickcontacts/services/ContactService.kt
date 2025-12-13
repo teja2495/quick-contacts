@@ -296,13 +296,10 @@ class ContactService {
             val hasLetters = query.replace(Regex("[\\d\\s\\-\\(\\)\\+]"), "").isNotEmpty()
             val isPhoneNumberQuery = hasDigits && !hasLetters && normalizedPhoneQuery.length >= 3
             
-            android.util.Log.d("ContactService", "Query analysis - hasDigits: $hasDigits, hasLetters: $hasLetters, isPhoneNumberQuery: $isPhoneNumberQuery, normalizedPhoneQuery: '$normalizedPhoneQuery'")
-            
             // Execute search query to get all potential matches
             // If it's a phone number query, get all contacts and filter in Kotlin for better matching
             // Otherwise, search by name (and optionally by formatted phone number)
             val cursor: Cursor? = if (isPhoneNumberQuery) {
-                android.util.Log.d("ContactService", "Searching by phone number: $normalizedPhoneQuery")
                 // Get all contacts for phone number matching (we'll filter in Kotlin)
                 context.contentResolver.query(
                     ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -347,11 +344,6 @@ class ContactService {
                             val phoneNumberMatchesQuery = normalizedPhoneQuery.isNotEmpty() && normalizedPhoneNumber.contains(normalizedPhoneQuery)
                             // Only check name matching if we're not in phone number query mode
                             val nameMatchesQuery = !isPhoneNumberQuery && normalizedName.contains(normalizedQuery)
-                            
-                            // Log matching details for debugging
-                            if (phoneNumberMatchesQuery || nameMatchesQuery) {
-                                android.util.Log.d("ContactService", "Contact '$name' - number: $number, normalized: $normalizedPhoneNumber, phoneMatch: $phoneNumberMatchesQuery, nameMatch: $nameMatchesQuery")
-                            }
                             
                             // Skip if neither name nor phone number matches
                             if (!nameMatchesQuery && !phoneNumberMatchesQuery) {

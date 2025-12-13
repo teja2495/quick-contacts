@@ -41,7 +41,8 @@ private fun buildPrimaryChipsList(availableMessagingApps: Set<MessagingApp>): Li
         Pair("Messages", true),
         Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
         Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
-        Pair("All Options", true)
+        Pair("All Options", true),
+        Pair("None", true)
     ).filter { it.second } // Only include available options
 }
 
@@ -51,7 +52,8 @@ private fun buildSecondaryChipsList(availableMessagingApps: Set<MessagingApp>): 
         Pair("Messages", true),
         Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
         Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
-        Pair("All Options", true)
+        Pair("All Options", true),
+        Pair("None", true)
     ).filter { it.second } // Only include available options
 }
 
@@ -218,8 +220,8 @@ fun ActionToggleDialog(
     // Check if configuration has changed
     val hasChanged = selectedPrimary != currentPrimary || selectedSecondary != currentSecondary
     
-    // Check if selections are valid (different actions)
-    val isValidSelection = selectedPrimary != selectedSecondary
+    // Check if selections are valid (different actions, but "None" can be selected for both)
+    val isValidSelection = selectedPrimary == "None" || selectedSecondary == "None" || selectedPrimary != selectedSecondary
     
     AlertDialog(
         onDismissRequest = onDismiss,

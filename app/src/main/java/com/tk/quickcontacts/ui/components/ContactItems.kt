@@ -148,8 +148,8 @@ fun ContactItem(
             "Call"  // Default: Primary = Call
         }
         
-        // Only show call activity if primary action is NOT "Call"
-        val shouldShowCallActivity = primaryAction != "Call"
+        // Only show call activity if primary action is NOT "Call" and NOT "None"
+        val shouldShowCallActivity = primaryAction != "Call" && primaryAction != "None"
         
         ContactActionsDialog(
             contact = contact,
@@ -221,7 +221,9 @@ fun ContactItem(
                         } else {
                             "Call"  // Default: Primary = Call
                         }
-                        if (primaryAction == "All Options") {
+                        if (primaryAction == "None") {
+                            // Do nothing when "None" is selected
+                        } else if (primaryAction == "All Options") {
                             showContactActionsDialog = true
                         } else if (contact.phoneNumbers.size > 1) {
                             dialogAction = primaryAction.lowercase()
@@ -354,7 +356,9 @@ fun ContactItem(
                     
                     // Show call status if available, otherwise show primary action
                     // Only show call activity if primary action is "Call"
-                    if (callActivity?.callType != null && callActivity.callTimestamp != null && primaryAction == "Call") {
+                    if (primaryAction == "None") {
+                        // Don't show anything when "None" is selected
+                    } else if (callActivity?.callType != null && callActivity.callTimestamp != null && primaryAction == "Call") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -431,92 +435,86 @@ fun ContactItem(
                 }
             } else {
                 // Secondary action button - opposite of primary action
-                IconButton(
-                    onClick = { 
-                        // Get default messaging app name
-                        val messagingAppName = when (defaultMessagingApp) {
-                            MessagingApp.WHATSAPP -> "WhatsApp"
-                            MessagingApp.SMS -> "SMS"
-                            MessagingApp.TELEGRAM -> "Telegram"
-                        }
-                        // Use custom secondary action or determine based on new default logic
-                        val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
-                            "Call"  // International: Secondary = Call
-                        } else {
-                            messagingAppName  // Default: Secondary = messaging app
-                        }
-                        if (secondaryAction == "All Options") {
-                            showContactActionsDialog = true
-                        } else if (contact.phoneNumbers.size > 1) {
-                            dialogAction = secondaryAction.lowercase()
-                            showPhoneNumberDialog = true
-                        } else {
-                            // Use onExecuteAction to match UI label logic
-                            onExecuteAction(context, secondaryAction, contact.phoneNumber)
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    // Show secondary action icon based on custom actions or new default logic
-                    val messagingAppName = when (defaultMessagingApp) {
-                        MessagingApp.WHATSAPP -> "WhatsApp"
-                        MessagingApp.SMS -> "SMS"
-                        MessagingApp.TELEGRAM -> "Telegram"
-                    }
-                    val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
-                        "Call"  // International: Secondary = Call
-                    } else {
-                        messagingAppName  // Default: Secondary = messaging app
-                    }
-                    when (secondaryAction) {
-                        "Call" -> {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = "Call ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        "WhatsApp" -> {
-                            Icon(
-                                painter = painterResource(id = R.drawable.whatsapp_icon),
-                                contentDescription = "WhatsApp ${contact.name}",
-                                tint = Color(0xFF25D366),
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        "SMS" -> {
-                            Icon(
-                                painter = painterResource(id = R.drawable.sms_icon),
-                                contentDescription = "SMS ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        "Telegram" -> {
-                            Icon(
-                                painter = painterResource(id = R.drawable.telegram_icon),
-                                contentDescription = "Telegram ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        "All Options" -> {
-                            Icon(
-                                imageVector = Icons.Default.MoreHoriz, // Use a menu or grid icon
-                                contentDescription = "All Options for ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        else -> {
-                            // Fallback for unknown actions
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = "Call ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
+                // Get default messaging app name
+                val messagingAppName = when (defaultMessagingApp) {
+                    MessagingApp.WHATSAPP -> "WhatsApp"
+                    MessagingApp.SMS -> "SMS"
+                    MessagingApp.TELEGRAM -> "Telegram"
+                }
+                // Use custom secondary action or determine based on new default logic
+                val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
+                    "Call"  // International: Secondary = Call
+                } else {
+                    messagingAppName  // Default: Secondary = messaging app
+                }
+                
+                // Only show button if secondary action is not "None"
+                if (secondaryAction != "None") {
+                    IconButton(
+                        onClick = { 
+                            if (secondaryAction == "All Options") {
+                                showContactActionsDialog = true
+                            } else if (contact.phoneNumbers.size > 1) {
+                                dialogAction = secondaryAction.lowercase()
+                                showPhoneNumberDialog = true
+                            } else {
+                                // Use onExecuteAction to match UI label logic
+                                onExecuteAction(context, secondaryAction, contact.phoneNumber)
+                            }
+                        },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        // Show secondary action icon based on custom actions or new default logic
+                        when (secondaryAction) {
+                            "Call" -> {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = "Call ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            "WhatsApp" -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.whatsapp_icon),
+                                    contentDescription = "WhatsApp ${contact.name}",
+                                    tint = Color(0xFF25D366),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            "SMS", "Messages" -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.sms_icon),
+                                    contentDescription = "SMS ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            "Telegram" -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.telegram_icon),
+                                    contentDescription = "Telegram ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            "All Options" -> {
+                                Icon(
+                                    imageVector = Icons.Default.MoreHoriz, // Use a menu or grid icon
+                                    contentDescription = "All Options for ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            else -> {
+                                // Fallback for unknown actions
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = "Call ${contact.name}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
                     }
                 }
