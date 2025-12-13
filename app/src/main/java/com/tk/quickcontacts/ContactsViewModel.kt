@@ -875,6 +875,28 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun addNewContactToPhone(context: Context, phoneNumber: String) {
+        try {
+            // Allow any phone number format when adding to contacts
+            // The contacts app will handle validation
+            if (phoneNumber.isBlank()) {
+                android.util.Log.w("ContactsViewModel", "Phone number is blank, cannot add to contacts")
+                return
+            }
+            
+            if (Mocks.ENABLE_MOCK_MODE) {
+                // Show toast in mock mode instead of opening contacts app
+                android.widget.Toast.makeText(context, "Mock: Adding new contact with number $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.d("ContactsViewModel", "Mock: Would add new contact with number $phoneNumber")
+                return
+            }
+            
+            phoneService.addNewContact(context, phoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error adding new contact with number: $phoneNumber", e)
+        }
+    }
+
     fun loadRecentCalls(context: Context) {
         if (Mocks.ENABLE_MOCK_MODE) {
             // Skip loading real recent calls in mock mode

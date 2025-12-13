@@ -38,7 +38,10 @@ fun SearchResultsContent(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit
+    onExecuteAction: (Context, String, String) -> Unit,
+    onAddToContacts: (Context, String) -> Unit = { context, phoneNumber -> 
+        viewModel.addNewContactToPhone(context, phoneNumber)
+    }
 ) {
     val context = LocalContext.current
     val homeCountryCode by viewModel.homeCountryCode.collectAsState()
@@ -165,7 +168,8 @@ fun SearchResultsContent(
                     modifier = Modifier.fillMaxWidth(),
                     availableMessagingApps = availableMessagingApps,
                     onExecuteAction = onExecuteAction,
-                    homeCountryCode = homeCountryCode
+                    homeCountryCode = homeCountryCode,
+                    onAddToContacts = onAddToContacts
                 )
             }
         }
@@ -188,7 +192,8 @@ fun SearchResultItem(
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null
+    homeCountryCode: String? = null,
+    onAddToContacts: (Context, String) -> Unit = { _, _ -> }
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -284,7 +289,10 @@ fun SearchResultItem(
             onAddToQuickList = { contactToAdd ->
                 onAddContact(contactToAdd)
             },
-            isInQuickList = selectedContacts.any { it.id == contact.id }
+            isInQuickList = selectedContacts.any { it.id == contact.id },
+            onAddToContacts = { phoneNumber ->
+                onAddToContacts(context, phoneNumber)
+            }
         )
     }
     

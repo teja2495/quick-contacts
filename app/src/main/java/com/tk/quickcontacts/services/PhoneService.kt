@@ -105,4 +105,26 @@ class PhoneService {
     fun formatPhoneNumber(phoneNumber: String): String {
         return PhoneNumberUtils.formatPhoneNumber(phoneNumber)
     }
+    
+    fun addNewContact(context: Context, phoneNumber: String) {
+        try {
+            // For adding contacts, allow any number format
+            // Just clean it by removing non-digit/non-plus characters
+            val cleanNumber = phoneNumber.replace(Regex("[^+\\d]"), "")
+            
+            if (cleanNumber.isEmpty()) {
+                android.util.Log.w("PhoneService", "Phone number is empty after cleaning: $phoneNumber")
+                return
+            }
+            
+            val intent = Intent(Intent.ACTION_INSERT).apply {
+                type = ContactsContract.Contacts.CONTENT_TYPE
+                putExtra(ContactsContract.Intents.Insert.PHONE, cleanNumber)
+            }
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("PhoneService", "Error adding new contact with number: $phoneNumber", e)
+        }
+    }
 } 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -389,8 +390,11 @@ fun ContactActionsDialog(
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     callActivity: Contact? = null, // New parameter for recent call activity
     onAddToQuickList: ((Contact) -> Unit)? = null, // New parameter for adding to quick list
-    isInQuickList: Boolean = false // New parameter to check if contact is already in quick list
+    isInQuickList: Boolean = false, // New parameter to check if contact is already in quick list
+    onAddToContacts: ((String) -> Unit)? = null // New parameter for adding to phone contacts
 ) {
+    // Check if this is an unknown contact (dummy contact created from phone number search)
+    val isUnknownContact = contact.id.startsWith("search_number_") || contact.id.startsWith("call_history_")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -485,6 +489,40 @@ fun ContactActionsDialog(
                                 )
                                 Text(
                                     text = "Add to Quick List",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Add to Contacts option - only show for unknown contacts
+                    if (isUnknownContact && onAddToContacts != null) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clickable {
+                                    onAddToContacts(contact.phoneNumber)
+                                    onDismiss()
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PersonAdd,
+                                    contentDescription = "Add to Contacts",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "Add to Contacts",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
