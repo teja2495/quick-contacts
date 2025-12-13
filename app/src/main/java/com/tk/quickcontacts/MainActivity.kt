@@ -166,6 +166,18 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     
     // Track if user has denied permissions after first request
     var hasDeniedPermissionsAfterFirstRequest by remember { mutableStateOf(false) }
+    
+    // Track if we've requested phone permission from settings
+    var hasRequestedPhonePermissionFromSettings by remember { mutableStateOf(false) }
+    
+    // Track if we've requested call log permission from settings
+    var hasRequestedCallLogPermissionFromSettings by remember { mutableStateOf(false) }
+    
+    // Track if call log permission was just denied (for immediate settings dialog on retry)
+    var callLogPermissionJustDenied by remember { mutableStateOf(false) }
+    
+    // Track if phone permission was just denied (for immediate settings dialog on retry)
+    var phonePermissionJustDenied by remember { mutableStateOf(false) }
 
     // Check if permissions are permanently denied
     fun arePermissionsPermanentlyDenied(): Boolean {
@@ -179,23 +191,41 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         
         // A permission is permanently denied if it's not granted AND we shouldn't show rationale
         // This happens when user denies with "Don't ask again" or denies multiple times
-        // Note: Call History permission is optional, so we don't check it for permanent denial
-        val callPermissionDenied = !hasCallPermission && 
-            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CALL_PHONE)
-            
+        // Note: Call History and Phone permissions are optional, so we only check contacts permission
         val contactsPermissionDenied = !hasContactsPermission && 
             !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CONTACTS)
         
-        return callPermissionDenied || contactsPermissionDenied
+        return contactsPermissionDenied
     }
 
     // Check if call log permission is permanently denied
     fun isCallLogPermissionPermanentlyDenied(): Boolean {
         val activity = context as? Activity ?: return false
         
+        // If permission was just denied, treat it as permanently denied for immediate settings dialog
+        if (callLogPermissionJustDenied && !hasCallLogPermission) return true
+        
+        // Only check for permanent denial if we've already requested this permission from settings
+        if (!hasRequestedCallLogPermissionFromSettings) return false
+        
         // A permission is permanently denied if it's not granted AND we shouldn't show rationale
         return !hasCallLogPermission && 
             !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CALL_LOG)
+    }
+    
+    // Check if call permission is permanently denied
+    fun isCallPermissionPermanentlyDenied(): Boolean {
+        val activity = context as? Activity ?: return false
+        
+        // If permission was just denied, treat it as permanently denied for immediate settings dialog
+        if (phonePermissionJustDenied && !hasCallPermission) return true
+        
+        // Only check for permanent denial if we've already requested this permission from settings
+        if (!hasRequestedPhonePermissionFromSettings) return false
+        
+        // A permission is permanently denied if it's not granted AND we shouldn't show rationale
+        return !hasCallPermission && 
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CALL_PHONE)
     }
 
     // Function to open app settings
@@ -208,7 +238,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         // This will be handled by the LaunchedEffect that listens to onResume
     }
 
-    // Call log permission launcher (for settings screen and sequential requests)
+    // Call log permission launcher (for sequential permission requests at app launch)
     val callLogPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -217,9 +247,33 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         hasRequestedPermissions = true
         isRequestingPermissions = false
         
+        // Check if contacts permission was denied to set the denial flag
+        if (!hasContactsPermission) {
+            hasDeniedPermissionsAfterFirstRequest = true
+        }
+        
         // If permission is granted, automatically enable recent calls
         if (isGranted) {
             viewModel.enableRecentCallsVisibility()
+        }
+    }
+    
+    // Separate call log permission launcher for settings screen
+    val callLogPermissionFromSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCallLogPermission = isGranted
+        hasRequestedCallLogPermissionFromSettings = true
+        
+        // If permission granted from settings and recent calls is currently off, turn it on
+        val isRecentCallsVisible = viewModel.isRecentCallsVisible.value
+        if (isGranted && !isRecentCallsVisible) {
+            viewModel.toggleRecentCallsVisibility()
+            // Clear the denial flag when permission is granted
+            callLogPermissionJustDenied = false
+        } else if (!isGranted) {
+            // Set flag to show settings dialog immediately on next toggle attempt
+            callLogPermissionJustDenied = true
         }
     }
 
@@ -227,16 +281,26 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCallPermission = isGranted
-        if (isGranted) {
-            // If phone permission granted, request call log permission next
-            callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
-        } else {
-            // If phone permission denied, mark as requested and check for permanent denial
-            hasRequestedPermissions = true
-            isRequestingPermissions = false
-            if (hasRequestedPermissions && !hasCallPermission) {
-                hasDeniedPermissionsAfterFirstRequest = true
-            }
+        // Phone permission is optional, always proceed to request call log permission
+        callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+    }
+    
+    // Separate phone permission launcher for settings screen
+    val phonePermissionFromSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCallPermission = isGranted
+        hasRequestedPhonePermissionFromSettings = true
+        
+        // If permission granted from settings and direct dial is currently off, turn it on
+        val isDirectDialEnabled = viewModel.isDirectDialEnabled.value
+        if (isGranted && !isDirectDialEnabled) {
+            viewModel.toggleDirectDial()
+            // Clear the denial flag when permission is granted
+            phonePermissionJustDenied = false
+        } else if (!isGranted) {
+            // Set flag to show settings dialog immediately on next toggle attempt
+            phonePermissionJustDenied = true
         }
     }
 
@@ -245,17 +309,8 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasContactsPermission = isGranted
-        if (isGranted) {
-            // If contacts permission granted, request phone permission next
-            phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE)
-        } else {
-            // If contacts permission denied, mark as requested and check for permanent denial
-            hasRequestedPermissions = true
-            isRequestingPermissions = false
-            if (hasRequestedPermissions && !hasContactsPermission) {
-                hasDeniedPermissionsAfterFirstRequest = true
-            }
-        }
+        // Always proceed to request phone permission (it's optional)
+        phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE)
     }
 
     // Contact states
@@ -373,20 +428,32 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
     
     // Function to refresh permission states
     fun refreshPermissionStates() {
-        hasCallPermission = ContextCompat.checkSelfPermission(
+        val newCallPermission = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.CALL_PHONE
         ) == PackageManager.PERMISSION_GRANTED
         
-        hasContactsPermission = ContextCompat.checkSelfPermission(
+        val newContactsPermission = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.READ_CONTACTS
         ) == PackageManager.PERMISSION_GRANTED
         
-        hasCallLogPermission = ContextCompat.checkSelfPermission(
+        val newCallLogPermission = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.READ_CALL_LOG
         ) == PackageManager.PERMISSION_GRANTED
+        
+        // Clear denial flags if permissions are now granted (e.g., from settings)
+        if (newCallLogPermission && !hasCallLogPermission) {
+            callLogPermissionJustDenied = false
+        }
+        if (newCallPermission && !hasCallPermission) {
+            phonePermissionJustDenied = false
+        }
+        
+        hasCallPermission = newCallPermission
+        hasContactsPermission = newContactsPermission
+        hasCallLogPermission = newCallLogPermission
 
         // hasPhoneStatePermission = ContextCompat.checkSelfPermission(
         //     context,
@@ -447,8 +514,8 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                     }
                 },
                 actions = {
-                    // Only show settings icon when not in settings screen, not searching, and required permissions are granted
-                    if (!isSettingsScreenOpen && !isSearching && hasCallPermission && hasContactsPermission) {
+                    // Only show settings icon when not in settings screen, not searching, and contacts permission is granted
+                    if (!isSettingsScreenOpen && !isSearching && hasContactsPermission) {
                         IconButton(
                             onClick = {
                                 isSettingsScreenOpen = true
@@ -472,7 +539,7 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                 .padding(innerPadding)
         ) {
             when {
-                !hasCallPermission || !hasContactsPermission -> {
+                !hasContactsPermission || isRequestingPermissions -> {
                     PermissionRequestScreen(
                         hasCallPermission = hasCallPermission,
                         hasContactsPermission = hasContactsPermission,
@@ -498,9 +565,14 @@ fun QuickContactsApp(viewModel: ContactsViewModel) {
                         onBackClick = { isSettingsScreenOpen = false },
                         hasCallLogPermission = hasCallLogPermission,
                         onRequestCallLogPermission = {
-                            callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                            callLogPermissionFromSettingsLauncher.launch(Manifest.permission.READ_CALL_LOG)
                         },
                         isCallLogPermissionPermanentlyDenied = isCallLogPermissionPermanentlyDenied(),
+                        hasCallPermission = hasCallPermission,
+                        onRequestCallPermission = {
+                            phonePermissionFromSettingsLauncher.launch(Manifest.permission.CALL_PHONE)
+                        },
+                        isCallPermissionPermanentlyDenied = isCallPermissionPermanentlyDenied(),
                         onOpenAppSettings = {
                             openAppSettings()
                         }

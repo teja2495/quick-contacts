@@ -29,17 +29,22 @@ fun SettingsScreen(
     hasCallLogPermission: Boolean = true,
     onRequestCallLogPermission: (() -> Unit)? = null,
     isCallLogPermissionPermanentlyDenied: Boolean = false,
+    hasCallPermission: Boolean = true,
+    onRequestCallPermission: (() -> Unit)? = null,
+    isCallPermissionPermanentlyDenied: Boolean = false,
     onOpenAppSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
     val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
+    val isDirectDialEnabled by viewModel.isDirectDialEnabled.collectAsState()
     val useWhatsAppAsDefault by viewModel.useWhatsAppAsDefault.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
     
     // Dialog state for permission settings
     var showPermissionSettingsDialog by remember { mutableStateOf(false) }
+    var showCallPermissionSettingsDialog by remember { mutableStateOf(false) }
     
     // Refresh available messaging apps when settings screen is opened
     LaunchedEffect(Unit) {
@@ -260,7 +265,11 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = stringResource(R.string.recent_calls_description),
+                            text = if (hasCallLogPermission) {
+                                stringResource(R.string.recent_calls_description)
+                            } else {
+                                "Requires call history permission to display recent calls."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -283,7 +292,61 @@ fun SettingsScreen(
                                 viewModel.toggleRecentCallsVisibility()
                             }
                         },
-                        enabled = true, // Always enabled
+                        enabled = true, // Always enabled to allow interaction
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+            }
+            
+            item {
+                // Direct Dial Setting (no Card)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Direct Dial",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (hasCallPermission) {
+                                "Calls are made immediately without opening the dialer."
+                            } else {
+                                "Requires phone permission to make calls directly."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        checked = isDirectDialEnabled && hasCallPermission,
+                        onCheckedChange = { newValue ->
+                            if (newValue && !hasCallPermission) {
+                                // User wants to enable but doesn't have permission
+                                if (isCallPermissionPermanentlyDenied) {
+                                    // Permission is permanently denied, show dialog
+                                    showCallPermissionSettingsDialog = true
+                                } else {
+                                    // Request permission normally
+                                    onRequestCallPermission?.invoke()
+                                }
+                            } else {
+                                // User wants to disable or already has permission
+                                viewModel.toggleDirectDial()
+                            }
+                        },
+                        enabled = true, // Always enabled to allow interaction
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -559,7 +622,7 @@ fun SettingsScreen(
         }
     }
     
-    // Permission Settings Dialog
+    // Permission Settings Dialog (for Call History)
     if (showPermissionSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionSettingsDialog = false },
@@ -593,6 +656,51 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(
                     onClick = { showPermissionSettingsDialog = false }
+                ) {
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        )
+    }
+    
+    // Call Permission Settings Dialog (for Direct Dial)
+    if (showCallPermissionSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showCallPermissionSettingsDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_permission_required_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+            text = {
+                Text(
+                    text = "To enable direct dial, you need to grant Phone permission in your device settings.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCallPermissionSettingsDialog = false
+                        onOpenAppSettings?.invoke()
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.dialog_open_settings),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showCallPermissionSettingsDialog = false }
                 ) {
                     Text(
                         text = "Cancel",

@@ -88,6 +88,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _availableMessagingApps = MutableStateFlow<Set<MessagingApp>>(emptySet())
     val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps.asStateFlow()
     
+    private val _isDirectDialEnabled = MutableStateFlow(true)
+    val isDirectDialEnabled: StateFlow<Boolean> = _isDirectDialEnabled.asStateFlow()
+    
     // Home country code state
     private val _homeCountryCode = MutableStateFlow<String?>(null)
     val homeCountryCode: StateFlow<String?> = _homeCountryCode.asStateFlow()
@@ -554,13 +557,15 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _isInternationalDetectionEnabled.value = isInternationalDetectionEnabled
         _isRecentCallsVisible.value = isRecentCallsVisible
         _defaultMessagingApp.value = defaultMessagingApp
+        _isDirectDialEnabled.value = preferencesRepository.loadDirectDialEnabled()
     }
 
     private fun saveSettings() {
         preferencesRepository.saveSettings(
             _isInternationalDetectionEnabled.value,
             _isRecentCallsVisible.value,
-            _defaultMessagingApp.value
+            _defaultMessagingApp.value,
+            _isDirectDialEnabled.value
         )
     }
     
@@ -604,6 +609,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun setMessagingApp(app: MessagingApp) {
         _defaultMessagingApp.value = app
         saveSettings()
+    }
+    
+    fun toggleDirectDial() {
+        _isDirectDialEnabled.value = !_isDirectDialEnabled.value
+        preferencesRepository.saveDirectDialEnabled(_isDirectDialEnabled.value)
     }
     
     fun toggleMessagingApp() {
@@ -745,7 +755,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             
             // Append country code if needed
             val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
-            phoneService.makePhoneCall(context, phoneNumberWithCountryCode)
+            phoneService.makePhoneCall(context, phoneNumberWithCountryCode, _isDirectDialEnabled.value)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error making phone call to: $phoneNumber", e)
         }

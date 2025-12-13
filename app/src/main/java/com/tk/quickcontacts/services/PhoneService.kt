@@ -1,16 +1,19 @@
 package com.tk.quickcontacts.services
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
+import androidx.core.content.ContextCompat
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 
 class PhoneService {
     
-    fun makePhoneCall(context: Context, phoneNumber: String) {
+    fun makePhoneCall(context: Context, phoneNumber: String, directDial: Boolean = true) {
         if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
             android.util.Log.w("PhoneService", "Invalid phone number for call: $phoneNumber")
             return
@@ -22,16 +25,32 @@ class PhoneService {
             return
         }
         
+        // Check if CALL_PHONE permission is granted
+        val hasCallPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CALL_PHONE
+        ) == PackageManager.PERMISSION_GRANTED
+        
         try {
-            val intent = Intent(Intent.ACTION_CALL).apply {
-                data = Uri.parse("tel:$cleanNumber")
+            if (directDial && hasCallPermission) {
+                // Direct dial - make the call immediately (requires CALL_PHONE permission)
+                val intent = Intent(Intent.ACTION_CALL).apply {
+                    data = Uri.parse("tel:$cleanNumber")
+                }
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
+            } else {
+                // Open dialer with pre-filled number (doesn't require CALL_PHONE permission)
+                val intent = Intent(Intent.ACTION_DIAL).apply {
+                    data = Uri.parse("tel:$cleanNumber")
+                }
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
             }
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
         } catch (e: Exception) {
             android.util.Log.e("PhoneService", "Error making phone call to: $cleanNumber", e)
-            // Fallback to dialer
-            openDialer(context)
+            // Fallback to dialer with number
+            openDialerWithNumber(context, cleanNumber)
         }
     }
     
@@ -42,6 +61,18 @@ class PhoneService {
             context.startActivity(intent)
         } catch (e: Exception) {
             android.util.Log.e("PhoneService", "Error opening dialer", e)
+        }
+    }
+    
+    fun openDialerWithNumber(context: Context, phoneNumber: String) {
+        try {
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = Uri.parse("tel:$phoneNumber")
+            }
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("PhoneService", "Error opening dialer with number: $phoneNumber", e)
         }
     }
     

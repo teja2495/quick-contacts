@@ -111,7 +111,8 @@ fun PermissionRequestScreen(
                     icon = Icons.Default.Phone,
                     title = stringResource(R.string.permission_phone_access),
                     description = stringResource(R.string.permission_phone_description),
-                    isGranted = hasCallPermission
+                    isGranted = hasCallPermission,
+                    isOptional = true
                 )
                 PermissionCard(
                     icon = Icons.Default.History,

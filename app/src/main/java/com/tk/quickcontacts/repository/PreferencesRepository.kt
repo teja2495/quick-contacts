@@ -168,13 +168,15 @@ class PreferencesRepository(context: Context) {
     fun saveSettings(
         isInternationalDetectionEnabled: Boolean,
         isRecentCallsVisible: Boolean,
-        defaultMessagingApp: MessagingApp
+        defaultMessagingApp: MessagingApp,
+        isDirectDialEnabled: Boolean = true
     ) {
         try {
             sharedPreferences.edit()
                 .putBoolean("international_detection_enabled", isInternationalDetectionEnabled)
                 .putBoolean("recent_calls_visible", isRecentCallsVisible)
                 .putString("default_messaging_app", defaultMessagingApp.name)
+                .putBoolean("direct_dial_enabled", isDirectDialEnabled)
                 .apply()
             cachedSettings = Triple(isInternationalDetectionEnabled, isRecentCallsVisible, defaultMessagingApp)
         } catch (e: Exception) {
@@ -212,6 +214,24 @@ class PreferencesRepository(context: Context) {
             android.util.Log.e("PreferencesRepository", "Error loading settings", e)
             // Return default settings
             Triple(false, true, MessagingApp.WHATSAPP)
+        }
+    }
+    
+    // Direct dial setting
+    fun saveDirectDialEnabled(isEnabled: Boolean) {
+        try {
+            sharedPreferences.edit().putBoolean("direct_dial_enabled", isEnabled).apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error saving direct dial setting", e)
+        }
+    }
+    
+    fun loadDirectDialEnabled(): Boolean {
+        return try {
+            sharedPreferences.getBoolean("direct_dial_enabled", true) // Default is true (enabled)
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error loading direct dial setting", e)
+            true // Default to enabled if error
         }
     }
 
