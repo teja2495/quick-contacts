@@ -7,7 +7,7 @@ A fast and privacy-focused Android app for quick access to your most important c
 - **Quick Contact List**: Add your most important contacts for instant access
 - **Recent Calls**: View and redial your recent calls
 - **Direct Actions**: Call, message, or open messaging apps with one tap
-- **Search**: Quickly find any contact in your phonebook
+- **Search**: Quickly find any contact in your phonebook by name or phone number
 - **Customizable Actions**: Set different actions for each contact
 - **Offline Operation**: Works entirely offline - no internet required
 
@@ -43,7 +43,7 @@ Quick Contacts is built with your privacy in mind:
 
 ### Adding Contacts to Quick List
 1. Tap the search icon
-2. Search for a contact
+2. Search for a contact by name or phone number
 3. Tap the "+" button to add them to your quick list
 
 ### Customizing Actions
