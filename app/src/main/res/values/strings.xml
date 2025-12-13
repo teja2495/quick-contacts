@@ -43,7 +43,7 @@
     
     <!-- Search -->
     <string name="search_placeholder">Search contacts...</string>
-    <string name="search_instruction">Type a name to search through all your contacts</string>
+    <string name="search_instruction">Type a name or phone number to search through all your contacts</string>
     <string name="search_no_results">Try a different search term</string>
     <string name="search_add_instruction">Tap + to add to your quick list</string>
     

@@ -286,16 +286,42 @@ class ContactService {
             val SECOND_WORD_STARTS_WITH_PRIORITY = 700
             val THIRD_WORD_STARTS_WITH_PRIORITY = 600
             val FOURTH_WORD_STARTS_WITH_PRIORITY = 500
+            val PHONE_NUMBER_MATCH_PRIORITY = 400
             val CONTAINS_PRIORITY = 100
             
+            // Normalize query for phone number search (remove non-digit characters)
+            val normalizedPhoneQuery = query.replace(Regex("[^\\d]"), "")
+            // Check if query looks like a phone number (mostly digits with optional formatting)
+            val hasDigits = normalizedPhoneQuery.isNotEmpty()
+            val hasLetters = query.replace(Regex("[\\d\\s\\-\\(\\)\\+]"), "").isNotEmpty()
+            val isPhoneNumberQuery = hasDigits && !hasLetters && normalizedPhoneQuery.length >= 3
+            
+            android.util.Log.d("ContactService", "Query analysis - hasDigits: $hasDigits, hasLetters: $hasLetters, isPhoneNumberQuery: $isPhoneNumberQuery, normalizedPhoneQuery: '$normalizedPhoneQuery'")
+            
             // Execute search query to get all potential matches
-            val cursor: Cursor? = context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                phoneProjection,
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE",
-                arrayOf("%$normalizedQuery%"),
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
-            )
+            // If it's a phone number query, get all contacts and filter in Kotlin for better matching
+            // Otherwise, search by name (and optionally by formatted phone number)
+            val cursor: Cursor? = if (isPhoneNumberQuery) {
+                android.util.Log.d("ContactService", "Searching by phone number: $normalizedPhoneQuery")
+                // Get all contacts for phone number matching (we'll filter in Kotlin)
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    phoneProjection,
+                    null,
+                    null,
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+                )
+            } else {
+                android.util.Log.d("ContactService", "Searching by name: $normalizedQuery")
+                // Search by name
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    phoneProjection,
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? COLLATE NOCASE",
+                    arrayOf("%$normalizedQuery%"),
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+                )
+            }
             
             cursor?.use {
                 val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
@@ -316,38 +342,59 @@ class ContactService {
                             val normalizedName = name.lowercase().trim()
                             val nameParts = normalizedName.split(Regex("\\s+"))
                             
-                            var priority = CONTAINS_PRIORITY
-                            var matchType = 7 // Default: contains match (lowest priority)
+                            // Normalize phone number for comparison (remove non-digit characters)
+                            val normalizedPhoneNumber = number.replace(Regex("[^\\d]"), "")
+                            val phoneNumberMatchesQuery = normalizedPhoneQuery.isNotEmpty() && normalizedPhoneNumber.contains(normalizedPhoneQuery)
+                            // Only check name matching if we're not in phone number query mode
+                            val nameMatchesQuery = !isPhoneNumberQuery && normalizedName.contains(normalizedQuery)
                             
-                            // 1st priority: exact match
-                            if (normalizedName == normalizedQuery) {
+                            // Log matching details for debugging
+                            if (phoneNumberMatchesQuery || nameMatchesQuery) {
+                                android.util.Log.d("ContactService", "Contact '$name' - number: $number, normalized: $normalizedPhoneNumber, phoneMatch: $phoneNumberMatchesQuery, nameMatch: $nameMatchesQuery")
+                            }
+                            
+                            // Skip if neither name nor phone number matches
+                            if (!nameMatchesQuery && !phoneNumberMatchesQuery) {
+                                continue
+                            }
+                            
+                            var priority = CONTAINS_PRIORITY
+                            var matchType = 8 // Default: contains match (lowest priority)
+                            
+                            // Check phone number match first if in phone query mode
+                            if (phoneNumberMatchesQuery && isPhoneNumberQuery) {
+                                priority = PHONE_NUMBER_MATCH_PRIORITY
+                                matchType = 7
+                            }
+                            // Name-based matching
+                            else if (normalizedName == normalizedQuery) {
                                 priority = EXACT_MATCH_PRIORITY
                                 matchType = 1
                             } 
-                            // 2nd priority: starts with search string and has only one word
                             else if (normalizedName.startsWith(normalizedQuery) && nameParts.size == 1) {
                                 priority = STARTS_WITH_SINGLE_WORD_PRIORITY
                                 matchType = 2
                             }
-                            // 3rd priority: starts with search string and has multiple words
                             else if (normalizedName.startsWith(normalizedQuery) && nameParts.size > 1) {
                                 priority = STARTS_WITH_MULTI_WORD_PRIORITY
                                 matchType = 3
                             }
-                            // 4th priority: 2nd word starts with the search string
                             else if (nameParts.size >= 2 && nameParts[1].startsWith(normalizedQuery)) {
                                 priority = SECOND_WORD_STARTS_WITH_PRIORITY
                                 matchType = 4
                             }
-                            // 5th priority: 3rd word starts with the search string
                             else if (nameParts.size >= 3 && nameParts[2].startsWith(normalizedQuery)) {
                                 priority = THIRD_WORD_STARTS_WITH_PRIORITY
                                 matchType = 5
                             }
-                            // 6th priority: 4th word starts with the search string
                             else if (nameParts.size >= 4 && nameParts[3].startsWith(normalizedQuery)) {
                                 priority = FOURTH_WORD_STARTS_WITH_PRIORITY
                                 matchType = 6
+                            }
+                            // Phone number match as fallback for non-phone queries
+                            else if (phoneNumberMatchesQuery) {
+                                priority = PHONE_NUMBER_MATCH_PRIORITY
+                                matchType = 7
                             }
                             
                             // Update contact's priority if this is a higher score or new contact

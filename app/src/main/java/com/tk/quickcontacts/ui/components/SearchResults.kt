@@ -76,7 +76,7 @@ fun SearchResultsContent(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
-                        text = "Type a name to search through all your contacts",
+                        text = "Type a name or phone number to search through all your contacts",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

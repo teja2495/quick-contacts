@@ -392,46 +392,66 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         // Cancel any ongoing search job
         searchJob?.cancel()
         
-        val numberLikeRegex = Regex("^[\\d\\s+\\-()]+$")
-        
         if (query.isNotEmpty()) {
-            // If the query looks like a number, show only the dummy contact
-            if (numberLikeRegex.matches(query)) {
-                val normalizedQuery = query.trim()
-                val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
-                val dummyContact = Contact(
-                    id = "search_number_${normalizedQuery}",
-                    name = formattedName,
-                    phoneNumber = query,
-                    phoneNumbers = listOf(query),
-                    photo = null,
-                    photoUri = null,
-                    callType = null
-                )
-                _searchResults.value = listOf(dummyContact)
-                android.util.Log.d("ContactsViewModel", "Query looks like a number, showing only dummy contact")
-            } else {
-                // Use debouncing to avoid excessive database queries
-                searchJob = viewModelScope.launch {
-                    delay(searchDebounceDelay) // Wait for user to finish typing
-                    
-                    if (Mocks.ENABLE_MOCK_MODE) {
-                        // Search in mock contacts
-                        val searchResults = _allContacts.value.filter { contact ->
-                            contact.name.lowercase().contains(query.lowercase()) ||
-                            contact.phoneNumber.contains(query)
-                        }
-                        _searchResults.value = searchResults
-                        android.util.Log.d("ContactsViewModel", "Mock search completed: ${searchResults.size} contacts found")
-                    } else {
-                        // Use the ContactService for advanced search functionality
-                        val context = getApplication<Application>().applicationContext
-                        val searchResults = contactService.searchContacts(context, query)
-                        
-                        val mutableResults = searchResults.toMutableList()
-                        _searchResults.value = mutableResults
-                        android.util.Log.d("ContactsViewModel", "Search completed: ${mutableResults.size} contacts found")
+            // Use debouncing to avoid excessive database queries
+            searchJob = viewModelScope.launch {
+                delay(searchDebounceDelay) // Wait for user to finish typing
+                
+                val numberLikeRegex = Regex("^[\\d\\s+\\-()]+$")
+                val isPhoneNumberQuery = numberLikeRegex.matches(query)
+                
+                if (Mocks.ENABLE_MOCK_MODE) {
+                    // Search in mock contacts
+                    val searchResults = _allContacts.value.filter { contact ->
+                        contact.name.lowercase().contains(query.lowercase()) ||
+                        contact.phoneNumber.contains(query)
                     }
+                    
+                    // If it's a phone number query and no results, add dummy contact
+                    val finalResults = if (isPhoneNumberQuery && searchResults.isEmpty()) {
+                        val normalizedQuery = query.trim()
+                        val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
+                        val dummyContact = Contact(
+                            id = "search_number_${normalizedQuery}",
+                            name = formattedName,
+                            phoneNumber = query,
+                            phoneNumbers = listOf(query),
+                            photo = null,
+                            photoUri = null,
+                            callType = null
+                        )
+                        listOf(dummyContact)
+                    } else {
+                        searchResults
+                    }
+                    
+                    _searchResults.value = finalResults
+                    android.util.Log.d("ContactsViewModel", "Mock search completed: ${finalResults.size} contacts found")
+                } else {
+                    // Use the ContactService for advanced search functionality
+                    val context = getApplication<Application>().applicationContext
+                    val searchResults = contactService.searchContacts(context, query)
+                    
+                    // If it's a phone number query and no results, add dummy contact
+                    val finalResults = if (isPhoneNumberQuery && searchResults.isEmpty()) {
+                        val normalizedQuery = query.trim()
+                        val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
+                        val dummyContact = Contact(
+                            id = "search_number_${normalizedQuery}",
+                            name = formattedName,
+                            phoneNumber = query,
+                            phoneNumbers = listOf(query),
+                            photo = null,
+                            photoUri = null,
+                            callType = null
+                        )
+                        listOf(dummyContact)
+                    } else {
+                        searchResults
+                    }
+                    
+                    _searchResults.value = finalResults
+                    android.util.Log.d("ContactsViewModel", "Search completed: ${finalResults.size} contacts found (${searchResults.size} real contacts, ${if (isPhoneNumberQuery && searchResults.isEmpty()) "1 dummy" else "0 dummy"})")
                 }
             }
         } else {
