@@ -532,6 +532,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                     defaultMessagingApp = defaultMessagingApp,
                                     selectedContacts = selectedContacts,
                                     availableMessagingApps = availableMessagingApps,
+                                    availableActions = availableActions,
                                     onExecuteAction = { ctx, action, phoneNumber ->
                                         viewModel.executeAction(ctx, action, phoneNumber)
                                     },

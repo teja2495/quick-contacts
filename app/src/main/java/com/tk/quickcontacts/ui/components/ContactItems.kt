@@ -432,6 +432,7 @@ fun RecentCallVerticalItem(
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
+    availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
     getLastShownPhoneNumber: (String) -> String? = { null },
@@ -476,31 +477,19 @@ fun RecentCallVerticalItem(
     }
     
     if (showContactActionsDialog) {
-        ContactActionsDialog(
+        ContactActionsGridDialog(
             contact = contact,
-            onCall = { contactToCall ->
-                onContactClick(contactToCall)
-                showContactActionsDialog = false
-            },
-            onSms = { contactToSms ->
-                onExecuteAction(context, "Messages", contactToSms.phoneNumber)
-                showContactActionsDialog = false
-            },
-            onWhatsApp = { contactToWhatsApp ->
-                onWhatsAppClick(contactToWhatsApp)
-                showContactActionsDialog = false
-            },
-            onTelegram = { contactToTelegram ->
-                onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
-                showContactActionsDialog = false
-            },
-            onSignal = { contactToSignal ->
-                onExecuteAction(context, "Signal", contactToSignal.phoneNumber)
+            availableActions = availableActions,
+            onActionSelected = { action, phoneNumber ->
+                when {
+                    action == QuickContactAction.NONE || action == QuickContactAction.ALL_OPTIONS -> Unit
+                    action == QuickContactAction.CALL -> onContactClick(contact.copy(phoneNumber = phoneNumber))
+                    else -> onExecuteAction(context, action, phoneNumber)
+                }
                 showContactActionsDialog = false
             },
             onDismiss = { showContactActionsDialog = false },
-            availableMessagingApps = availableMessagingApps,
-            onAddToQuickList = onAddToQuickList,
+            onAddToQuickList = { contactToAdd -> onAddToQuickList?.invoke(contactToAdd) },
             isInQuickList = selectedContacts.any { it.id == contact.id },
             getLastShownPhoneNumber = getLastShownPhoneNumber,
             setLastShownPhoneNumber = setLastShownPhoneNumber
@@ -512,12 +501,7 @@ fun RecentCallVerticalItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { 
-                    if (contact.phoneNumbers.size > 1) {
-                        dialogAction = "call"
-                        showPhoneNumberDialog = true
-                    } else {
-                        onContactClick(contact)
-                    }
+                    showContactActionsDialog = true
                 },
                 onLongClick = {
                     showContactActionsDialog = true
@@ -622,48 +606,20 @@ fun RecentCallVerticalItem(
         IconButton(
             onClick = { 
                 if (contact.phoneNumbers.size > 1) {
-                    dialogAction = "whatsapp"
+                    dialogAction = "call"
                     showPhoneNumberDialog = true
                 } else {
-                    onWhatsAppClick(contact)
+                    onContactClick(contact)
                 }
             },
             modifier = Modifier.size(48.dp)
         ) {
-            when (defaultMessagingApp) {
-                    MessagingApp.WHATSAPP -> {
-                        Icon(
-                            painter = painterResource(id = R.drawable.whatsapp_icon),
-                            contentDescription = "WhatsApp ${contact.name}",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    MessagingApp.SMS -> {
-                        Icon(
-                            imageVector = Icons.Rounded.Sms,
-                            contentDescription = "SMS ${contact.name}",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    MessagingApp.TELEGRAM -> {
-                        Icon(
-                            painter = painterResource(id = R.drawable.telegram_icon),
-                            contentDescription = "Telegram ${contact.name}",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    MessagingApp.SIGNAL -> {
-                        Icon(
-                            painter = painterResource(id = R.drawable.signal_icon),
-                            contentDescription = "Signal ${contact.name}",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+            Icon(
+                imageVector = Icons.Default.Call,
+                contentDescription = "Call ${contact.name}",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

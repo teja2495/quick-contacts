@@ -974,7 +974,7 @@ fun ContactActionsGridDialog(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
+                                            text = if (isUnknownContact) "U" else contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                                             color = MaterialTheme.colorScheme.onPrimary,
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold,
@@ -985,7 +985,7 @@ fun ContactActionsGridDialog(
                             }
                             Spacer(Modifier.width(12.dp))
                             Text(
-                                text = contact.name,
+                                text = if (isUnknownContact) "Unknown" else contact.name,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold
                             )
