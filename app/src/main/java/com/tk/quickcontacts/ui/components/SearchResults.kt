@@ -33,6 +33,7 @@ fun SearchResultsContent(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToContacts: (Context, String) -> Unit = { context, phoneNumber -> 
         viewModel.addNewContactToPhone(context, phoneNumber)
@@ -160,6 +161,7 @@ fun SearchResultsContent(
                     defaultMessagingApp = defaultMessagingApp,
                     modifier = Modifier.fillMaxWidth(),
                     availableMessagingApps = availableMessagingApps,
+                    availableActions = availableActions,
                     onExecuteAction = onExecuteAction,
                     onAddToContacts = onAddToContacts,
                     getLastShownPhoneNumber = viewModel::getLastShownPhoneNumber,
@@ -184,6 +186,7 @@ fun SearchResultItem(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToContacts: (Context, String) -> Unit = { _, _ -> },
     getLastShownPhoneNumber: (String) -> String? = { null },
@@ -235,6 +238,7 @@ fun SearchResultItem(
     if (showContactActionsDialog) {
         ContactActionsGridDialog(
             contact = contact,
+            availableActions = availableActions,
             onActionSelected = { action, phoneNumber ->
                 when {
                     action == QuickContactAction.NONE || action == QuickContactAction.ALL_OPTIONS -> Unit

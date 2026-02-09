@@ -39,6 +39,17 @@ object QuickContactAction {
     val executableOptions: List<String> = editableOptions.filter {
         it != NONE && it != ALL_OPTIONS
     }
+
+    fun editableOptionsFiltered(availableActions: Set<String>): List<String> {
+        val alwaysShown = setOf(CALL, MESSAGE, ALL_OPTIONS, NONE)
+        return editableOptions.filter { it in alwaysShown || it in availableActions }
+    }
+
+    fun executableOptionsFiltered(availableActions: Set<String>): List<String> {
+        return editableOptionsFiltered(availableActions).filter {
+            it != NONE && it != ALL_OPTIONS
+        }
+    }
 }
 
 enum class QuickContactActionSlot(

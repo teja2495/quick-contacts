@@ -53,7 +53,50 @@ class MessagingService {
             false
         }
     }
-    
+
+    private fun isSignalInstalled(packageManager: PackageManager): Boolean {
+        return try {
+            packageManager.getPackageInfo("org.thoughtcrime.securesms", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
+    private fun isGoogleMeetInstalled(packageManager: PackageManager): Boolean {
+        return try {
+            packageManager.getPackageInfo("com.google.android.apps.tachyon", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
+    fun checkAvailableActions(packageManager: PackageManager): Set<String> {
+        val actions = mutableSetOf<String>()
+        actions.add("Call")
+        actions.add("Message")
+        if (isWhatsAppInstalled(packageManager)) {
+            actions.add("WhatsApp Chat")
+            actions.add("WhatsApp Voice Call")
+            actions.add("WhatsApp Video Call")
+        }
+        if (isTelegramInstalled(packageManager)) {
+            actions.add("Telegram Chat")
+            actions.add("Telegram Voice Call")
+            actions.add("Telegram Video Call")
+        }
+        if (isSignalInstalled(packageManager)) {
+            actions.add("Signal Chat")
+            actions.add("Signal Voice Call")
+            actions.add("Signal Video Call")
+        }
+        if (isGoogleMeetInstalled(packageManager)) {
+            actions.add("Google Meet")
+        }
+        return actions
+    }
+
     fun openWhatsAppChat(context: Context, phoneNumber: String) {
         WhatsAppActions.openWhatsAppChat(context, phoneNumber, onSmsFallback = { ctx, num -> openSmsApp(ctx, num) })
     }
@@ -184,8 +227,8 @@ class MessagingService {
         )
     }
 
-    fun openSignalVoiceCall(context: Context, phoneNumber: String) {
-        SignalActions.openSignalChat(
+    fun openSignalVoiceCall(context: Context, phoneNumber: String): Boolean {
+        return SignalActions.openSignalCall(
             context,
             phoneNumber,
             onShowToast = { resId -> Toast.makeText(context, resId, Toast.LENGTH_SHORT).show() },
@@ -200,8 +243,8 @@ class MessagingService {
         )
     }
 
-    fun openSignalVideoCall(context: Context, phoneNumber: String) {
-        SignalActions.openSignalChat(
+    fun openSignalVideoCall(context: Context, phoneNumber: String): Boolean {
+        return SignalActions.openSignalVideoCall(
             context,
             phoneNumber,
             onShowToast = { resId -> Toast.makeText(context, resId, Toast.LENGTH_SHORT).show() },

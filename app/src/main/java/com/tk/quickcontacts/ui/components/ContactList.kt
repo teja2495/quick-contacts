@@ -29,6 +29,7 @@ fun ContactList(
     customActionPreferences: Map<String, CustomActions> = emptyMap(),
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableActions: Set<String> = emptySet(),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
@@ -41,7 +42,7 @@ fun ContactList(
         onMove(from.index, to.index)
     })
     
-    val contactItems = remember(contacts, customActionPreferences, editMode, defaultMessagingApp, availableMessagingApps, selectedContacts) {
+    val contactItems = remember(contacts, customActionPreferences, editMode, defaultMessagingApp, availableMessagingApps, availableActions, selectedContacts) {
         contacts.map { contact ->
             contact to customActionPreferences[contact.id]
         }
@@ -80,6 +81,7 @@ fun ContactList(
                         customActions = customActions,
                         defaultMessagingApp = defaultMessagingApp,
                         availableMessagingApps = availableMessagingApps,
+                        availableActions = availableActions,
                         selectedContacts = selectedContacts,
                         onExecuteAction = onExecuteAction,
                         onUpdateContactNumber = onUpdateContactNumber,
@@ -104,6 +106,7 @@ fun ContactList(
                     customActions = customActions,
                     defaultMessagingApp = defaultMessagingApp,
                     availableMessagingApps = availableMessagingApps,
+                    availableActions = availableActions,
                     selectedContacts = selectedContacts,
                     onExecuteAction = onExecuteAction,
                     onUpdateContactNumber = onUpdateContactNumber,

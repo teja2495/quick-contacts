@@ -52,7 +52,10 @@ import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.R
 import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.utils.ContactActionAvailability
 import com.tk.quickcontacts.utils.PhoneNumberUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // Helper data class for chip layout
 data class ChipLayout(
@@ -813,6 +816,7 @@ fun ContactActionsDialog(
 @Composable
 fun ContactActionsGridDialog(
     contact: Contact,
+    availableActions: Set<String>,
     onActionSelected: (String, String) -> Unit,
     onDismiss: () -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
@@ -839,6 +843,20 @@ fun ContactActionsGridDialog(
         mutableStateOf(0.coerceAtMost((reorderedPhoneNumbers.size - 1).coerceAtLeast(0)))
     }
     val selectedPhoneNumber = reorderedPhoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
+
+    val context = LocalContext.current
+    var contactFilteredActions by remember(availableActions, selectedPhoneNumber) {
+        mutableStateOf(availableActions)
+    }
+    LaunchedEffect(availableActions, selectedPhoneNumber, context) {
+        contactFilteredActions = withContext(Dispatchers.IO) {
+            ContactActionAvailability.resolveContactAvailableActions(
+                context = context,
+                phoneNumber = selectedPhoneNumber,
+                appAvailableActions = availableActions
+            )
+        }
+    }
 
     LaunchedEffect(selectedPhoneIndex, reorderedPhoneNumbers, hasMultipleNumbers) {
         if (hasMultipleNumbers && selectedPhoneIndex in reorderedPhoneNumbers.indices) {
@@ -1023,7 +1041,7 @@ fun ContactActionsGridDialog(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            for (rowActions in QuickContactAction.executableOptions.chunked(3)) {
+                            for (rowActions in QuickContactAction.executableOptionsFiltered(contactFilteredActions).chunked(3)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)

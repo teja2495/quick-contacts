@@ -3,6 +3,7 @@ package com.tk.quickcontacts.actions
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.ContactsContract
 import android.util.Log
 import com.tk.quickcontacts.R
 import com.tk.quickcontacts.utils.ContactMethodMimeTypes
@@ -72,6 +73,18 @@ object SignalActions {
         )
     }
 
+    fun openSignalCall(
+        context: Context,
+        phoneNumber: String,
+        onShowToast: ((Int) -> Unit)? = null,
+    ): Boolean {
+        if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return false
+        val dataId = resolveSignalDataId(context, phoneNumber, ContactMethodMimeTypes.SIGNAL_CALL)
+        if (dataId != null && openSignalCall(context, dataId, onShowToast)) return true
+        openSignalChat(context, phoneNumber, onShowToast)
+        return false
+    }
+
     fun openSignalVideoCall(
         context: Context,
         dataId: Long?,
@@ -93,6 +106,18 @@ object SignalActions {
         } else {
             onShowToast?.invoke(R.string.error_signal_not_installed)
         }
+        return false
+    }
+
+    fun openSignalVideoCall(
+        context: Context,
+        phoneNumber: String,
+        onShowToast: ((Int) -> Unit)? = null,
+    ): Boolean {
+        if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return false
+        val dataId = resolveSignalDataId(context, phoneNumber, ContactMethodMimeTypes.SIGNAL_VIDEO_CALL)
+        if (dataId != null && openSignalVideoCall(context, dataId, onShowToast)) return true
+        openSignalChat(context, phoneNumber, onShowToast)
         return false
     }
 
@@ -134,4 +159,42 @@ object SignalActions {
 
     private fun isSignalInstalled(context: Context): Boolean =
         context.packageManager.getLaunchIntentForPackage(SIGNAL_PACKAGE) != null
+
+    private fun resolveSignalDataId(context: Context, phoneNumber: String, mimeType: String): Long? {
+        val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber) ?: return null
+        return try {
+            val lookupUri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(cleanNumber)
+            )
+            val contactId: Long? = context.contentResolver.query(
+                lookupUri,
+                arrayOf(ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(ContactsContract.PhoneLookup._ID)
+                    if (idx >= 0) cursor.getLong(idx) else null
+                } else null
+            }
+            if (contactId == null) return null
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data._ID),
+                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(contactId.toString(), mimeType),
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(ContactsContract.Data._ID)
+                    if (idx >= 0) cursor.getLong(idx) else null
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to resolve Signal dataId for $phoneNumber", e)
+            null
+        }
+    }
 }

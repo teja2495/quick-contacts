@@ -84,7 +84,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     private val _availableMessagingApps = MutableStateFlow<Set<MessagingApp>>(emptySet())
     val availableMessagingApps: StateFlow<Set<MessagingApp>> = _availableMessagingApps.asStateFlow()
-    
+
+    private val _availableActions = MutableStateFlow<Set<String>>(emptySet())
+    val availableActions: StateFlow<Set<String>> = _availableActions.asStateFlow()
+
     private val _isDirectDialEnabled = MutableStateFlow(true)
     val isDirectDialEnabled: StateFlow<Boolean> = _isDirectDialEnabled.asStateFlow()
     
@@ -162,7 +165,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             com.tk.quickcontacts.models.MessagingApp.SMS,
             com.tk.quickcontacts.models.MessagingApp.TELEGRAM
         )
-        
+        _availableActions.value = messagingService.checkAvailableActions(getApplication<Application>().packageManager)
+
         // Load mock call activity for quick list contacts
         loadMockCallActivityForQuickList()
         
@@ -364,11 +368,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private fun checkAvailableMessagingApps() {
         val packageManager = getApplication<Application>().packageManager
         val availableApps = messagingService.checkAvailableMessagingApps(packageManager)
-        
+        val actions = messagingService.checkAvailableActions(packageManager)
+
         android.util.Log.d("QuickContacts", "Available messaging apps: $availableApps")
         _availableMessagingApps.value = availableApps
-        
-        // If current default app is not available, switch to SMS
+        _availableActions.value = actions
+
         if (!availableApps.contains(_defaultMessagingApp.value)) {
             android.util.Log.d("QuickContacts", "Current default app ${_defaultMessagingApp.value} not available, switching to SMS")
             _defaultMessagingApp.value = MessagingApp.SMS

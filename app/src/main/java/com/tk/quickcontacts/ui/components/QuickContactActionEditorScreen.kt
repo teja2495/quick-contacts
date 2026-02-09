@@ -43,6 +43,7 @@ fun QuickContactActionEditorScreen(
     customActions: CustomActions?,
     defaultMessagingApp: MessagingApp,
     availableMessagingApps: Set<MessagingApp>,
+    availableActions: Set<String>,
     selectedContacts: List<Contact>,
     hasSeenCallWarning: Boolean,
     onExecuteAction: (Context, String, String) -> Unit,
@@ -69,7 +70,7 @@ fun QuickContactActionEditorScreen(
         val slot = editingSlot!!
         ActionGridDialog(
             title = "Select action for ${slot.sectionTitle} (${slot.interactionTitle})",
-            actions = QuickContactAction.editableOptions,
+            actions = QuickContactAction.editableOptionsFiltered(availableActions),
             onActionSelected = { action ->
                 val updatedActions = draftActions.update(slot, action)
                 draftActions = updatedActions
@@ -100,6 +101,7 @@ fun QuickContactActionEditorScreen(
                         customActions = draftActions.toCustomActions(),
                         defaultMessagingApp = defaultMessagingApp,
                         availableMessagingApps = availableMessagingApps,
+                        availableActions = availableActions,
                         selectedContacts = selectedContacts,
                         onExecuteAction = onExecuteAction,
                         onUpdateContactNumber = onUpdateContactNumber,

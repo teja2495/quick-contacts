@@ -189,6 +189,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
+    val availableActions by viewModel.availableActions.collectAsState()
     val hasSeenCallWarning by viewModel.hasSeenCallWarning.collectAsState()
     val callActivityMap by viewModel.callActivityMap.collectAsState()
 
@@ -418,6 +419,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 customActions = customActionPreferences[selectedContact.id],
                                 defaultMessagingApp = defaultMessagingApp,
                                 availableMessagingApps = availableMessagingApps,
+                                availableActions = availableActions,
                                 selectedContacts = selectedContacts,
                                 hasSeenCallWarning = hasSeenCallWarning,
                                 onExecuteAction = { executionContext, action, phoneNumber ->
@@ -458,6 +460,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                             defaultMessagingApp = defaultMessagingApp,
                             modifier = Modifier.weight(1f),
                             availableMessagingApps = availableMessagingApps,
+                            availableActions = availableActions,
                             onExecuteAction = { ctx, action, phoneNumber ->
                                 viewModel.executeAction(ctx, action, phoneNumber)
                             }
@@ -631,6 +634,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         customActionPreferences = customActionPreferences,
                                         defaultMessagingApp = defaultMessagingApp,
                                         availableMessagingApps = availableMessagingApps,
+                                        availableActions = availableActions,
                                         selectedContacts = selectedContacts,
                                         onExecuteAction = { ctx, action, phoneNumber ->
                                             viewModel.executeAction(ctx, action, phoneNumber)

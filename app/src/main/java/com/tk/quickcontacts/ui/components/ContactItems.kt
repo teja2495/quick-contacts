@@ -56,6 +56,7 @@ fun ContactItem(
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableActions: Set<String> = emptySet(),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
@@ -123,6 +124,7 @@ fun ContactItem(
     if (showContactActionsDialog) {
         ContactActionsGridDialog(
             contact = contact,
+            availableActions = availableActions,
             onActionSelected = { action, phoneNumber ->
                 executeResolvedAction(action, phoneNumber)
             },

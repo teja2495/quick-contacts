@@ -3,6 +3,7 @@ package com.tk.quickcontacts.actions
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.ContactsContract
 import android.util.Log
 import com.tk.quickcontacts.R
 import com.tk.quickcontacts.utils.ContactMethodMimeTypes
@@ -121,6 +122,8 @@ object TelegramActions {
         onShowToast: ((Int) -> Unit)? = null,
     ) {
         if (phoneNumber.isBlank()) return
+        val dataId = resolveTelegramDataId(context, phoneNumber, ContactMethodMimeTypes.TELEGRAM_CALL)
+        if (dataId != null && openTelegramCall(context, dataId, onShowToast)) return
         val normalizedNumber = phoneNumber
             .trim()
             .replace(" ", "")
@@ -173,6 +176,8 @@ object TelegramActions {
         onChatFallback: ((Context, String) -> Unit)? = null,
     ): Boolean {
         if (phoneNumber.isBlank()) return false
+        val dataId = resolveTelegramDataId(context, phoneNumber, ContactMethodMimeTypes.TELEGRAM_VIDEO_CALL)
+        if (dataId != null && openTelegramVideoCall(context, dataId, null)) return true
         val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber) ?: return false
         return try {
             val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -192,6 +197,44 @@ object TelegramActions {
             Log.w("TelegramActions", "Telegram video call deep-link failed", e)
             onChatFallback?.invoke(context, phoneNumber)
             false
+        }
+    }
+
+    private fun resolveTelegramDataId(context: Context, phoneNumber: String, mimeType: String): Long? {
+        val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber) ?: return null
+        return try {
+            val lookupUri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(cleanNumber)
+            )
+            val contactId: Long? = context.contentResolver.query(
+                lookupUri,
+                arrayOf(ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(ContactsContract.PhoneLookup._ID)
+                    if (idx >= 0) cursor.getLong(idx) else null
+                } else null
+            }
+            if (contactId == null) return null
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data._ID),
+                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(contactId.toString(), mimeType),
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(ContactsContract.Data._ID)
+                    if (idx >= 0) cursor.getLong(idx) else null
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.w("TelegramActions", "Failed to resolve Telegram dataId for $phoneNumber", e)
+            null
         }
     }
 }
