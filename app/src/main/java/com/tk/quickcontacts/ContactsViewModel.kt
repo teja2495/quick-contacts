@@ -76,9 +76,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences.asStateFlow()
 
     // Settings preferences
-    private val _isInternationalDetectionEnabled = MutableStateFlow(false)
-    val isInternationalDetectionEnabled: StateFlow<Boolean> = _isInternationalDetectionEnabled.asStateFlow()
-    
     private val _isRecentCallsVisible = MutableStateFlow(true)
     val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible.asStateFlow()
     
@@ -90,10 +87,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     private val _isDirectDialEnabled = MutableStateFlow(true)
     val isDirectDialEnabled: StateFlow<Boolean> = _isDirectDialEnabled.asStateFlow()
-    
-    // Home country code state
-    private val _homeCountryCode = MutableStateFlow<String?>(null)
-    val homeCountryCode: StateFlow<String?> = _homeCountryCode.asStateFlow()
     
     // Call activity data for quick list contacts
     private val _callActivityMap = MutableStateFlow<Map<String, Contact>>(emptyMap())
@@ -139,8 +132,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         // Initialize filtered lists
         _filteredSelectedContacts.value = _selectedContacts.value
         _filteredRecentCalls.value = _recentCalls.value
-        // Load home country code
-        _homeCountryCode.value = preferencesRepository.loadHomeCountryCode()
     }
     
     // Mock mode methods
@@ -164,7 +155,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _allContacts.value = Mocks.MockData.MOCK_CONTACTS
         
         // Set default settings for mock mode
-        _isInternationalDetectionEnabled.value = true
         _isRecentCallsVisible.value = true
         _defaultMessagingApp.value = com.tk.quickcontacts.models.MessagingApp.WHATSAPP
         _availableMessagingApps.value = setOf(
@@ -553,8 +543,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadSettings() {
-        val (isInternationalDetectionEnabled, isRecentCallsVisible, defaultMessagingApp) = preferencesRepository.loadSettings()
-        _isInternationalDetectionEnabled.value = isInternationalDetectionEnabled
+        val (isRecentCallsVisible, defaultMessagingApp) = preferencesRepository.loadSettings()
         _isRecentCallsVisible.value = isRecentCallsVisible
         _defaultMessagingApp.value = defaultMessagingApp
         _isDirectDialEnabled.value = preferencesRepository.loadDirectDialEnabled()
@@ -562,7 +551,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     private fun saveSettings() {
         preferencesRepository.saveSettings(
-            _isInternationalDetectionEnabled.value,
             _isRecentCallsVisible.value,
             _defaultMessagingApp.value,
             _isDirectDialEnabled.value
@@ -578,8 +566,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setCustomActions(contactId: String, primaryAction: String, secondaryAction: String) {
+        setCustomActions(contactId, CustomActions(primaryAction, secondaryAction))
+    }
+
+    fun setCustomActions(contactId: String, customActions: CustomActions) {
         val currentPreferences = _customActionPreferences.value.toMutableMap()
-        currentPreferences[contactId] = CustomActions(primaryAction, secondaryAction)
+        currentPreferences[contactId] = customActions
         _customActionPreferences.value = currentPreferences
         saveCustomActionPreferences()
     }
@@ -591,9 +583,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         saveCustomActionPreferences()
     }
 
-    fun toggleInternationalDetection() {
-        _isInternationalDetectionEnabled.value = !_isInternationalDetectionEnabled.value
-        saveSettings()
+    fun getLastShownPhoneNumber(contactId: String): String? =
+        preferencesRepository.getLastShownPhoneNumber(contactId)
+
+    fun setLastShownPhoneNumber(contactId: String, phoneNumber: String) {
+        preferencesRepository.setLastShownPhoneNumber(contactId, phoneNumber)
     }
 
     fun toggleRecentCallsVisibility() {
@@ -754,7 +748,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
             
             // Append country code if needed
-            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            val phoneNumberWithCountryCode = phoneNumber
             phoneService.makePhoneCall(context, phoneNumberWithCountryCode, _isDirectDialEnabled.value)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error making phone call to: $phoneNumber", e)
@@ -784,7 +778,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
             
             // Append country code if needed
-            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            val phoneNumberWithCountryCode = phoneNumber
             messagingService.openWhatsAppChat(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening WhatsApp chat for: $phoneNumber", e)
@@ -806,7 +800,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
             
             // Append country code if needed
-            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            val phoneNumberWithCountryCode = phoneNumber
             messagingService.openSmsApp(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening SMS app for: $phoneNumber", e)
@@ -828,10 +822,124 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             }
             
             // Append country code if needed
-            val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+            val phoneNumberWithCountryCode = phoneNumber
             messagingService.openTelegramChat(context, phoneNumberWithCountryCode)
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error opening Telegram chat for: $phoneNumber", e)
+        }
+    }
+
+    fun openWhatsAppVoiceCall(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening WhatsApp voice call for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openWhatsAppVoiceCall(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening WhatsApp voice call for: $phoneNumber", e)
+        }
+    }
+
+    fun openWhatsAppVideoCall(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening WhatsApp video call for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openWhatsAppVideoCall(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening WhatsApp video call for: $phoneNumber", e)
+        }
+    }
+
+    fun openTelegramVoiceCall(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening Telegram voice call for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openTelegramVoiceCall(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Telegram voice call for: $phoneNumber", e)
+        }
+    }
+
+    fun openTelegramVideoCall(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening Telegram video call for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openTelegramVideoCall(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Telegram video call for: $phoneNumber", e)
+        }
+    }
+
+    fun openSignalChat(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening Signal chat for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openSignalChat(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Signal chat for: $phoneNumber", e)
+        }
+    }
+
+    fun openSignalVoiceCall(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening Signal voice call for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openSignalVoiceCall(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Signal voice call for: $phoneNumber", e)
+        }
+    }
+
+    fun openSignalVideoCall(context: Context, phoneNumber: String) {
+        try {
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening Signal video call for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            val normalizedPhoneNumber = phoneNumber
+            messagingService.openSignalVideoCall(context, normalizedPhoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Signal video call for: $phoneNumber", e)
+        }
+    }
+
+    fun openGoogleMeet(context: Context, phoneNumber: String) {
+        try {
+            if (Mocks.ENABLE_MOCK_MODE) {
+                android.widget.Toast.makeText(context, "Mock: Opening Google Meet for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) {
+                android.util.Log.w("ContactsViewModel", "Invalid phone number for Google Meet: $phoneNumber")
+                return
+            }
+            messagingService.openGoogleMeet(context, phoneNumber)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening Google Meet", e)
         }
     }
 
@@ -848,8 +956,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             return
         }
         
-        // Append country code if needed
-        val phoneNumberWithCountryCode = PhoneNumberUtils.appendCountryCodeIfNeeded(phoneNumber, context, _homeCountryCode.value)
+        val phoneNumberWithCountryCode = phoneNumber
         messagingService.openMessagingApp(context, phoneNumberWithCountryCode, _defaultMessagingApp.value)
     }
 
@@ -858,10 +965,24 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             "None" -> {
                 // Do nothing when "None" is selected
             }
+            "All Options" -> {
+                // Screen-level action; handled by UI.
+            }
             "Call" -> makePhoneCall(context, phoneNumber)
-            "WhatsApp" -> openWhatsAppChat(context, phoneNumber)
-            "SMS", "Messages" -> openSmsApp(context, phoneNumber)
-            "Telegram" -> openTelegramChat(context, phoneNumber)
+            "Message", "SMS", "Messages" -> openSmsApp(context, phoneNumber)
+            "Google Meet" -> openGoogleMeet(context, phoneNumber)
+            "WhatsApp", "WhatsApp Chat" -> openWhatsAppChat(context, phoneNumber)
+            "WhatsApp Voice Call" -> openWhatsAppVoiceCall(context, phoneNumber)
+            "WhatsApp Video Call" -> openWhatsAppVideoCall(context, phoneNumber)
+            "Telegram", "Telegram Chat" -> openTelegramChat(context, phoneNumber)
+            "Telegram Voice Call" -> openTelegramVoiceCall(context, phoneNumber)
+            "Telegram Video Call" -> openTelegramVideoCall(context, phoneNumber)
+            "Signal", "Signal Chat" -> openSignalChat(context, phoneNumber)
+            "Signal Voice Call" -> openSignalVoiceCall(context, phoneNumber)
+            "Signal Video Call" -> openSignalVideoCall(context, phoneNumber)
+            else -> {
+                android.util.Log.w("ContactsViewModel", "Unknown action: $action")
+            }
         }
     }
 
@@ -1151,35 +1272,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // Public method to update home country code
-    fun setHomeCountryCode(code: String) {
-        _homeCountryCode.value = code
-        preferencesRepository.saveHomeCountryCode(code)
-        // Refresh call activity data with new home country code
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val context = getApplication<Application>()
-                loadCallActivityForQuickList(context)
-            } catch (e: Exception) {
-            }
-        }
-    }
-
-    // Public method to clear home country code
-    fun clearHomeCountryCode() {
-        _homeCountryCode.value = null
-        preferencesRepository.clearHomeCountryCode()
-        // Refresh call activity data with cleared home country code
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val context = getApplication<Application>()
-                loadCallActivityForQuickList(context)
-            } catch (e: Exception) {
-                android.util.Log.e("ContactsViewModel", "Error refreshing call activity after clearing home country code", e)
-            }
-        }
-    }
-    
     /**
      * Load call activity data for quick list contacts
      * This function efficiently loads the latest call activity for each contact in the quick list

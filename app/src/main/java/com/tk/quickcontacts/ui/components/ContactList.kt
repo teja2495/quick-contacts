@@ -25,9 +25,8 @@ fun ContactList(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onLongClick: (Contact) -> Unit = {},
-    onSetCustomActions: (Contact, String, String) -> Unit = { _, _, _ -> },
+    onOpenActionEditor: (Contact) -> Unit = {},
     customActionPreferences: Map<String, CustomActions> = emptyMap(),
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
@@ -35,17 +34,14 @@ fun ContactList(
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
-    homeCountryCode: String? = null,
-    onEditContactName: (Contact, String) -> Unit = { _, _ -> }, // default no-op
-    callActivityMap: Map<String, Contact> = emptyMap() // New parameter for call activity data
+    onEditContactName: (Contact, String) -> Unit = { _, _ -> },
+    callActivityMap: Map<String, Contact> = emptyMap()
 ) {
-    // Memoize the reorder state to prevent unnecessary recreations
     val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
         onMove(from.index, to.index)
     })
     
-    // Memoize expensive computations
-    val contactItems = remember(contacts, customActionPreferences, editMode, isInternationalDetectionEnabled, defaultMessagingApp, availableMessagingApps, selectedContacts) {
+    val contactItems = remember(contacts, customActionPreferences, editMode, defaultMessagingApp, availableMessagingApps, selectedContacts) {
         contacts.map { contact ->
             contact to customActionPreferences[contact.id]
         }
@@ -80,9 +76,8 @@ fun ContactList(
                         onContactImageClick = onContactImageClick,
                         reorderState = reorderState,
                         onLongClick = onLongClick,
-                        onSetCustomActions = onSetCustomActions,
+                        onOpenActionEditor = onOpenActionEditor,
                         customActions = customActions,
-                        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                         defaultMessagingApp = defaultMessagingApp,
                         availableMessagingApps = availableMessagingApps,
                         selectedContacts = selectedContacts,
@@ -90,7 +85,6 @@ fun ContactList(
                         onUpdateContactNumber = onUpdateContactNumber,
                         hasSeenCallWarning = hasSeenCallWarning,
                         onMarkCallWarningSeen = onMarkCallWarningSeen,
-                        homeCountryCode = homeCountryCode,
                         onEditContactName = onEditContactName,
                         callActivity = callActivity
                     )
@@ -106,9 +100,8 @@ fun ContactList(
                     onContactImageClick = onContactImageClick,
                     reorderState = null,
                     onLongClick = onLongClick,
-                    onSetCustomActions = onSetCustomActions,
+                    onOpenActionEditor = onOpenActionEditor,
                     customActions = customActions,
-                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp,
                     availableMessagingApps = availableMessagingApps,
                     selectedContacts = selectedContacts,
@@ -116,7 +109,6 @@ fun ContactList(
                     onUpdateContactNumber = onUpdateContactNumber,
                     hasSeenCallWarning = hasSeenCallWarning,
                     onMarkCallWarningSeen = onMarkCallWarningSeen,
-                    homeCountryCode = homeCountryCode,
                     onEditContactName = onEditContactName,
                     callActivity = callActivity
                 )

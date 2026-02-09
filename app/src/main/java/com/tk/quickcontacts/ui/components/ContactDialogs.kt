@@ -1,13 +1,34 @@
 package com.tk.quickcontacts.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,11 +36,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.tk.quickcontacts.Contact
@@ -65,6 +91,103 @@ private fun calculateChipLayout(chipCount: Int): ChipLayout {
         4 -> ChipLayout(rows = 2, columns = 2)
         5 -> ChipLayout(rows = 3, columns = 2, lastRowAlignment = "left")
         else -> ChipLayout(rows = 3, columns = 2) // Default fallback
+    }
+}
+
+private val DialogScreenPadding = 12.dp
+private val DialogBottomPadding = 58.dp
+
+private fun buildActionRows(actions: List<String>): List<List<String>> {
+    val normal = actions.filter {
+        it != QuickContactAction.ALL_OPTIONS && it != QuickContactAction.NONE
+    }
+    val fullWidthRow = actions.filter {
+        it == QuickContactAction.ALL_OPTIONS || it == QuickContactAction.NONE
+    }
+    return normal.chunked(3) + if (fullWidthRow.isNotEmpty()) listOf(fullWidthRow) else emptyList()
+}
+
+@Composable
+fun ActionGridDialog(
+    title: String,
+    actions: List<String>,
+    onActionSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val config = LocalConfiguration.current
+    val maxSheetHeight = (config.screenHeightDp * 0.85f).dp
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onDismiss)
+            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxSheetHeight)
+                    .wrapContentHeight()
+                    .padding(start = DialogScreenPadding, end = DialogScreenPadding, top = DialogScreenPadding, bottom = DialogBottomPadding)
+                    .align(Alignment.BottomCenter),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.cd_close)
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (rowActions in buildActionRows(actions)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                for (action in rowActions) {
+                                    ContactActionButton(
+                                        action = action,
+                                        onClick = {
+                                            onActionSelected(action)
+                                            onDismiss()
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        useFullWidth = true
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -179,11 +302,9 @@ fun PhoneNumberSelectionDialog(
 @Composable
 fun ActionToggleDialog(
     contact: Contact,
-    isInternational: Boolean,
     isCurrentlySwapped: Boolean,
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    isInternationalDetectionEnabled: Boolean = true,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onConfirm: (primaryAction: String, secondaryAction: String) -> Unit,
     onDismiss: () -> Unit
@@ -194,25 +315,14 @@ fun ActionToggleDialog(
     if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) availableActions.add("Telegram")
     if (availableMessagingApps.contains(MessagingApp.SMS)) availableActions.add("Messages")
     
-    // Get default messaging app name
     val messagingAppName = when (defaultMessagingApp) {
         MessagingApp.WHATSAPP -> "WhatsApp"
         MessagingApp.SMS -> "Messages"
         MessagingApp.TELEGRAM -> "Telegram"
     }
     
-    // Current actions - use custom actions if available, otherwise use new default logic
-    val currentPrimary = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
-        messagingAppName  // International: Primary = messaging app
-    } else {
-        "Call"  // Default: Primary = Call
-    }
-    
-    val currentSecondary = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational) {
-        "Call"  // International: Secondary = Call
-    } else {
-        messagingAppName  // Default: Secondary = messaging app
-    }
+    val currentPrimary = customActions?.primaryAction ?: "Call"
+    val currentSecondary = customActions?.secondaryAction ?: messagingAppName
     
     // State for selected actions
     var selectedPrimary by remember { mutableStateOf(currentPrimary) }
@@ -388,279 +498,587 @@ fun ContactActionsDialog(
     onTelegram: (Contact) -> Unit,
     onDismiss: () -> Unit,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    callActivity: Contact? = null, // New parameter for recent call activity
-    onAddToQuickList: ((Contact) -> Unit)? = null, // New parameter for adding to quick list
-    isInQuickList: Boolean = false, // New parameter to check if contact is already in quick list
-    onAddToContacts: ((String) -> Unit)? = null // New parameter for adding to phone contacts
+    onAddToQuickList: ((Contact) -> Unit)? = null,
+    isInQuickList: Boolean = false,
+    onAddToContacts: ((String) -> Unit)? = null,
+    getLastShownPhoneNumber: (String) -> String? = { null },
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
-    // Check if this is an unknown contact (dummy contact created from phone number search)
     val isUnknownContact = contact.id.startsWith("search_number_") || contact.id.startsWith("call_history_")
-    AlertDialog(
+    var imageLoadFailed by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val config = LocalConfiguration.current
+    val maxCardHeight = (config.screenHeightDp * 0.72f).dp
+
+    val phoneNumbers = contact.phoneNumbers
+    val hasMultipleNumbers = phoneNumbers.size > 1
+    val reorderedPhoneNumbers = remember(phoneNumbers, getLastShownPhoneNumber(contact.id)) {
+        if (phoneNumbers.size <= 1) phoneNumbers
+        else {
+            val lastShown = getLastShownPhoneNumber(contact.id) ?: return@remember phoneNumbers
+            val idx = phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+            if (idx <= 0) phoneNumbers
+            else phoneNumbers.toMutableList().apply { add(0, removeAt(idx)) }
+        }
+    }
+    var selectedPhoneIndex by remember(reorderedPhoneNumbers) {
+        mutableStateOf(0.coerceAtMost((reorderedPhoneNumbers.size - 1).coerceAtLeast(0)))
+    }
+    val selectedPhoneNumber = reorderedPhoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull()
+
+    LaunchedEffect(selectedPhoneIndex, reorderedPhoneNumbers, hasMultipleNumbers) {
+        if (hasMultipleNumbers && selectedPhoneIndex in reorderedPhoneNumbers.indices) {
+            setLastShownPhoneNumber(contact.id, reorderedPhoneNumbers[selectedPhoneIndex])
+        }
+    }
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = contact.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 24.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 6.dp
             ) {
-                // Recent call activity section
-                if (callActivity?.callType != null && callActivity.callTimestamp != null) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = when (callActivity.callType) {
-                                    "missed" -> Icons.AutoMirrored.Filled.CallMissed
-                                    "rejected" -> Icons.AutoMirrored.Filled.CallReceived
-                                    "incoming" -> Icons.AutoMirrored.Filled.CallReceived
-                                    "outgoing" -> Icons.AutoMirrored.Filled.CallMade
-                                    else -> Icons.Default.Call
-                                },
-                                contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
-                                tint = when (callActivity.callType) {
-                                    "missed" -> Color(0xFFE57373) // Subtle red
-                                    "rejected" -> Color(0xFFE57373) // Subtle red (same as missed)
-                                    "incoming" -> Color(0xFF81C784) // Subtle green
-                                    "outgoing" -> Color(0xFF64B5F6) // Subtle blue
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.size(20.dp)
-                            )
-                            
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Recent Call",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                // Action buttons section
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // Add to Quick List option - only show if not already in quick list and callback is provided
-                    if (onAddToQuickList != null && !isInQuickList) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .clickable {
-                                    onAddToQuickList(contact)
-                                    onDismiss()
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Add to Quick List",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    text = "Add to Quick List",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Add to Contacts option - only show for unknown contacts
-                    if (isUnknownContact && onAddToContacts != null) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .clickable {
-                                    onAddToContacts(contact.phoneNumber)
-                                    onDismiss()
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PersonAdd,
-                                    contentDescription = "Add to Contacts",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    text = "Add to Contacts",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Messaging apps row
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Call option - always available
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(80.dp)
-                                .clickable {
-                                    onCall(contact)
-                                    onDismiss()
-                                },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = contact.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(start = 16.dp)
                             )
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Phone,
-                                    contentDescription = stringResource(R.string.cd_phone),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
                         }
-                        
-                        // SMS option - always available
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(80.dp)
-                                .clickable {
-                                    onSms(contact)
-                                    onDismiss()
-                                },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.cd_close),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.sms_icon),
-                                    contentDescription = stringResource(R.string.cd_sms),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
                         }
-                        
-                        // WhatsApp option - only if available
-                        if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(80.dp)
-                                    .clickable {
-                                        onWhatsApp(contact)
-                                        onDismiss()
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
+                    }
+                    Card(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = maxCardHeight),
+                        colors = CardDefaults.cardColors(containerColor = Color.Black),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            selectedPhoneNumber?.let { phoneNumber ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.whatsapp_icon),
-                                        contentDescription = stringResource(R.string.cd_whatsapp),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(32.dp)
+                                    if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex > 0) {
+                                        IconButton(
+                                            onClick = {
+                                                selectedPhoneIndex = (selectedPhoneIndex - 1).coerceAtLeast(0)
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronLeft,
+                                                contentDescription = "Previous number",
+                                                tint = Color.White.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Spacer(modifier = Modifier.size(32.dp))
+                                    }
+                                    Text(
+                                        text = PhoneNumberUtils.formatPhoneNumberForDisplay(phoneNumber),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color.White,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex < reorderedPhoneNumbers.size - 1) {
+                                        IconButton(
+                                            onClick = {
+                                                selectedPhoneIndex = (selectedPhoneIndex + 1).coerceAtMost(reorderedPhoneNumbers.size - 1)
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronRight,
+                                                contentDescription = "Next number",
+                                                tint = Color.White.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Spacer(modifier = Modifier.size(32.dp))
+                                    }
                                 }
                             }
-                        }
-                        
-                        // Telegram option - only if available
-                        if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(80.dp)
-                                    .clickable {
-                                        onTelegram(contact)
-                                        onDismiss()
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
+                            val contactWithSelectedNumber = selectedPhoneNumber?.let {
+                                contact.copy(phoneNumber = it)
+                            } ?: contact
+                            if (isUnknownContact && onAddToContacts != null && selectedPhoneNumber != null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.Top
                                 ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.telegram_icon),
-                                        contentDescription = stringResource(R.string.cd_telegram),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(80.dp)
+                                            .clickable {
+                                                onAddToContacts(selectedPhoneNumber)
+                                                onDismiss()
+                                            },
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PersonAdd,
+                                                contentDescription = "Add to Contacts",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(80.dp)
+                                        .clickable {
+                                            onCall(contactWithSelectedNumber)
+                                            onDismiss()
+                                        },
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Phone,
+                                            contentDescription = stringResource(R.string.cd_phone),
+                                            tint = Color.White,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(80.dp)
+                                        .clickable {
+                                            onSms(contactWithSelectedNumber)
+                                            onDismiss()
+                                        },
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.sms_icon),
+                                            contentDescription = stringResource(R.string.cd_sms),
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                                if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) {
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(80.dp)
+                                            .clickable {
+                                                onWhatsApp(contactWithSelectedNumber)
+                                                onDismiss()
+                                            },
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.whatsapp_icon),
+                                                contentDescription = stringResource(R.string.cd_whatsapp),
+                                                tint = Color.White,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) {
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(80.dp)
+                                            .clickable {
+                                                onTelegram(contactWithSelectedNumber)
+                                                onDismiss()
+                                            },
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.telegram_icon),
+                                                contentDescription = stringResource(R.string.cd_telegram),
+                                                tint = Color.White,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            if (onAddToQuickList != null && !isInQuickList) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(80.dp)
+                                            .clickable {
+                                                onAddToQuickList(contact)
+                                                onDismiss()
+                                            },
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Add to Quick List",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
             }
         }
-    )
+    }
+}
+
+@Composable
+fun ContactActionsGridDialog(
+    contact: Contact,
+    onActionSelected: (String, String) -> Unit,
+    onDismiss: () -> Unit,
+    onAddToQuickList: ((Contact) -> Unit)? = null,
+    isInQuickList: Boolean = false,
+    onAddToContacts: ((String) -> Unit)? = null,
+    getLastShownPhoneNumber: (String) -> String? = { null },
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
+) {
+    val isUnknownContact = contact.id.startsWith("search_number_") || contact.id.startsWith("call_history_")
+    val config = LocalConfiguration.current
+    val maxSheetHeight = (config.screenHeightDp * 0.85f).dp
+    val phoneNumbers = contact.phoneNumbers
+    val hasMultipleNumbers = phoneNumbers.size > 1
+    val reorderedPhoneNumbers = remember(phoneNumbers, getLastShownPhoneNumber(contact.id)) {
+        if (phoneNumbers.size <= 1) phoneNumbers
+        else {
+            val lastShown = getLastShownPhoneNumber(contact.id) ?: return@remember phoneNumbers
+            val idx = phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+            if (idx <= 0) phoneNumbers
+            else phoneNumbers.toMutableList().apply { add(0, removeAt(idx)) }
+        }
+    }
+    var selectedPhoneIndex by remember(reorderedPhoneNumbers) {
+        mutableStateOf(0.coerceAtMost((reorderedPhoneNumbers.size - 1).coerceAtLeast(0)))
+    }
+    val selectedPhoneNumber = reorderedPhoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
+
+    LaunchedEffect(selectedPhoneIndex, reorderedPhoneNumbers, hasMultipleNumbers) {
+        if (hasMultipleNumbers && selectedPhoneIndex in reorderedPhoneNumbers.indices) {
+            setLastShownPhoneNumber(contact.id, reorderedPhoneNumbers[selectedPhoneIndex])
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onDismiss)
+            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxSheetHeight)
+                    .wrapContentHeight()
+                    .padding(start = DialogScreenPadding, end = DialogScreenPadding, top = DialogScreenPadding, bottom = DialogBottomPadding)
+                    .align(Alignment.BottomCenter),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    var imageLoadFailed by remember { mutableStateOf(false) }
+                    val context = LocalContext.current
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (contact.photoUri != null && !imageLoadFailed) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(
+                                            model = ImageRequest.Builder(context)
+                                                .data(contact.photoUri)
+                                                .crossfade(true)
+                                                .size(80, 80)
+                                                .build(),
+                                            onError = { imageLoadFailed = true }
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.primary),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = contact.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.cd_close)
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex > 0) {
+                            IconButton(
+                                onClick = {
+                                    selectedPhoneIndex = (selectedPhoneIndex - 1).coerceAtLeast(0)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = "Previous number",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else if (reorderedPhoneNumbers.size > 1) {
+                            Spacer(modifier = Modifier.size(32.dp))
+                        }
+                        Text(
+                            text = PhoneNumberUtils.formatPhoneNumberForDisplay(selectedPhoneNumber),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex < reorderedPhoneNumbers.size - 1) {
+                            IconButton(
+                                onClick = {
+                                    selectedPhoneIndex = (selectedPhoneIndex + 1).coerceAtMost(reorderedPhoneNumbers.size - 1)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Next number",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else if (reorderedPhoneNumbers.size > 1) {
+                            Spacer(modifier = Modifier.size(32.dp))
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (isUnknownContact && onAddToContacts != null) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .clickable {
+                                        onAddToContacts(selectedPhoneNumber)
+                                        onDismiss()
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = "Add to Contacts",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = "Add to Contacts",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            for (rowActions in QuickContactAction.executableOptions.chunked(3)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    for (action in rowActions) {
+                                        ContactActionButton(
+                                            action = action,
+                                            onClick = {
+                                                onActionSelected(action, selectedPhoneNumber)
+                                                onDismiss()
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            useFullWidth = true
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (onAddToQuickList != null && !isInQuickList) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .clickable {
+                                        onAddToQuickList(contact.copy(phoneNumber = selectedPhoneNumber))
+                                        onDismiss()
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add to Quick List",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = "Add to Quick List",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

@@ -12,5 +12,13 @@ data class CustomActions(
     @Expose
     val primaryAction: String,
     @Expose
-    val secondaryAction: String
-) 
+    val secondaryAction: String,
+    @Expose
+    val cardLongPressAction: String? = null,
+    @Expose
+    val firstButtonLongPressAction: String? = null,
+    @Expose
+    val secondButtonTapAction: String? = null,
+    @Expose
+    val secondButtonLongPressAction: String? = null
+)

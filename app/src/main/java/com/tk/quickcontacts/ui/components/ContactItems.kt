@@ -52,9 +52,8 @@ fun ContactItem(
     onContactImageClick: (Contact) -> Unit = {},
     reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
     onLongClick: (Contact) -> Unit = {},
-    onSetCustomActions: (Contact, String, String) -> Unit = { _, _, _ -> },
+    onOpenActionEditor: (Contact) -> Unit = {},
     customActions: CustomActions? = null,
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
@@ -62,140 +61,74 @@ fun ContactItem(
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
-    homeCountryCode: String? = null,
     onEditContactName: (Contact, String) -> Unit,
-    callActivity: Contact? = null // New parameter for call activity data
+    callActivity: Contact? = null, // New parameter for call activity data
+    showButtonActionLabels: Boolean = false
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
-    var showActionToggleDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
-    var dialogAction by remember { mutableStateOf<String?>(null) }
+    var pendingActionForNumberSelection by remember { mutableStateOf<String?>(null) }
     var showCallWarningDialog by remember { mutableStateOf(false) }
-    var pendingCallNumber by remember { mutableStateOf<String?>(null) }
+    var pendingCallAction by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showEditNameDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
+    val resolvedActions = resolveQuickContactActions(
+        customActions = customActions,
+        defaultMessagingApp = defaultMessagingApp
+    )
+
+    fun executeResolvedAction(action: String, phoneNumber: String) {
+        when {
+            action == QuickContactAction.NONE -> Unit
+            action == QuickContactAction.ALL_OPTIONS -> showContactActionsDialog = true
+            actionNeedsPhoneNumber(action) && contact.phoneNumbers.size > 1 -> {
+                pendingActionForNumberSelection = action
+                showPhoneNumberDialog = true
+            }
+            action == QuickContactAction.CALL && !hasSeenCallWarning -> {
+                pendingCallAction = action to phoneNumber
+                showCallWarningDialog = true
+            }
+            else -> onExecuteAction(context, action, phoneNumber)
+        }
+    }
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
         PhoneNumberSelectionDialog(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
-                val contactWithSelectedNumber = contact.copy(
-                    phoneNumber = selectedNumber,
-                    phoneNumbers = listOf(selectedNumber)
-                )
                 // Update the quick list contact to have only the selected number
                 onUpdateContactNumber(contact, selectedNumber)
-                when (dialogAction) {
-                    "call" -> onExecuteAction(context, "Call", selectedNumber)
-                    "whatsapp" -> onExecuteAction(context, "WhatsApp", selectedNumber)
-                    "sms" -> onExecuteAction(context, "Messages", selectedNumber)
-                    "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
+                pendingActionForNumberSelection?.let { selectedAction ->
+                    executeResolvedAction(selectedAction, selectedNumber)
                 }
                 showPhoneNumberDialog = false
-                dialogAction = null
+                pendingActionForNumberSelection = null
             },
             onDismiss = {
                 showPhoneNumberDialog = false
-                dialogAction = null
+                pendingActionForNumberSelection = null
             },
             selectedContacts = selectedContacts,
-            onAddContact = if (dialogAction == "add") { contactWithSelectedNumber ->
-                onContactClick(contactWithSelectedNumber)
-            } else null,
-            onRemoveContact = if (dialogAction == "add") { contactWithSelectedNumber ->
-                onContactClick(contactWithSelectedNumber)
-            } else null,
-            hideIcons = dialogAction == "add",
+            onAddContact = null,
+            onRemoveContact = null,
+            hideIcons = true,
             showInstructionText = true
         )
     }
     
-    // Action toggle dialog
-    if (showActionToggleDialog) {
-        ActionToggleDialog(
-            contact = contact,
-            isInternational = isInternational == true, // Pass non-null Boolean
-            isCurrentlySwapped = false, // No longer using swap logic
-            customActions = customActions,
-            defaultMessagingApp = defaultMessagingApp,
-            isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-            availableMessagingApps = availableMessagingApps,
-            onConfirm = { primaryAction, secondaryAction ->
-                onSetCustomActions(contact, primaryAction, secondaryAction)
-                showActionToggleDialog = false
-            },
-            onDismiss = {
-                showActionToggleDialog = false
-            }
-        )
-    }
-    
-    // Contact actions dialog for long press
     if (showContactActionsDialog) {
-        // Determine if we should show call activity based on primary action
-        val messagingAppName = when (defaultMessagingApp) {
-            MessagingApp.WHATSAPP -> "WhatsApp"
-            MessagingApp.SMS -> "SMS"
-            MessagingApp.TELEGRAM -> "Telegram"
-        }
-        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
-            messagingAppName  // International: Primary = messaging app
-        } else {
-            "Call"  // Default: Primary = Call
-        }
-        
-        // Only show call activity if primary action is NOT "Call" and NOT "None"
-        val shouldShowCallActivity = primaryAction != "Call" && primaryAction != "None"
-        
-        ContactActionsDialog(
+        ContactActionsGridDialog(
             contact = contact,
-            onCall = { contactToCall ->
-                if (contactToCall.phoneNumbers.size > 1) {
-                    dialogAction = "call"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Call", contactToCall.phoneNumber)
-                }
-                showContactActionsDialog = false
+            onActionSelected = { action, phoneNumber ->
+                executeResolvedAction(action, phoneNumber)
             },
-            onSms = { contactToSms ->
-                if (contactToSms.phoneNumbers.size > 1) {
-                    dialogAction = "sms"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Messages", contactToSms.phoneNumber)
-                }
-                showContactActionsDialog = false
-            },
-            onWhatsApp = { contactToWhatsApp ->
-                if (contactToWhatsApp.phoneNumbers.size > 1) {
-                    dialogAction = "whatsapp"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "WhatsApp", contactToWhatsApp.phoneNumber)
-                }
-                showContactActionsDialog = false
-            },
-            onTelegram = { contactToTelegram ->
-                if (contactToTelegram.phoneNumbers.size > 1) {
-                    dialogAction = "telegram"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
-                }
-                showContactActionsDialog = false
-            },
-            onDismiss = {
-                showContactActionsDialog = false
-            },
-            availableMessagingApps = availableMessagingApps,
-            callActivity = if (shouldShowCallActivity) callActivity else null,
-            onAddToQuickList = null, // Quick list contacts don't need add to quick list option
-            isInQuickList = true // Quick list contacts are already in the quick list
+            onDismiss = { showContactActionsDialog = false },
+            onAddToQuickList = null,
+            isInQuickList = true
         )
     }
     
@@ -204,43 +137,17 @@ fun ContactItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .combinedClickable(
-                enabled = true, // Always enabled to handle both edit and normal mode
+                enabled = true,
                 onClick = {
                     if (editMode) {
-                        // In edit mode, show action toggle dialog on press
-                        showActionToggleDialog = true
+                        onOpenActionEditor(contact)
                     } else {
-                        // Normal mode: perform contact action
-                        val messagingAppName = when (defaultMessagingApp) {
-                            MessagingApp.WHATSAPP -> "WhatsApp"
-                            MessagingApp.SMS -> "SMS"
-                            MessagingApp.TELEGRAM -> "Telegram"
-                        }
-                        val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
-                            messagingAppName  // International: Primary = messaging app
-                        } else {
-                            "Call"  // Default: Primary = Call
-                        }
-                        if (primaryAction == "None") {
-                            // Do nothing when "None" is selected
-                        } else if (primaryAction == "All Options") {
-                            showContactActionsDialog = true
-                        } else if (contact.phoneNumbers.size > 1) {
-                            dialogAction = primaryAction.lowercase()
-                            showPhoneNumberDialog = true
-                        } else {
-                            if (primaryAction == "Call" && !hasSeenCallWarning) {
-                                pendingCallNumber = contact.phoneNumber
-                                showCallWarningDialog = true
-                            } else {
-                                onExecuteAction(context, primaryAction, contact.phoneNumber)
-                            }
-                        }
+                        executeResolvedAction(resolvedActions.cardTapAction, contact.phoneNumber)
                     }
                 },
                 onLongClick = {
                     if (!editMode) {
-                        showContactActionsDialog = true
+                        executeResolvedAction(resolvedActions.cardLongPressAction, contact.phoneNumber)
                     }
                 }
             ),
@@ -312,7 +219,8 @@ fun ContactItem(
                                 text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -342,23 +250,14 @@ fun ContactItem(
                 // Show primary action text or call status (only in normal mode, not in edit mode)
                 if (!editMode) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    
-                    // Get the primary action for this contact
-                    val primaryAction = customActions?.primaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
-                        when (defaultMessagingApp) {
-                            MessagingApp.WHATSAPP -> "WhatsApp"
-                            MessagingApp.SMS -> "SMS"
-                            MessagingApp.TELEGRAM -> "Telegram"
-                        }
-                    } else {
-                        "Call"
-                    }
-                    
                     // Show call status if available, otherwise show primary action
                     // Only show call activity if primary action is "Call"
-                    if (primaryAction == "None") {
+                    if (resolvedActions.cardTapAction == QuickContactAction.NONE) {
                         // Don't show anything when "None" is selected
-                    } else if (callActivity?.callType != null && callActivity.callTimestamp != null && primaryAction == "Call") {
+                    } else if (callActivity?.callType != null &&
+                        callActivity.callTimestamp != null &&
+                        resolvedActions.cardTapAction == QuickContactAction.CALL
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -390,9 +289,9 @@ fun ContactItem(
                             )
                         }
                     } else {
-                        // Show only primary action when no call activity is available or for international contacts
+                        // Show only primary action when no call activity is available
                         Text(
-                            text = "$primaryAction",
+                            text = resolvedActions.cardTapAction,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             fontSize = 11.sp
@@ -434,105 +333,47 @@ fun ContactItem(
                     )
                 }
             } else {
-                // Secondary action button - opposite of primary action
-                // Get default messaging app name
-                val messagingAppName = when (defaultMessagingApp) {
-                    MessagingApp.WHATSAPP -> "WhatsApp"
-                    MessagingApp.SMS -> "SMS"
-                    MessagingApp.TELEGRAM -> "Telegram"
-                }
-                // Use custom secondary action or determine based on new default logic
-                val secondaryAction = customActions?.secondaryAction ?: if (isInternationalDetectionEnabled && isInternational == true) {
-                    "Call"  // International: Secondary = Call
-                } else {
-                    messagingAppName  // Default: Secondary = messaging app
-                }
-                
-                // Only show button if secondary action is not "None"
-                if (secondaryAction != "None") {
-                    IconButton(
-                        onClick = { 
-                            if (secondaryAction == "All Options") {
-                                showContactActionsDialog = true
-                            } else if (contact.phoneNumbers.size > 1) {
-                                dialogAction = secondaryAction.lowercase()
-                                showPhoneNumberDialog = true
-                            } else {
-                                // Use onExecuteAction to match UI label logic
-                                onExecuteAction(context, secondaryAction, contact.phoneNumber)
-                            }
-                        },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        // Show secondary action icon based on custom actions or new default logic
-                        when (secondaryAction) {
-                            "Call" -> {
-                                Icon(
-                                    imageVector = Icons.Default.Phone,
-                                    contentDescription = "Call ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            "WhatsApp" -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.whatsapp_icon),
-                                    contentDescription = "WhatsApp ${contact.name}",
-                                    tint = Color(0xFF25D366),
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                            "SMS", "Messages" -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.sms_icon),
-                                    contentDescription = "SMS ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            "Telegram" -> {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.telegram_icon),
-                                    contentDescription = "Telegram ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            "All Options" -> {
-                                Icon(
-                                    imageVector = Icons.Default.MoreHoriz, // Use a menu or grid icon
-                                    contentDescription = "All Options for ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            else -> {
-                                // Fallback for unknown actions
-                                Icon(
-                                    imageVector = Icons.Default.Phone,
-                                    contentDescription = "Call ${contact.name}",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                        }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (resolvedActions.firstButtonTapAction != QuickContactAction.NONE) {
+                        QuickContactActionButton(
+                            action = resolvedActions.firstButtonTapAction,
+                            contactName = contact.name,
+                            onTap = { executeResolvedAction(resolvedActions.firstButtonTapAction, contact.phoneNumber) },
+                            onLongPress = { executeResolvedAction(resolvedActions.firstButtonLongPressAction, contact.phoneNumber) },
+                            showLabel = showButtonActionLabels
+                        )
+                    }
+                    if (resolvedActions.secondButtonTapAction != QuickContactAction.NONE) {
+                        QuickContactActionButton(
+                            action = resolvedActions.secondButtonTapAction,
+                            contactName = contact.name,
+                            onTap = { executeResolvedAction(resolvedActions.secondButtonTapAction, contact.phoneNumber) },
+                            onLongPress = { executeResolvedAction(resolvedActions.secondButtonLongPressAction, contact.phoneNumber) },
+                            showLabel = showButtonActionLabels
+                        )
                     }
                 }
             }
         }
     }
     // Show call warning dialog if needed
-    if (showCallWarningDialog && pendingCallNumber != null) {
+    if (showCallWarningDialog && pendingCallAction != null) {
         CallWarningDialog(
             onConfirm = {
                 onMarkCallWarningSeen?.invoke()
-                onExecuteAction(context, "Call", pendingCallNumber!!)
+                val pending = pendingCallAction
+                if (pending != null) {
+                    onExecuteAction(context, pending.first, pending.second)
+                }
                 showCallWarningDialog = false
-                pendingCallNumber = null
+                pendingCallAction = null
             },
             onDismiss = {
                 showCallWarningDialog = false
-                pendingCallNumber = null
+                pendingCallAction = null
             }
         )
     }
@@ -550,27 +391,73 @@ fun ContactItem(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+private fun QuickContactActionButton(
+    action: String,
+    contactName: String,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    showLabel: Boolean = false
+) {
+    Box(
+        modifier = Modifier
+            .size(if (showLabel) 74.dp else 48.dp)
+            .combinedClickable(
+                onClick = onTap,
+                onLongClick = onLongPress
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (showLabel) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 2.dp)
+            ) {
+                QuickContactActionIcon(
+                    action = action,
+                    contentDescription = "$action for $contactName",
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = action,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        } else {
+            QuickContactActionIcon(
+                action = action,
+                contentDescription = "$action for $contactName",
+                modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 fun RecentCallVerticalItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null,
-    onAddToQuickList: ((Contact) -> Unit)? = null
+    onAddToQuickList: ((Contact) -> Unit)? = null,
+    getLastShownPhoneNumber: (String) -> String? = { null },
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -604,53 +491,31 @@ fun RecentCallVerticalItem(
         )
     }
     
-    // Contact actions dialog for long press
     if (showContactActionsDialog) {
         ContactActionsDialog(
             contact = contact,
             onCall = { contactToCall ->
-                if (contactToCall.phoneNumbers.size > 1) {
-                    dialogAction = "call"
-                    showPhoneNumberDialog = true
-                } else {
-                    onContactClick(contactToCall)
-                }
+                onContactClick(contactToCall)
                 showContactActionsDialog = false
             },
             onSms = { contactToSms ->
-                if (contactToSms.phoneNumbers.size > 1) {
-                    dialogAction = "sms"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Messages", contactToSms.phoneNumber)
-                }
+                onExecuteAction(context, "Messages", contactToSms.phoneNumber)
                 showContactActionsDialog = false
             },
             onWhatsApp = { contactToWhatsApp ->
-                if (contactToWhatsApp.phoneNumbers.size > 1) {
-                    dialogAction = "whatsapp"
-                    showPhoneNumberDialog = true
-                } else {
-                    onWhatsAppClick(contactToWhatsApp)
-                }
+                onWhatsAppClick(contactToWhatsApp)
                 showContactActionsDialog = false
             },
             onTelegram = { contactToTelegram ->
-                if (contactToTelegram.phoneNumbers.size > 1) {
-                    dialogAction = "telegram"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
-                }
+                onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
                 showContactActionsDialog = false
             },
-            onDismiss = {
-                showContactActionsDialog = false
-            },
+            onDismiss = { showContactActionsDialog = false },
             availableMessagingApps = availableMessagingApps,
-            callActivity = null, // No call activity for search results
             onAddToQuickList = onAddToQuickList,
-            isInQuickList = selectedContacts.any { it.id == contact.id }
+            isInQuickList = selectedContacts.any { it.id == contact.id },
+            getLastShownPhoneNumber = getLastShownPhoneNumber,
+            setLastShownPhoneNumber = setLastShownPhoneNumber
         )
     }
     
@@ -660,16 +525,10 @@ fun RecentCallVerticalItem(
             .combinedClickable(
                 onClick = { 
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational == true) "whatsapp" else "call"
+                        dialogAction = "call"
                         showPhoneNumberDialog = true
                     } else {
-                        if (isInternational == true) {
-                            onWhatsAppClick(contact)
-                        } else if (isInternational == false) {
-                            onContactClick(contact)
-                        } else {
-                            // TODO: Prompt user for country code
-                        }
+                        onContactClick(contact)
                     }
                 },
                 onLongClick = {
@@ -710,7 +569,8 @@ fun RecentCallVerticalItem(
                     text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -771,33 +631,18 @@ fun RecentCallVerticalItem(
             }
         }
         
-        // For international: Phone button (to call), for domestic: messaging app button
         IconButton(
             onClick = { 
                 if (contact.phoneNumbers.size > 1) {
-                    dialogAction = if (isInternational == true) "call" else "whatsapp"
+                    dialogAction = "whatsapp"
                     showPhoneNumberDialog = true
                 } else {
-                    if (isInternational == true) {
-                        onContactClick(contact)
-                    } else if (isInternational == false) {
-                        onWhatsAppClick(contact)
-                    } else {
-                        // TODO: Prompt user for country code
-                    }
+                    onWhatsAppClick(contact)
                 }
             },
             modifier = Modifier.size(48.dp)
         ) {
-            if (isInternational == true) {
-                Icon(
-                    imageVector = Icons.Default.Phone,
-                    contentDescription = "Call ${contact.name}",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            } else if (isInternational == false) {
-                when (defaultMessagingApp) {
+            when (defaultMessagingApp) {
                     MessagingApp.WHATSAPP -> {
                         Icon(
                             painter = painterResource(id = R.drawable.whatsapp_icon),
@@ -823,9 +668,6 @@ fun RecentCallVerticalItem(
                         )
                     }
                 }
-            } else {
-                // TODO: Prompt user for country code
-            }
         }
     }
 }
@@ -835,25 +677,13 @@ fun RecentCallItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
-    isInternationalDetectionEnabled: Boolean = true,
-    modifier: Modifier = Modifier,
-    homeCountryCode: String? = null
+    modifier: Modifier = Modifier
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     Column(
         modifier = modifier
-            .clickable { 
-                if (isInternational == true) {
-                    onWhatsAppClick(contact)
-                } else if (isInternational == false) {
-                    onContactClick(contact)
-                } else {
-                    // TODO: Prompt user for country code
-                }
-            }
+            .clickable { onContactClick(contact) }
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -886,7 +716,8 @@ fun RecentCallItem(
                     text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
             }
         }

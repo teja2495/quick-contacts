@@ -43,16 +43,16 @@ fun RecentCallsSection(
     onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     isExpanded: Boolean = false,
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null,
     onAddToQuickList: ((Contact) -> Unit)? = null,
     showRecentCallsHint: Boolean = false,
-    onDismissRecentCallsHint: () -> Unit = {}
+    onDismissRecentCallsHint: () -> Unit = {},
+    getLastShownPhoneNumber: (String) -> String? = { null },
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
 
     
@@ -265,14 +265,14 @@ fun RecentCallsSection(
                                         onContactClick = onContactClick,
                                         onWhatsAppClick = onWhatsAppClick,
                                         onContactImageClick = onContactImageClick,
-                                        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                                         defaultMessagingApp = defaultMessagingApp,
                                         modifier = Modifier.fillMaxWidth(),
                                         selectedContacts = selectedContacts,
                                         availableMessagingApps = availableMessagingApps,
                                         onExecuteAction = onExecuteAction,
-                                        homeCountryCode = homeCountryCode,
-                                        onAddToQuickList = onAddToQuickList
+                                        onAddToQuickList = onAddToQuickList,
+                                        getLastShownPhoneNumber = getLastShownPhoneNumber,
+                                        setLastShownPhoneNumber = setLastShownPhoneNumber
                                     )
                                 }
                             }
@@ -304,14 +304,14 @@ fun RecentCallsSection(
                                                 onContactClick = onContactClick,
                                                 onWhatsAppClick = onWhatsAppClick,
                                                 onContactImageClick = onContactImageClick,
-                                                isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                                                 defaultMessagingApp = defaultMessagingApp,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 selectedContacts = selectedContacts,
                                                 availableMessagingApps = availableMessagingApps,
                                                 onExecuteAction = onExecuteAction,
-                                                homeCountryCode = homeCountryCode,
-                                                onAddToQuickList = onAddToQuickList
+                                                onAddToQuickList = onAddToQuickList,
+                                                getLastShownPhoneNumber = getLastShownPhoneNumber,
+                                                setLastShownPhoneNumber = setLastShownPhoneNumber
                                             )
                                             // Add subtle divider between items (except after the last item)
                                             if (index < currentRecentCalls.size - 1) {

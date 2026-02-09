@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,9 +22,6 @@ import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
-import com.tk.quickcontacts.R
-import com.tk.quickcontacts.utils.ContactUtils
-import com.tk.quickcontacts.utils.PhoneNumberUtils
 import com.tk.quickcontacts.PhoneNumberSelectionDialog
 
 @Composable
@@ -34,7 +30,6 @@ fun SearchResultsContent(
     searchQuery: String,
     searchResults: List<Contact>,
     selectedContacts: List<Contact>,
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
@@ -44,7 +39,6 @@ fun SearchResultsContent(
     }
 ) {
     val context = LocalContext.current
-    val homeCountryCode by viewModel.homeCountryCode.collectAsState()
     
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -163,13 +157,13 @@ fun SearchResultsContent(
                         viewModel.openContactInContactsApp(context, contact)
                     },
                     selectedContacts = selectedContacts,
-                    isInternationalDetectionEnabled = isInternationalDetectionEnabled,
                     defaultMessagingApp = defaultMessagingApp,
                     modifier = Modifier.fillMaxWidth(),
                     availableMessagingApps = availableMessagingApps,
                     onExecuteAction = onExecuteAction,
-                    homeCountryCode = homeCountryCode,
-                    onAddToContacts = onAddToContacts
+                    onAddToContacts = onAddToContacts,
+                    getLastShownPhoneNumber = viewModel::getLastShownPhoneNumber,
+                    setLastShownPhoneNumber = viewModel::setLastShownPhoneNumber
                 )
             }
         }
@@ -187,21 +181,19 @@ fun SearchResultItem(
     onWhatsAppClick: (Contact) -> Unit,
     onContactImageClick: (Contact) -> Unit,
     selectedContacts: List<Contact>,
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null,
-    onAddToContacts: (Context, String) -> Unit = { _, _ -> }
+    onAddToContacts: (Context, String) -> Unit = { _, _ -> },
+    getLastShownPhoneNumber: (String) -> String? = { null },
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    
-    val isInternational = PhoneNumberUtils.isInternationalNumber(context, ContactUtils.getPrimaryPhoneNumber(contact), isInternationalDetectionEnabled, homeCountryCode)
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -212,12 +204,10 @@ fun SearchResultItem(
                     phoneNumber = selectedNumber,
                     phoneNumbers = listOf(selectedNumber)
                 )
-                when (dialogAction) {
-                    "call" -> onContactClick(contactWithSelectedNumber)
-                    "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
-                    "sms" -> onExecuteAction(context, "Messages", selectedNumber)
-                    "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
-                    "add" -> onAddContact(contactWithSelectedNumber)
+                when {
+                    dialogAction == QuickContactAction.CALL || dialogAction == "call" -> onContactClick(contactWithSelectedNumber)
+                    dialogAction == "add" -> onAddContact(contactWithSelectedNumber)
+                    dialogAction != null -> onExecuteAction(context, dialogAction!!, selectedNumber)
                 }
                 showPhoneNumberDialog = false
                 dialogAction = null
@@ -242,57 +232,23 @@ fun SearchResultItem(
         )
     }
     
-    // Contact actions dialog for long press
     if (showContactActionsDialog) {
-        ContactActionsDialog(
+        ContactActionsGridDialog(
             contact = contact,
-            onCall = { contactToCall ->
-                if (contactToCall.phoneNumbers.size > 1) {
-                    dialogAction = "call"
-                    showPhoneNumberDialog = true
-                } else {
-                    onContactClick(contactToCall)
+            onActionSelected = { action, phoneNumber ->
+                when {
+                    action == QuickContactAction.NONE || action == QuickContactAction.ALL_OPTIONS -> Unit
+                    action == QuickContactAction.CALL -> onContactClick(contact.copy(phoneNumber = phoneNumber))
+                    else -> onExecuteAction(context, action, phoneNumber)
                 }
                 showContactActionsDialog = false
             },
-            onSms = { contactToSms ->
-                if (contactToSms.phoneNumbers.size > 1) {
-                    dialogAction = "sms"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Messages", contactToSms.phoneNumber)
-                }
-                showContactActionsDialog = false
-            },
-            onWhatsApp = { contactToWhatsApp ->
-                if (contactToWhatsApp.phoneNumbers.size > 1) {
-                    dialogAction = "whatsapp"
-                    showPhoneNumberDialog = true
-                } else {
-                    onWhatsAppClick(contactToWhatsApp)
-                }
-                showContactActionsDialog = false
-            },
-            onTelegram = { contactToTelegram ->
-                if (contactToTelegram.phoneNumbers.size > 1) {
-                    dialogAction = "telegram"
-                    showPhoneNumberDialog = true
-                } else {
-                    onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
-                }
-                showContactActionsDialog = false
-            },
-            onDismiss = {
-                showContactActionsDialog = false
-            },
-            availableMessagingApps = availableMessagingApps,
-            onAddToQuickList = { contactToAdd ->
-                onAddContact(contactToAdd)
-            },
+            onDismiss = { showContactActionsDialog = false },
+            onAddToQuickList = { contactToAdd -> onAddContact(contactToAdd) },
             isInQuickList = selectedContacts.any { it.id == contact.id },
-            onAddToContacts = { phoneNumber ->
-                onAddToContacts(context, phoneNumber)
-            }
+            onAddToContacts = { phoneNumber -> onAddToContacts(context, phoneNumber) },
+            getLastShownPhoneNumber = getLastShownPhoneNumber,
+            setLastShownPhoneNumber = setLastShownPhoneNumber
         )
     }
     
@@ -301,19 +257,8 @@ fun SearchResultItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .combinedClickable(
-                onClick = { 
-                    if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational == true) "whatsapp" else "call"
-                        showPhoneNumberDialog = true
-                    } else {
-                        if (isInternational == true) {
-                            onWhatsAppClick(contact)
-                        } else if (isInternational == false) {
-                            onContactClick(contact)
-                        } else {
-                            // TODO: Prompt user for country code
-                        }
-                    }
+                onClick = {
+                    showContactActionsDialog = true
                 },
                 onLongClick = {
                     showContactActionsDialog = true
@@ -376,7 +321,7 @@ fun SearchResultItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Contact Info - for international: open WhatsApp, for domestic: call
+            // Contact Info
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -398,61 +343,23 @@ fun SearchResultItem(
                 }
             }
             
-            // For international: Phone button (to call), for domestic: messaging app button
             IconButton(
-                onClick = { 
+                onClick = {
                     if (contact.phoneNumbers.size > 1) {
-                        dialogAction = if (isInternational == true) "call" else "whatsapp"
+                        dialogAction = "call"
                         showPhoneNumberDialog = true
                     } else {
-                        if (isInternational == true) {
-                            onContactClick(contact)
-                        } else if (isInternational == false) {
-                            onWhatsAppClick(contact)
-                        } else {
-                            // TODO: Prompt user for country code
-                        }
+                        onContactClick(contact)
                     }
                 },
                 modifier = Modifier.size(48.dp)
             ) {
-                if (isInternational == true) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Call ${contact.name}",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else if (isInternational == false) {
-                    when (defaultMessagingApp) {
-                        MessagingApp.WHATSAPP -> {
-                            Icon(
-                                painter = painterResource(id = R.drawable.whatsapp_icon),
-                                contentDescription = "Send WhatsApp message to ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        MessagingApp.SMS -> {
-                            Icon(
-                                painter = painterResource(id = R.drawable.sms_icon),
-                                contentDescription = "Send SMS to ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        MessagingApp.TELEGRAM -> {
-                            Icon(
-                                painter = painterResource(id = R.drawable.telegram_icon),
-                                contentDescription = "Send Telegram message to ${contact.name}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                } else {
-                    // TODO: Prompt user for country code
-                }
+                Icon(
+                    imageVector = Icons.Default.Phone,
+                    contentDescription = "Call ${contact.name}",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }

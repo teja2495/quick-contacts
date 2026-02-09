@@ -22,7 +22,7 @@ class PreferencesRepository(context: Context) {
     private var cachedContacts: List<Contact>? = null
     private var cachedActionPreferences: Map<String, Boolean>? = null
     private var cachedCustomActionPreferences: Map<String, CustomActions>? = null
-    private var cachedSettings: Triple<Boolean, Boolean, MessagingApp>? = null
+    private var cachedSettings: Pair<Boolean, MessagingApp>? = null
 
     // Contact management with validation
     fun saveContacts(contacts: List<Contact>) {
@@ -166,30 +166,27 @@ class PreferencesRepository(context: Context) {
 
     // Settings with validation
     fun saveSettings(
-        isInternationalDetectionEnabled: Boolean,
         isRecentCallsVisible: Boolean,
         defaultMessagingApp: MessagingApp,
         isDirectDialEnabled: Boolean = true
     ) {
         try {
             sharedPreferences.edit()
-                .putBoolean("international_detection_enabled", isInternationalDetectionEnabled)
                 .putBoolean("recent_calls_visible", isRecentCallsVisible)
                 .putString("default_messaging_app", defaultMessagingApp.name)
                 .putBoolean("direct_dial_enabled", isDirectDialEnabled)
                 .apply()
-            cachedSettings = Triple(isInternationalDetectionEnabled, isRecentCallsVisible, defaultMessagingApp)
+            cachedSettings = Pair(isRecentCallsVisible, defaultMessagingApp)
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error saving settings", e)
         }
     }
 
-    fun loadSettings(): Triple<Boolean, Boolean, MessagingApp> {
+    fun loadSettings(): Pair<Boolean, MessagingApp> {
         // Return cached value if available
         cachedSettings?.let { return it }
         
         return try {
-            val isInternationalDetectionEnabled = sharedPreferences.getBoolean("international_detection_enabled", false)
             val isRecentCallsVisible = sharedPreferences.getBoolean("recent_calls_visible", true)
             
             // Load messaging app preference with backward compatibility and validation
@@ -207,13 +204,12 @@ class PreferencesRepository(context: Context) {
                 if (useWhatsApp) MessagingApp.WHATSAPP else MessagingApp.SMS
             }
             
-            val settings = Triple(isInternationalDetectionEnabled, isRecentCallsVisible, defaultMessagingApp)
+            val settings = Pair(isRecentCallsVisible, defaultMessagingApp)
             cachedSettings = settings
             settings
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error loading settings", e)
-            // Return default settings
-            Triple(false, true, MessagingApp.WHATSAPP)
+            Pair(true, MessagingApp.WHATSAPP)
         }
     }
     
@@ -328,32 +324,6 @@ class PreferencesRepository(context: Context) {
         }
     }
     
-    // Home country code persistence
-    fun saveHomeCountryCode(code: String) {
-        try {
-            sharedPreferences.edit().putString("home_country_code", code).apply()
-        } catch (e: Exception) {
-            android.util.Log.e("PreferencesRepository", "Error saving home country code", e)
-        }
-    }
-
-    fun loadHomeCountryCode(): String? {
-        return try {
-            sharedPreferences.getString("home_country_code", null)
-        } catch (e: Exception) {
-            android.util.Log.e("PreferencesRepository", "Error loading home country code", e)
-            null
-        }
-    }
-
-    fun clearHomeCountryCode() {
-        try {
-            sharedPreferences.edit().remove("home_country_code").apply()
-        } catch (e: Exception) {
-            android.util.Log.e("PreferencesRepository", "Error clearing home country code", e)
-        }
-    }
-    
     // Recent calls persistence
     fun saveRecentCalls(recentCalls: List<Contact>) {
         try {
@@ -420,6 +390,23 @@ class PreferencesRepository(context: Context) {
             android.util.Log.d("PreferencesRepository", "Cleared saved recent calls")
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error clearing recent calls", e)
+        }
+    }
+
+    fun getLastShownPhoneNumber(contactId: String): String? {
+        return try {
+            sharedPreferences.getString("last_shown_phone_$contactId", null)?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error getting last shown phone for $contactId", e)
+            null
+        }
+    }
+
+    fun setLastShownPhoneNumber(contactId: String, phoneNumber: String) {
+        try {
+            sharedPreferences.edit().putString("last_shown_phone_$contactId", phoneNumber).apply()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error setting last shown phone for $contactId", e)
         }
     }
     

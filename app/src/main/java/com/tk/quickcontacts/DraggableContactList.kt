@@ -84,22 +84,18 @@ fun PhoneNumberSelectionDialog(
 @Composable
 fun ActionToggleDialog(
     contact: Contact,
-    isInternational: Boolean,
     isCurrentlySwapped: Boolean,
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    isInternationalDetectionEnabled: Boolean = true,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     onConfirm: (primaryAction: String, secondaryAction: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     com.tk.quickcontacts.ui.components.ActionToggleDialog(
         contact = contact,
-        isInternational = isInternational,
         isCurrentlySwapped = isCurrentlySwapped,
         customActions = customActions,
         defaultMessagingApp = defaultMessagingApp,
-        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         availableMessagingApps = availableMessagingApps,
         onConfirm = onConfirm,
         onDismiss = onDismiss
@@ -117,9 +113,8 @@ fun ContactList(
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
     onLongClick: (Contact) -> Unit = {},
-    onSetCustomActions: (Contact, String, String) -> Unit = { _, _, _ -> },
+    onOpenActionEditor: (Contact) -> Unit = {},
     customActionPreferences: Map<String, CustomActions> = emptyMap(),
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
@@ -127,7 +122,6 @@ fun ContactList(
     onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
     hasSeenCallWarning: Boolean = true,
     onMarkCallWarningSeen: (() -> Unit)? = null,
-    homeCountryCode: String? = null,
     onEditContactName: (Contact, String) -> Unit = { _, _ -> },
     callActivityMap: Map<String, Contact> = emptyMap()
 ) {
@@ -141,9 +135,8 @@ fun ContactList(
         onWhatsAppClick = onWhatsAppClick,
         onContactImageClick = onContactImageClick,
         onLongClick = onLongClick,
-        onSetCustomActions = onSetCustomActions,
+        onOpenActionEditor = onOpenActionEditor,
         customActionPreferences = customActionPreferences,
-        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
         availableMessagingApps = availableMessagingApps,
         selectedContacts = selectedContacts,
@@ -151,7 +144,6 @@ fun ContactList(
         onUpdateContactNumber = onUpdateContactNumber,
         hasSeenCallWarning = hasSeenCallWarning,
         onMarkCallWarningSeen = onMarkCallWarningSeen,
-        homeCountryCode = homeCountryCode,
         onEditContactName = onEditContactName,
         callActivityMap = callActivityMap
     )
@@ -165,13 +157,11 @@ fun RecentCallsSection(
     onContactImageClick: (Contact) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     isExpanded: Boolean = false,
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     com.tk.quickcontacts.ui.components.RecentCallsSection(
         recentCalls = recentCalls,
@@ -180,13 +170,11 @@ fun RecentCallsSection(
         onContactImageClick = onContactImageClick,
         onExpandedChange = onExpandedChange,
         isExpanded = isExpanded,
-        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
         modifier = modifier,
         selectedContacts = selectedContacts,
         availableMessagingApps = availableMessagingApps,
-        onExecuteAction = onExecuteAction,
-        homeCountryCode = homeCountryCode
+        onExecuteAction = onExecuteAction
     )
 }
 
@@ -196,26 +184,22 @@ fun RecentCallVerticalItem(
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
-    onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null
+    onExecuteAction: (Context, String, String) -> Unit
 ) {
     com.tk.quickcontacts.ui.components.RecentCallVerticalItem(
         contact = contact,
         onContactClick = onContactClick,
         onWhatsAppClick = onWhatsAppClick,
         onContactImageClick = onContactImageClick,
-        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
         modifier = modifier,
         selectedContacts = selectedContacts,
         availableMessagingApps = availableMessagingApps,
-        onExecuteAction = onExecuteAction,
-        homeCountryCode = homeCountryCode
+        onExecuteAction = onExecuteAction
     )
 }
 
@@ -224,17 +208,13 @@ fun RecentCallItem(
     contact: Contact,
     onContactClick: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
-    isInternationalDetectionEnabled: Boolean = true,
-    modifier: Modifier = Modifier,
-    homeCountryCode: String? = null
+    modifier: Modifier = Modifier
 ) {
     com.tk.quickcontacts.ui.components.RecentCallItem(
         contact = contact,
         onContactClick = onContactClick,
         onWhatsAppClick = onWhatsAppClick,
-        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
-        modifier = modifier,
-        homeCountryCode = homeCountryCode
+        modifier = modifier
     )
 }
 
@@ -250,14 +230,15 @@ fun ContactItem(
     onContactImageClick: (Contact) -> Unit = {},
     reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
     onLongClick: (Contact) -> Unit = {},
-    onSetCustomActions: (Contact, String, String) -> Unit = { _, _, _ -> },
+    onOpenActionEditor: (Contact) -> Unit = {},
     customActions: CustomActions? = null,
-    isInternationalDetectionEnabled: Boolean = true,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
-    homeCountryCode: String? = null,
+    onUpdateContactNumber: (Contact, String) -> Unit = { _, _ -> },
+    hasSeenCallWarning: Boolean = true,
+    onMarkCallWarningSeen: (() -> Unit)? = null,
     onEditContactName: (Contact, String) -> Unit = { _, _ -> },
     callActivity: Contact? = null
 ) {
@@ -271,16 +252,16 @@ fun ContactItem(
         onContactImageClick = onContactImageClick,
         reorderState = reorderState,
         onLongClick = onLongClick,
-        onSetCustomActions = onSetCustomActions,
+        onOpenActionEditor = onOpenActionEditor,
         customActions = customActions,
-        isInternationalDetectionEnabled = isInternationalDetectionEnabled,
         defaultMessagingApp = defaultMessagingApp,
-        availableMessagingApps =  availableMessagingApps,
+        availableMessagingApps = availableMessagingApps,
         selectedContacts = selectedContacts,
         onExecuteAction = onExecuteAction,
-        homeCountryCode = homeCountryCode,
+        onUpdateContactNumber = onUpdateContactNumber,
+        hasSeenCallWarning = hasSeenCallWarning,
+        onMarkCallWarningSeen = onMarkCallWarningSeen,
         onEditContactName = onEditContactName,
         callActivity = callActivity
     )
 }
-

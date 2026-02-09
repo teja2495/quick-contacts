@@ -2,25 +2,46 @@ package com.tk.quickcontacts.ui.components
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
-import androidx.compose.ui.res.stringResource
-import com.tk.quickcontacts.utils.PhoneNumberUtils
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
+
+private val SettingsCardBackground = Color(0xFF181724)
+private val SettingsAccent = Color(0xFFD0BCFF)
+private val SettingsTitleColor = Color(0xFFF2F1F6)
+private val SettingsBodyColor = Color(0xFFB6B4C4)
+private val SettingsDivider = Color(0xFF343246)
 
 @Composable
 fun SettingsScreen(
@@ -35,593 +56,229 @@ fun SettingsScreen(
     onOpenAppSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val isInternationalDetectionEnabled by viewModel.isInternationalDetectionEnabled.collectAsState()
+    val context = LocalContext.current
+
     val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
     val isDirectDialEnabled by viewModel.isDirectDialEnabled.collectAsState()
-    val useWhatsAppAsDefault by viewModel.useWhatsAppAsDefault.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
-    
-    // Dialog state for permission settings
+
+    val versionName = remember(context) {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     var showPermissionSettingsDialog by remember { mutableStateOf(false) }
     var showCallPermissionSettingsDialog by remember { mutableStateOf(false) }
-    
+
     // Refresh available messaging apps when settings screen is opened
     LaunchedEffect(Unit) {
         viewModel.refreshAvailableMessagingApps()
     }
-    
+
+    val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
+    val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+
+    fun sendFeedbackEmail() {
+        val appVersion = try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: "Unknown"
+        } catch (_: Exception) {
+            "Unknown"
+        }
+
+        val androidVersion = android.os.Build.VERSION.RELEASE
+        val deviceModel = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+        val emailBody = """
+
+
+            ---
+            App Version: $appVersion
+            Android Version: $androidVersion
+            Device: $deviceModel
+        """.trimIndent()
+
+        val subject = context.getString(R.string.feedback_subject)
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse(
+                "mailto:tejakarlapudi.apps@gmail.com?subject=${Uri.encode(subject)}&body=${Uri.encode(emailBody)}"
+            )
+        }
+
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            // No compatible email app on device.
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp)
     ) {
-        // Settings content
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            contentPadding = PaddingValues(top = 14.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                // Messaging App Setting (no Card)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                ) {
-                    // Header
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Default Messaging App",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Explanation text for default messaging app setting
+                SettingsGroupCard {
                     Text(
-                        text = "You can change this for individual contacts in quick list by tapping on the edit button",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        text = "Default Messaging App",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SettingsTitleColor
                     )
-                    // SMS Option (always available)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { 
-                                viewModel.setMessagingApp(MessagingApp.SMS)
-                            }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = defaultMessagingApp == MessagingApp.SMS,
-                            onClick = { 
-                                viewModel.setMessagingApp(MessagingApp.SMS)
-                            },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier.width(28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.sms_icon),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Messages",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    // WhatsApp Option
-                    val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = isWhatsAppAvailable) { 
-                                if (isWhatsAppAvailable) {
-                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
-                                }
-                            }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = defaultMessagingApp == MessagingApp.WHATSAPP,
-                            onClick = { 
-                                if (isWhatsAppAvailable) {
-                                    viewModel.setMessagingApp(MessagingApp.WHATSAPP)
-                                }
-                            },
-                            enabled = isWhatsAppAvailable,
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary,
-                                disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier.width(28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.whatsapp_icon),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = "WhatsApp",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isWhatsAppAvailable) 
-                                    MaterialTheme.colorScheme.onSurface 
-                                else 
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                            if (!isWhatsAppAvailable) {
-                                Text(
-                                    text = "Not installed",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.settings_messaging_app_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SettingsBodyColor
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MessagingAppOptionRow(
+                        label = stringResource(R.string.messaging_app_sms),
+                        subtitle = null,
+                        iconRes = R.drawable.sms_icon,
+                        iconSize = 18.dp,
+                        selected = defaultMessagingApp == MessagingApp.SMS,
+                        enabled = true,
+                        onClick = { viewModel.setMessagingApp(MessagingApp.SMS) }
+                    )
+                    MessagingAppOptionRow(
+                        label = stringResource(R.string.messaging_app_whatsapp),
+                        subtitle = if (isWhatsAppAvailable) null else stringResource(R.string.settings_not_installed),
+                        iconRes = R.drawable.whatsapp_icon,
+                        iconSize = 22.dp,
+                        selected = defaultMessagingApp == MessagingApp.WHATSAPP,
+                        enabled = isWhatsAppAvailable,
+                        onClick = {
+                            if (isWhatsAppAvailable) {
+                                viewModel.setMessagingApp(MessagingApp.WHATSAPP)
                             }
                         }
-                    }
-                    // Telegram Option
-                    val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = isTelegramAvailable) { 
-                                if (isTelegramAvailable) {
-                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
-                                }
-                            }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = defaultMessagingApp == MessagingApp.TELEGRAM,
-                            onClick = { 
-                                if (isTelegramAvailable) {
-                                    viewModel.setMessagingApp(MessagingApp.TELEGRAM)
-                                }
-                            },
-                            enabled = isTelegramAvailable,
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary,
-                                disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                disabledUnselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier.width(28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.telegram_icon),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = "Telegram",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isTelegramAvailable) 
-                                    MaterialTheme.colorScheme.onSurface 
-                                else 
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                            if (!isTelegramAvailable) {
-                                Text(
-                                    text = "Not installed",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
+                    )
+                    MessagingAppOptionRow(
+                        label = stringResource(R.string.messaging_app_telegram),
+                        subtitle = if (isTelegramAvailable) null else stringResource(R.string.settings_not_installed),
+                        iconRes = R.drawable.telegram_icon,
+                        iconSize = 18.dp,
+                        selected = defaultMessagingApp == MessagingApp.TELEGRAM,
+                        enabled = isTelegramAvailable,
+                        onClick = {
+                            if (isTelegramAvailable) {
+                                viewModel.setMessagingApp(MessagingApp.TELEGRAM)
                             }
                         }
-                    }
+                    )
                 }
             }
-            
+
             item {
-                // Recent Calls Visibility Setting (no Card)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Show Recent Calls",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (hasCallLogPermission) {
-                                stringResource(R.string.recent_calls_description)
-                            } else {
-                                "Requires call history permission to display recent calls."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Switch(
+                SettingsGroupCard {
+                    SettingToggleRow(
+                        title = "Show Recent Calls",
+                        description = if (hasCallLogPermission) {
+                            stringResource(R.string.recent_calls_description)
+                        } else {
+                            "Requires call history permission to display recent calls."
+                        },
                         checked = isRecentCallsVisible && hasCallLogPermission,
+                        enabled = true,
                         onCheckedChange = { newValue ->
                             if (newValue && !hasCallLogPermission) {
-                                // User wants to enable but doesn't have permission
                                 if (isCallLogPermissionPermanentlyDenied) {
-                                    // Permission is permanently denied, show dialog
                                     showPermissionSettingsDialog = true
                                 } else {
-                                    // Request permission normally
                                     onRequestCallLogPermission?.invoke()
                                 }
                             } else {
-                                // User wants to disable or already has permission
                                 viewModel.toggleRecentCallsVisibility()
                             }
-                        },
-                        enabled = true, // Always enabled to allow interaction
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
+                        }
                     )
-                }
-            }
-            
-            item {
-                // Direct Dial Setting (no Card)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Direct Dial",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (hasCallPermission) {
-                                "Calls are made immediately without opening the dialer."
-                            } else {
-                                "Requires phone permission to make calls directly."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Switch(
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        color = SettingsDivider
+                    )
+                    SettingToggleRow(
+                        title = "Direct Dial",
+                        description = if (hasCallPermission) {
+                            "Calls are made immediately without opening the dialer."
+                        } else {
+                            "Requires phone permission to make calls directly."
+                        },
                         checked = isDirectDialEnabled && hasCallPermission,
+                        enabled = true,
                         onCheckedChange = { newValue ->
                             if (newValue && !hasCallPermission) {
-                                // User wants to enable but doesn't have permission
                                 if (isCallPermissionPermanentlyDenied) {
-                                    // Permission is permanently denied, show dialog
                                     showCallPermissionSettingsDialog = true
                                 } else {
-                                    // Request permission normally
                                     onRequestCallPermission?.invoke()
                                 }
                             } else {
-                                // User wants to disable or already has permission
                                 viewModel.toggleDirectDial()
                             }
-                        },
-                        enabled = true, // Always enabled to allow interaction
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
+                        }
                     )
                 }
             }
-            
+
             item {
-                // International Number Detection Setting (no Card)
-                val context = LocalContext.current
-                // Observe home country code from ViewModel
-                val homeCountryCode by viewModel.homeCountryCode.collectAsState()
-                val isoCountry = remember(context, isInternationalDetectionEnabled, defaultMessagingApp) {
-                    // Always detect country code, regardless of international detection status
-                    // This allows the dialog to be pre-populated when user tries to enable international detection
-                    val country = PhoneNumberUtils.getUserCountryCode(context)
-                    country
-                }
-                val defaultDialingCode = isoCountry?.let { PhoneNumberUtils.isoToDialingCode(it) } ?: ""
-                val displayDialingCode = homeCountryCode ?: defaultDialingCode
-
-                // Dialog state for editing country code
-                var showEditCountryCodeDialog by remember { mutableStateOf(false) }
-                var tempCountryCode by remember(displayDialingCode) { 
-                    mutableStateOf(displayDialingCode) 
-                }
-                var pendingEnableInternationalDetection by remember { mutableStateOf(false) }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
+                SettingsGroupCard {
+                    Text(
+                        text = "Support",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SettingsTitleColor
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { sendFeedbackEmail() }
+                            .background(SettingsAccent.copy(alpha = 0.12f))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "International Number Detection",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
+                            text = "Send Feedback & Bug Reports",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = SettingsTitleColor,
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        when {
-                            defaultMessagingApp == MessagingApp.SMS -> {
-                                Text(
-                                    text = "Disabled when SMS is the default messaging app",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            isInternationalDetectionEnabled && defaultMessagingApp != MessagingApp.SMS && displayDialingCode.isNotBlank() -> {
-                                Text(
-                                    text = "Phone number must have country code.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 2.dp)
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Home Country Code: ",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = displayDialingCode,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary, // Feedback color
-                                        modifier = Modifier
-                                            .clickable {
-                                                tempCountryCode = displayDialingCode
-                                                showEditCountryCodeDialog = true
-                                            }
-                                    )
-                                }
-                            }
-                            else -> {
-                                Text(
-                                    text = "For international numbers, tapping the card opens WhatsApp or Telegram.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Switch(
-                        checked = isInternationalDetectionEnabled,
-                        onCheckedChange = { newValue ->
-                            if (newValue) {
-                                // Enabling: check if country code is available
-                                if (homeCountryCode.isNullOrBlank() && defaultDialingCode.isBlank()) {
-                                    // Prompt for country code
-                                    pendingEnableInternationalDetection = true
-                                    tempCountryCode = displayDialingCode
-                                    showEditCountryCodeDialog = true
-                                } else {
-                                    viewModel.toggleInternationalDetection()
-                                }
-                            } else {
-                                // Disabling: just toggle off
-                                viewModel.toggleInternationalDetection()
-                            }
-                        },
-                        enabled = defaultMessagingApp != MessagingApp.SMS,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        Text(
+                            text = "Open",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = SettingsAccent
                         )
-                    )
-                }
-                // Edit Country Code Dialog
-                if (showEditCountryCodeDialog) {
-                    val isCountryCodeValid = remember(tempCountryCode) {
-                        com.tk.quickcontacts.utils.PhoneNumberUtils.isValidCountryDialingCode(tempCountryCode.trim())
                     }
-                    AlertDialog(
-                        onDismissRequest = {
-                            showEditCountryCodeDialog = false
-                            if (pendingEnableInternationalDetection) {
-                                // User cancelled, revert toggle and clear country code
-                                pendingEnableInternationalDetection = false
-                                viewModel.clearHomeCountryCode()
-                                if (!isInternationalDetectionEnabled) {
-                                    // Already off, do nothing
-                                } else {
-                                    viewModel.toggleInternationalDetection()
-                                }
-                            }
-                        },
-                        title = {
-                            Text("Set Home Country Code", style = MaterialTheme.typography.titleMedium)
-                        },
-                        text = {
-                            Column {
-                                OutlinedTextField(
-                                    value = tempCountryCode,
-                                    onValueChange = { input ->
-                                        // Only allow digits and plus sign
-                                        val filtered = input.filter { it.isDigit() || it == '+' }
-                                        tempCountryCode = filtered
-                                    },
-                                    label = { Text("Country Code (e.g. +1)") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                    singleLine = true,
-                                    isError = tempCountryCode.isNotBlank() && !isCountryCodeValid
-                                )
-                                if (tempCountryCode.isNotBlank() && !isCountryCodeValid) {
-                                    Text(
-                                        text = "Invalid country code. Please enter a valid code like +1, +91, etc.",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
-                                }
-                            }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                if (tempCountryCode.isBlank() || !isCountryCodeValid) {
-                                    // Don't allow blank or invalid, treat as cancel
-                                    showEditCountryCodeDialog = false
-                                    if (pendingEnableInternationalDetection) {
-                                        pendingEnableInternationalDetection = false
-                                        viewModel.clearHomeCountryCode()
-                                        if (!isInternationalDetectionEnabled) {
-                                            // Already off, do nothing
-                                        } else {
-                                            viewModel.toggleInternationalDetection()
-                                        }
-                                    }
-                                } else {
-                                    // Ensure country code starts with '+'
-                                    val codeToSave = if (tempCountryCode.trim().startsWith("+")) tempCountryCode.trim() else "+" + tempCountryCode.trim()
-                                    viewModel.setHomeCountryCode(codeToSave)
-                                    showEditCountryCodeDialog = false
-                                    if (pendingEnableInternationalDetection) {
-                                        pendingEnableInternationalDetection = false
-                                        if (!isInternationalDetectionEnabled) {
-                                            viewModel.toggleInternationalDetection()
-                                        }
-                                    }
-                                }
-                            }, enabled = tempCountryCode.isNotBlank() && isCountryCodeValid) {
-                                Text("OK")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = {
-                                showEditCountryCodeDialog = false
-                                if (pendingEnableInternationalDetection) {
-                                    pendingEnableInternationalDetection = false
-                                    viewModel.clearHomeCountryCode()
-                                    if (!isInternationalDetectionEnabled) {
-                                        // Already off, do nothing
-                                    } else {
-                                        viewModel.toggleInternationalDetection()
-                                    }
-                                }
-                            }) {
-                                Text("Cancel")
-                            }
-                        }
-                    )
                 }
             }
-            item {
-                // Feedback button just below international number detection
-                val context = LocalContext.current
-                TextButton(
-                    onClick = {
-                        val versionName = try {
-                            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                            packageInfo.versionName ?: "Unknown"
-                        } catch (e: Exception) {
-                            "Unknown"
-                        }
-                        
-                        val androidVersion = android.os.Build.VERSION.RELEASE
-                        val deviceModel = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
-                        
-                        val emailBody = """
-                            
-                            
-                            ---
-                            App Version: $versionName
-                            Android Version: $androidVersion
-                            Device: $deviceModel
-                        """.trimIndent()
-
-                        val subject = "Quick Contacts Feedback"
-
-                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:tejakarlapudi.apps@gmail.com?subject=${Uri.encode(subject)}&body=${Uri.encode(emailBody)}")
-                        }
-
-                        try {
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            // Handle case where no email app is installed
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text(
-                        text = "Send Feedback & Bug Reports",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-        // Version number at the bottom
-        val context = LocalContext.current
-        val versionName = try {
-            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            packageInfo.versionName ?: ""
-        } catch (e: Exception) {
-            ""
         }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 32.dp),
+                .padding(top = 8.dp, bottom = 22.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Version $versionName",
+                text = stringResource(R.string.settings_version, versionName),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = SettingsBodyColor
             )
         }
     }
-    
+
     // Permission Settings Dialog (for Call History)
     if (showPermissionSettingsDialog) {
         AlertDialog(
@@ -711,4 +368,132 @@ fun SettingsScreen(
             }
         )
     }
-} 
+}
+
+@Composable
+private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun MessagingAppOptionRow(
+    label: String,
+    subtitle: String?,
+    iconRes: Int,
+    iconSize: Dp,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val textColor = if (enabled) SettingsTitleColor else SettingsBodyColor.copy(alpha = 0.65f)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) SettingsAccent.copy(alpha = 0.14f) else Color.Transparent)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            enabled = enabled,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = SettingsAccent,
+                unselectedColor = SettingsBodyColor,
+                disabledSelectedColor = SettingsBodyColor.copy(alpha = 0.45f),
+                disabledUnselectedColor = SettingsBodyColor.copy(alpha = 0.45f)
+            )
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Box(
+            modifier = Modifier.width(28.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                tint = if (enabled) SettingsAccent else SettingsBodyColor.copy(alpha = 0.55f),
+                modifier = Modifier.size(iconSize)
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = textColor
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SettingsBodyColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingToggleRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (enabled) SettingsTitleColor else SettingsBodyColor
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = SettingsBodyColor
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            colors = settingsSwitchColors()
+        )
+    }
+}
+
+@Composable
+private fun settingsSwitchColors() = SwitchDefaults.colors(
+    checkedThumbColor = Color(0xFF35205A),
+    checkedTrackColor = SettingsAccent,
+    checkedBorderColor = Color.Transparent,
+    uncheckedThumbColor = Color(0xFFC1BFCC),
+    uncheckedTrackColor = Color(0xFF5C596B),
+    uncheckedBorderColor = Color.Transparent,
+    disabledCheckedThumbColor = Color(0xFF514A63),
+    disabledCheckedTrackColor = Color(0xFF696277),
+    disabledUncheckedThumbColor = Color(0xFF857F92),
+    disabledUncheckedTrackColor = Color(0xFF5A5666)
+)

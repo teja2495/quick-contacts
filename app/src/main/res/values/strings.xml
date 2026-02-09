@@ -11,7 +11,6 @@
     <string name="title_empty_quick_list">Empty Quick List</string>
     <string name="title_default_messaging_app">Default Messaging App</string>
     <string name="title_show_recent_calls">Show Recent Calls</string>
-    <string name="title_international_detection">International Number Detection</string>
     <string name="title_editing_quick_list">Editing Quick List...</string>
     <string name="title_select_phone_number">Select Phone Number</string>
     <string name="title_change_actions">Change Actions</string>
@@ -71,8 +70,6 @@
     <!-- Settings -->
     <string name="settings_messaging_app_description">You can change this for individual contacts in quick list by tapping on the edit button</string>
     <string name="settings_recent_calls_description">Display recent calls at the top of the main screen for quick access</string>
-    <string name="settings_international_detection_description">Detect international numbers with country code and open WhatsApp or Telegram when the contact card is tapped.</string>
-    <string name="settings_international_detection_disabled">Disabled when SMS is the default messaging app</string>
     <string name="settings_not_installed">Not installed</string>
     <string name="settings_version">Version %s</string>
     
@@ -140,4 +137,28 @@
     
     <!-- Log Tags -->
     <string name="log_tag_quick_contacts">QuickContacts</string>
+
+    <!-- Google Meet errors -->
+    <string name="error_google_meet_not_installed">Google Meet is not installed</string>
+    <string name="error_google_meet_no_phone">No phone number for Google Meet call</string>
+    <string name="error_google_meet_call_failed">Could not start Google Meet call</string>
+    <string name="error_google_meet_video_call_failed">Could not start Google Meet video call</string>
+
+    <!-- WhatsApp errors -->
+    <string name="error_whatsapp_not_installed">WhatsApp is not installed</string>
+    <string name="error_whatsapp_chat_failed">Could not open WhatsApp chat</string>
+    <string name="error_whatsapp_call_failed">Could not start WhatsApp call</string>
+    <string name="error_whatsapp_video_call_unavailable">WhatsApp video call is not available</string>
+    <string name="error_whatsapp_video_call_failed">Could not start WhatsApp video call</string>
+
+    <!-- Telegram errors -->
+    <string name="error_telegram_not_installed">Telegram is not installed</string>
+    <string name="error_telegram_chat_failed">Could not open Telegram chat</string>
+    <string name="error_telegram_call_failed">Could not start Telegram call</string>
+
+    <!-- Signal errors -->
+    <string name="error_signal_not_installed">Signal is not installed</string>
+    <string name="error_signal_chat_failed">Could not open Signal chat</string>
+    <string name="error_signal_call_failed">Could not start Signal call</string>
+    <string name="error_signal_video_call_failed">Could not start Signal video call</string>
 </resources>

@@ -84,6 +84,19 @@ object PhoneNumberUtils {
     }
     
     /**
+     * Compare two number strings (handles country code vs no country code).
+     */
+    fun isSameNumber(number1: String, number2: String): Boolean {
+        if (number1.isBlank() || number2.isBlank()) return number1.isBlank() && number2.isBlank()
+        return normalizePhoneNumber(number1) == normalizePhoneNumber(number2)
+    }
+
+    /**
+     * Format a phone number for display (alias for formatPhoneNumber).
+     */
+    fun formatPhoneNumberForDisplay(phoneNumber: String): String = formatPhoneNumber(phoneNumber)
+
+    /**
      * Safely format a phone number for display with validation
      */
     fun formatPhoneNumber(phoneNumber: String): String {
@@ -452,44 +465,6 @@ object PhoneNumberUtils {
             null
         }
     }
-    
-    /**
-     * Determine if a phone number is international with validation
-     * @param homeCountryCode The user's home country dialing code (e.g., '+1'). If null, fallback to device country code.
-     * @return true if international, false if domestic, or null if user's country code cannot be determined (UI should prompt user)
-     */
-    fun isInternationalNumber(
-        context: Context,
-        phoneNumber: String,
-        isDetectionEnabled: Boolean,
-        homeCountryCode: String? = null
-    ): Boolean? {
-        if (!isDetectionEnabled) {
-            return false
-        }
-        if (!isValidPhoneNumber(phoneNumber)) {
-            return false
-        }
-        // If the number does not start with '+', ignore international detection
-        if (!phoneNumber.trim().startsWith("+")) {
-            return false
-        }
-        return try {
-            val phoneCountryCode = getDialingCodeFromPhoneNumber(phoneNumber)
-            val userDialingCode = homeCountryCode ?: isoToDialingCode(getUserCountryCode(context) ?: return null)
-            // If we can't determine the phone's country code, assume it's domestic
-            if (phoneCountryCode == null || userDialingCode == null) {
-                return null // Signal to UI to prompt user for country code
-            }
-            // Compare dialing codes (e.g., '+1' vs '+91'), trim and ignore case
-            val phoneCode = phoneCountryCode.trim().lowercase(Locale.ROOT)
-            val userCode = userDialingCode.trim().lowercase(Locale.ROOT)
-            phoneCode != userCode
-        } catch (e: Exception) {
-            android.util.Log.w("PhoneNumberUtils", "Error determining if number is international: $phoneNumber", e)
-            null // Signal to UI to prompt user for country code
-        }
-    }
 
     /**
      * Extract dialing code from phone number (e.g., '+1', '+91')
@@ -830,39 +805,5 @@ object PhoneNumberUtils {
             android.util.Log.w("PhoneNumberUtils", "Error getting country from timezone", e)
             null
         }
-    }
-    
-    /**
-     * Append country code to phone number if it doesn't already have one
-     * @param phoneNumber The phone number to process
-     * @param context The context to get user's country code
-     * @param homeCountryCode Optional home country code (e.g., "+1"). If null, will be detected from context.
-     * @return Phone number with country code appended, or original if already has country code or cannot determine user's country
-     */
-    fun appendCountryCodeIfNeeded(
-        phoneNumber: String,
-        context: Context,
-        homeCountryCode: String? = null
-    ): String {
-        if (!isValidPhoneNumber(phoneNumber)) {
-            return phoneNumber // Return original if invalid
-        }
-        
-        val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
-        
-        // If number already starts with +, it has a country code
-        if (cleaned.startsWith("+")) {
-            return phoneNumber
-        }
-        
-        // Get user's country dialing code
-        val userDialingCode = homeCountryCode ?: isoToDialingCode(getUserCountryCode(context) ?: return phoneNumber)
-        
-        if (userDialingCode.isNullOrBlank()) {
-            return phoneNumber // Return original if we can't determine country code
-        }
-        
-        // Append country code to the number
-        return "$userDialingCode$cleaned"
     }
 } 
