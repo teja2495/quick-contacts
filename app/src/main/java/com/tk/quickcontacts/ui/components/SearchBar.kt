@@ -275,7 +275,7 @@ private fun OpenAppCard(
                     imageVector = Icons.Rounded.Sms,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.padding(top = 4.dp).size(24.dp)
                 )
                 OpenAppItem.WhatsApp -> Icon(
                     painter = painterResource(R.drawable.whatsapp_icon),
