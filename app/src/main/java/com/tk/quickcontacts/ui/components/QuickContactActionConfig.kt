@@ -110,15 +110,16 @@ fun resolveQuickContactActions(
     customActions: CustomActions?,
     defaultMessagingApp: MessagingApp
 ): ResolvedQuickContactActions {
-    val defaultCardTapAction = QuickContactAction.CALL
-    val defaultFirstButtonTapAction = defaultMessagingAction(defaultMessagingApp)
+    val defaultCardTapAction = QuickContactAction.ALL_OPTIONS
+    val defaultFirstButtonTapAction = QuickContactAction.CALL
+    val defaultSecondButtonTapAction = defaultMessagingAction(defaultMessagingApp)
 
     return ResolvedQuickContactActions(
         cardTapAction = normalizeQuickContactAction(customActions?.primaryAction, defaultCardTapAction),
         cardLongPressAction = normalizeQuickContactAction(customActions?.cardLongPressAction, QuickContactAction.ALL_OPTIONS),
         firstButtonTapAction = normalizeQuickContactAction(customActions?.secondaryAction, defaultFirstButtonTapAction),
         firstButtonLongPressAction = normalizeQuickContactAction(customActions?.firstButtonLongPressAction, QuickContactAction.ALL_OPTIONS),
-        secondButtonTapAction = normalizeQuickContactAction(customActions?.secondButtonTapAction, QuickContactAction.ALL_OPTIONS),
+        secondButtonTapAction = normalizeQuickContactAction(customActions?.secondButtonTapAction, defaultSecondButtonTapAction),
         secondButtonLongPressAction = normalizeQuickContactAction(customActions?.secondButtonLongPressAction, QuickContactAction.ALL_OPTIONS)
     )
 }

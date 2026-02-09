@@ -1,9 +1,14 @@
 package com.tk.quickcontacts.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +34,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +61,7 @@ import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.utils.ContactActionAvailability
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 // Helper data class for chip layout
@@ -713,7 +720,7 @@ fun ContactActionsDialog(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            painter = painterResource(id = R.drawable.sms_icon),
+                                            imageVector = Icons.Rounded.Sms,
                                             contentDescription = stringResource(R.string.cd_sms),
                                             tint = Color.White,
                                             modifier = Modifier.size(22.dp)
@@ -856,15 +863,14 @@ fun ContactActionsGridDialog(
     val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
 
     val context = LocalContext.current
-    var contactFilteredActions by remember(availableActions, selectedPhoneNumber) {
-        mutableStateOf(availableActions)
+    var contactFilteredActions by remember(selectedPhoneNumber) {
+        mutableStateOf(emptySet<String>())
     }
-    LaunchedEffect(availableActions, selectedPhoneNumber, context) {
+    LaunchedEffect(selectedPhoneNumber, context) {
         contactFilteredActions = withContext(Dispatchers.IO) {
-            ContactActionAvailability.resolveContactAvailableActions(
+            ContactActionAvailability.getContactAvailableActions(
                 context = context,
-                phoneNumber = selectedPhoneNumber,
-                appAvailableActions = availableActions
+                phoneNumber = selectedPhoneNumber
             )
         }
     }
@@ -875,15 +881,34 @@ fun ContactActionsGridDialog(
         }
     }
 
+    val fadeDurationMs = 200
+    var visible by remember { mutableStateOf(true) }
+    val requestDismiss = { visible = false }
+    LaunchedEffect(visible) {
+        if (!visible) {
+            delay(fadeDurationMs.toLong())
+            onDismiss()
+        }
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { requestDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(fadeDurationMs)),
+            exit = fadeOut(animationSpec = tween(fadeDurationMs))
+        ) {
         Box(Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(onClick = onDismiss)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { requestDismiss() }
+                    )
             )
             Surface(
                 modifier = Modifier
@@ -956,7 +981,7 @@ fun ContactActionsGridDialog(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = requestDismiss) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(R.string.cd_close)
@@ -1019,7 +1044,7 @@ fun ContactActionsGridDialog(
                                     .height(56.dp)
                                     .clickable {
                                         onAddToContacts(selectedPhoneNumber)
-                                        onDismiss()
+                                        requestDismiss()
                                     }
                             ) {
                                 Row(
@@ -1058,7 +1083,7 @@ fun ContactActionsGridDialog(
                                             action = action,
                                             onClick = {
                                                 onActionSelected(action, selectedPhoneNumber)
-                                                onDismiss()
+                                                requestDismiss()
                                             },
                                             modifier = Modifier.weight(1f),
                                             useFullWidth = true
@@ -1074,7 +1099,7 @@ fun ContactActionsGridDialog(
                                     .height(56.dp)
                                     .clickable {
                                         onAddToQuickList(contact.copy(phoneNumber = selectedPhoneNumber))
-                                        onDismiss()
+                                        requestDismiss()
                                     }
                             ) {
                                 Row(
@@ -1102,6 +1127,7 @@ fun ContactActionsGridDialog(
                     }
                 }
             }
+        }
         }
     }
 }

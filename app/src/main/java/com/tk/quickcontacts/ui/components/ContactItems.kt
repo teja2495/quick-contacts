@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material3.*
@@ -659,7 +660,7 @@ fun RecentCallVerticalItem(
                     }
                     MessagingApp.SMS -> {
                         Icon(
-                            painter = painterResource(id = R.drawable.sms_icon),
+                            imageVector = Icons.Rounded.Sms,
                             contentDescription = "SMS ${contact.name}",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)

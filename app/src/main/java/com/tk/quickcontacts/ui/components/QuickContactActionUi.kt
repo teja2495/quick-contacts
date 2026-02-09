@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.DoNotDisturb
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -98,7 +99,8 @@ fun ContactActionButton(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 8.dp),
+                .padding(vertical = 12.dp, horizontal = 8.dp)
+                .then(if (action == QuickContactAction.MESSAGE) Modifier.padding(top = 3.dp) else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -128,7 +130,7 @@ private fun ContactActionButtonIcon(
             modifier = Modifier.size(LargeIconSize)
         )
         QuickContactAction.MESSAGE -> Icon(
-            painter = painterResource(id = R.drawable.sms_icon),
+            imageVector = Icons.Rounded.Sms,
             contentDescription = null,
             tint = tint,
             modifier = Modifier.size(LargeIconSize * 0.9f)
@@ -206,7 +208,7 @@ private fun ContactActionButtonIcon(
             modifier = Modifier.size(LargeIconSize)
         )
         else -> Icon(
-            painter = painterResource(id = R.drawable.sms_icon),
+            imageVector = Icons.Rounded.Sms,
             contentDescription = null,
             tint = tint,
             modifier = Modifier.size(LargeIconSize)
@@ -319,7 +321,7 @@ fun QuickContactActionIcon(
         }
         else -> {
             Icon(
-                painter = painterResource(id = R.drawable.sms_icon),
+                imageVector = Icons.Rounded.Sms,
                 contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = modifier

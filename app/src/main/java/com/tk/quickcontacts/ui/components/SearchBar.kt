@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -271,7 +272,7 @@ private fun OpenAppCard(
                     modifier = Modifier.size(28.dp)
                 )
                 OpenAppItem.Sms -> Icon(
-                    painter = painterResource(R.drawable.sms_icon),
+                    imageVector = Icons.Rounded.Sms,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
