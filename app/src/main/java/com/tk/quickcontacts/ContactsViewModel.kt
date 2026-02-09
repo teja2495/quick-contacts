@@ -710,9 +710,13 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             val currentList = _selectedContacts.value.toMutableList()
             val index = currentList.indexOfFirst { it.id == contact.id }
             if (index != -1) {
+                val allNumbers = contact.phoneNumbers.ifEmpty { listOf(selectedNumber) }
+                    .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
+                val numbersWithDefault = if (allNumbers.any { PhoneNumberUtils.isSameNumber(it, selectedNumber) }) allNumbers
+                    else allNumbers + selectedNumber
                 val updatedContact = contact.copy(
                     phoneNumber = selectedNumber,
-                    phoneNumbers = listOf(selectedNumber)
+                    phoneNumbers = numbersWithDefault
                 )
                 currentList[index] = updatedContact
                 _selectedContacts.value = currentList

@@ -288,7 +288,10 @@ fun PhoneNumberSelectionDialog(
                                     }
                                 } else {
                                     IconButton(onClick = {
-                                        onAddContact?.invoke(contact.copy(phoneNumber = phoneNumber, phoneNumbers = listOf(phoneNumber)))
+                                        val allNumbers = contact.phoneNumbers.ifEmpty { listOf(phoneNumber) }
+                                            .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
+                                        val numbersWithSelected = if (allNumbers.any { PhoneNumberUtils.isSameNumber(it, phoneNumber) }) allNumbers else allNumbers + phoneNumber
+                                        onAddContact?.invoke(contact.copy(phoneNumber = phoneNumber, phoneNumbers = numbersWithSelected))
                                     }) {
                                         Icon(
                                             imageVector = Icons.Default.Add,
@@ -529,7 +532,10 @@ fun ContactActionsDialog(
     val hasMultipleNumbers = phoneNumbers.size > 1
     var selectedPhoneIndex by remember(contact.id, phoneNumbers) {
         val lastShown = getLastShownPhoneNumber(contact.id)
-        val idx = if (lastShown == null) 0 else phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+        val idx = when {
+            lastShown != null -> phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+            else -> phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, contact.phoneNumber) }.takeIf { it >= 0 } ?: 0
+        }
         mutableStateOf(if (idx < 0) 0 else idx.coerceIn(0, (phoneNumbers.size - 1).coerceAtLeast(0)))
     }
     val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull()
@@ -857,7 +863,10 @@ fun ContactActionsGridDialog(
     val hasMultipleNumbers = phoneNumbers.size > 1
     var selectedPhoneIndex by remember(contact.id, phoneNumbers) {
         val lastShown = getLastShownPhoneNumber(contact.id)
-        val idx = if (lastShown == null) 0 else phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+        val idx = when {
+            lastShown != null -> phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+            else -> phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, contact.phoneNumber) }.takeIf { it >= 0 } ?: 0
+        }
         mutableStateOf(if (idx < 0) 0 else idx.coerceIn(0, (phoneNumbers.size - 1).coerceAtLeast(0)))
     }
     val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""

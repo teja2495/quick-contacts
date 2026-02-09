@@ -62,8 +62,8 @@ object ContactUtils {
                 return null
             }
             
-            // Use first valid phone number as primary
-            val primaryPhoneNumber = validPhoneNumbers.first()
+            val primaryPhoneNumber = validPhoneNumbers.firstOrNull { PhoneNumberUtils.isSameNumber(it, contact.phoneNumber) }
+                ?: validPhoneNumbers.first()
             
             // Clean name (remove excessive whitespace, etc.)
             val cleanName = contact.name.trim().replace(Regex("\\s+"), " ")

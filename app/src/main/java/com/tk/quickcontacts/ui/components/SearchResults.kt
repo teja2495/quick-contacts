@@ -203,10 +203,10 @@ fun SearchResultItem(
         PhoneNumberSelectionDialog(
             contact = contact,
             onPhoneNumberSelected = { selectedNumber: String ->
-                val contactWithSelectedNumber = contact.copy(
-                    phoneNumber = selectedNumber,
-                    phoneNumbers = listOf(selectedNumber)
-                )
+                val allNumbers = contact.phoneNumbers.ifEmpty { listOf(selectedNumber) }
+                    .distinctBy { com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(it) }
+                val numbersWithSelected = if (allNumbers.any { com.tk.quickcontacts.utils.PhoneNumberUtils.isSameNumber(it, selectedNumber) }) allNumbers else allNumbers + selectedNumber
+                val contactWithSelectedNumber = contact.copy(phoneNumber = selectedNumber, phoneNumbers = numbersWithSelected)
                 when {
                     dialogAction == QuickContactAction.CALL || dialogAction == "call" -> onContactClick(contactWithSelectedNumber)
                     dialogAction == "add" -> onAddContact(contactWithSelectedNumber)
@@ -220,12 +220,11 @@ fun SearchResultItem(
                 dialogAction = null
             },
             selectedContacts = selectedContacts,
-            onAddContact = if (dialogAction == "add") { contactWithSelectedNumber ->
-                val newContact = contact.copy(
-                    phoneNumber = contactWithSelectedNumber.phoneNumber,
-                    phoneNumbers = listOf(contactWithSelectedNumber.phoneNumber)
-                )
-                onAddContact(newContact)
+            onAddContact = if (dialogAction == "add") { contactToAdd ->
+                val allNumbers = contact.phoneNumbers.ifEmpty { listOf(contactToAdd.phoneNumber) }
+                    .distinctBy { com.tk.quickcontacts.utils.PhoneNumberUtils.normalizePhoneNumber(it) }
+                val numbersWithDefault = if (allNumbers.any { com.tk.quickcontacts.utils.PhoneNumberUtils.isSameNumber(it, contactToAdd.phoneNumber) }) allNumbers else allNumbers + contactToAdd.phoneNumber
+                onAddContact(contact.copy(phoneNumber = contactToAdd.phoneNumber, phoneNumbers = numbersWithDefault))
             } else null,
             onRemoveContact = if (dialogAction == "add") { contactToRemove ->
                 onRemoveContact(contactToRemove)

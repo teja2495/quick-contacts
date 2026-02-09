@@ -250,51 +250,32 @@ fun ContactItem(
                     }
                 }
                 
-                // Show primary action text or call status (only in normal mode, not in edit mode)
-                if (!editMode) {
+                if (!editMode && callActivity?.callType != null && callActivity.callTimestamp != null) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    // Show call status if available, otherwise show primary action
-                    // Only show call activity if primary action is "Call"
-                    if (resolvedActions.cardTapAction == QuickContactAction.NONE) {
-                        // Don't show anything when "None" is selected
-                    } else if (callActivity?.callType != null &&
-                        callActivity.callTimestamp != null &&
-                        resolvedActions.cardTapAction == QuickContactAction.CALL
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            // Show call activity information only
-                            Icon(
-                                imageVector = when (callActivity.callType) {
-                                    "missed" -> Icons.AutoMirrored.Filled.CallMissed
-                                    "rejected" -> Icons.AutoMirrored.Filled.CallReceived
-                                    "incoming" -> Icons.AutoMirrored.Filled.CallReceived
-                                    "outgoing" -> Icons.AutoMirrored.Filled.CallMade
-                                    else -> Icons.Default.Call
-                                },
-                                contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
-                                tint = when (callActivity.callType) {
-                                    "missed" -> Color(0xFFE57373) // Subtle red
-                                    "rejected" -> Color(0xFFE57373) // Subtle red (same as missed)
-                                    "incoming" -> Color(0xFF81C784) // Subtle green
-                                    "outgoing" -> Color(0xFF64B5F6) // Subtle blue
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                fontSize = 11.sp
-                            )
-                        }
-                    } else {
-                        // Show only primary action when no call activity is available
+                        Icon(
+                            imageVector = when (callActivity.callType) {
+                                "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                                "rejected" -> Icons.AutoMirrored.Filled.CallReceived
+                                "incoming" -> Icons.AutoMirrored.Filled.CallReceived
+                                "outgoing" -> Icons.AutoMirrored.Filled.CallMade
+                                else -> Icons.Default.Call
+                            },
+                            contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
+                            tint = when (callActivity.callType) {
+                                "missed" -> Color(0xFFE57373)
+                                "rejected" -> Color(0xFFE57373)
+                                "incoming" -> Color(0xFF81C784)
+                                "outgoing" -> Color(0xFF64B5F6)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(14.dp)
+                        )
                         Text(
-                            text = resolvedActions.cardTapAction,
+                            text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             fontSize = 11.sp
