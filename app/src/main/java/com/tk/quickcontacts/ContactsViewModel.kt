@@ -103,6 +103,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             initialValue = true
         )
 
+    private val _isFirstTimeLaunch = MutableStateFlow(preferencesRepository.isFirstTimeLaunch())
+    val isFirstTimeLaunch: StateFlow<Boolean> = _isFirstTimeLaunch.asStateFlow()
+
     // Call warning state
     private val _hasSeenCallWarning = MutableStateFlow(preferencesRepository.hasSeenCallWarning())
     val hasSeenCallWarning: StateFlow<Boolean> = _hasSeenCallWarning.asStateFlow()
@@ -308,6 +311,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     
     fun resetFirstLaunchFlag() {
         preferencesRepository.resetFirstLaunchFlag()
+        _isFirstTimeLaunch.value = true
         android.util.Log.d("QuickContacts", "First launch flag reset for testing")
     }
     
@@ -354,15 +358,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     addContact(contact)
                 }
                 preferencesRepository.markFirstLaunchComplete()
+                _isFirstTimeLaunch.value = false
                 android.util.Log.d("QuickContacts", "First launch setup completed")
             } else {
                 android.util.Log.d("QuickContacts", "No favorite contacts found, marking first launch complete")
                 preferencesRepository.markFirstLaunchComplete()
+                _isFirstTimeLaunch.value = false
             }
         } catch (e: Exception) {
             e.printStackTrace()
             android.util.Log.e("QuickContacts", "Error loading favorite contacts: ${e.message}")
             preferencesRepository.markFirstLaunchComplete()
+            _isFirstTimeLaunch.value = false
         }
     }
     

@@ -131,6 +131,7 @@
     <string name="menu_sms_default">Messages</string>
     <string name="menu_whatsapp">WhatsApp</string>
     <string name="menu_telegram">Telegram</string>
+    <string name="menu_google_meet">Google Meet</string>
     <string name="menu_cancel">Cancel</string>
     <string name="cd_more_options">More options</string>
     

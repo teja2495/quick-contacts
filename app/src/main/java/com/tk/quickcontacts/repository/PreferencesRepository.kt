@@ -13,6 +13,7 @@ import com.tk.quickcontacts.utils.ContactUtils
 
 class PreferencesRepository(context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("QuickContactsPrefs", Context.MODE_PRIVATE)
+    private val firstRunPreferences: SharedPreferences = context.getSharedPreferences("QuickContactsFirstRunPrefs", Context.MODE_PRIVATE)
     private val gson: Gson = GsonBuilder()
         .setLenient() // Allow lenient parsing for backward compatibility
         .excludeFieldsWithoutExposeAnnotation() // Only serialize fields with @Expose annotation
@@ -231,19 +232,26 @@ class PreferencesRepository(context: Context) {
         }
     }
 
-    // First launch and hints with validation
     fun isFirstTimeLaunch(): Boolean {
         return try {
-            sharedPreferences.getBoolean("is_first_launch", true)
+            if (firstRunPreferences.contains("is_first_launch")) {
+                firstRunPreferences.getBoolean("is_first_launch", true)
+            } else if (sharedPreferences.contains("is_first_launch")) {
+                val value = sharedPreferences.getBoolean("is_first_launch", true)
+                firstRunPreferences.edit().putBoolean("is_first_launch", value).apply()
+                value
+            } else {
+                true
+            }
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error checking first launch", e)
-            true // Default to first launch if error
+            true
         }
     }
 
     fun markFirstLaunchComplete() {
         try {
-            sharedPreferences.edit().putBoolean("is_first_launch", false).apply()
+            firstRunPreferences.edit().putBoolean("is_first_launch", false).apply()
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error marking first launch complete", e)
         }
@@ -251,7 +259,7 @@ class PreferencesRepository(context: Context) {
 
     fun resetFirstLaunchFlag() {
         try {
-            sharedPreferences.edit().putBoolean("is_first_launch", true).apply()
+            firstRunPreferences.edit().putBoolean("is_first_launch", true).apply()
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error resetting first launch flag", e)
         }

@@ -198,6 +198,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     val availableActions by viewModel.availableActions.collectAsState()
     val hasSeenCallWarning by viewModel.hasSeenCallWarning.collectAsState()
     val callActivityMap by viewModel.callActivityMap.collectAsState()
+    val isFirstTimeLaunch by viewModel.isFirstTimeLaunch.collectAsState()
 
     fun resolvedActionsFor(contact: Contact): ResolvedQuickContactActions {
         return resolveQuickContactActions(
@@ -218,7 +219,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     }
 
     val currentDestination = when {
-        !hasContactsPermission || isRequestingPermissions || (hasContactsPermission && !hasTappedContinue) -> NavDestination.Permission
+        isFirstTimeLaunch && (!hasContactsPermission || isRequestingPermissions || (hasContactsPermission && !hasTappedContinue)) -> NavDestination.Permission
         actionEditorContact != null -> NavDestination.ActionEditor
         isSettingsScreenOpen -> NavDestination.Settings
         isSearching -> NavDestination.Search

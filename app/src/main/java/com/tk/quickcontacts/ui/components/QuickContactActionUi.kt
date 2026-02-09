@@ -10,7 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.DoNotDisturb
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Icon
@@ -193,13 +194,13 @@ private fun ContactActionButtonIcon(
             modifier = Modifier.size(LargeIconSize)
         )
         QuickContactAction.ALL_OPTIONS -> Icon(
-            imageVector = Icons.Default.MoreHoriz,
+            imageVector = Icons.Default.UnfoldMore,
             contentDescription = null,
             tint = tint,
             modifier = Modifier.size(LargeIconSize)
         )
         QuickContactAction.NONE -> Icon(
-            imageVector = Icons.Default.Phone,
+            imageVector = Icons.Default.DoNotDisturb,
             contentDescription = null,
             tint = tint.copy(alpha = 0.5f),
             modifier = Modifier.size(LargeIconSize)
@@ -310,7 +311,7 @@ fun QuickContactActionIcon(
         }
         QuickContactAction.ALL_OPTIONS -> {
             Icon(
-                imageVector = Icons.Default.MoreHoriz,
+                imageVector = Icons.Default.UnfoldMore,
                 contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = modifier
