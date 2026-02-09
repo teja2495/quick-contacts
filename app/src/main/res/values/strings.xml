@@ -64,11 +64,13 @@
     <string name="permission_granted">Permission granted    </string>
     <string name="privacy_protected">Your Privacy is Protected</string>
     <string name="privacy_description">This app has no internet access. All your data stays on your device.</string>
-    <string name="recent_calls_description">Display recent calls at the top of the home screen for quick access</string>
+    <string name="recent_calls_description">Display recent calls at the top of the home screen</string>
     <string name="action_grant_call_log_permission">Grant Call History Permission</string>
     
     <!-- Settings -->
     <string name="settings_messaging_app_description">You can change this for individual contacts in quick list by tapping on the edit button</string>
+    <string name="settings_messaging_card_title">Default Messaging App</string>
+    <string name="settings_messaging_app_not_installed">%s is not installed on your device</string>
     <string name="settings_recent_calls_description">Display recent calls at the top of the main screen for quick access</string>
     <string name="settings_not_installed">Not installed</string>
     <string name="settings_version">Version %s</string>
@@ -77,6 +79,7 @@
     <string name="messaging_app_sms">Messages</string>
     <string name="messaging_app_whatsapp">WhatsApp</string>
     <string name="messaging_app_telegram">Telegram</string>
+    <string name="messaging_app_signal">Signal</string>
     
     <!-- Contact Actions -->
     <string name="contact_phone_numbers">%d numbers</string>
@@ -105,10 +108,21 @@
     <string name="cd_whatsapp">WhatsApp</string>
     <string name="cd_sms">Messages</string>
     <string name="cd_telegram">Telegram</string>
+    <string name="cd_signal">Signal</string>
     <string name="cd_close">Close</string>
+    <string name="cd_navigate_forward">Navigate forward</string>
     
-    <!-- Feedback -->
+    <!-- Feedback &amp; Development -->
     <string name="feedback_subject">Quick Contacts Feedback</string>
+    <string name="settings_feedback_send_title">Send Feedback</string>
+    <string name="settings_feedback_send_desc">Report bugs or request features</string>
+    <string name="settings_feedback_rate_title">Rate Quick Contacts</string>
+    <string name="settings_feedback_rate_desc">Leave a 5 star rating if you find this app useful</string>
+    <string name="settings_feedback_github_title">Development</string>
+    <string name="settings_feedback_github_desc">View this project\'s source code on GitHub</string>
+    <string name="settings_feedback_developer_title">%1$s v%2$s</string>
+    <string name="settings_feedback_developer_name">Teja Karlapudi</string>
+    <string name="settings_feedback_developer_desc">Made by %1$s</string>
     
     <!-- Menu Options -->
     <string name="menu_open_app">Open App</string>

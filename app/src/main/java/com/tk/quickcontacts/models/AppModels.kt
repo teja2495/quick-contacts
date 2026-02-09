@@ -5,7 +5,8 @@ import com.google.gson.annotations.Expose
 enum class MessagingApp {
     WHATSAPP,
     SMS,
-    TELEGRAM
+    TELEGRAM,
+    SIGNAL
 }
 
 data class CustomActions(

@@ -163,7 +163,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _availableMessagingApps.value = setOf(
             com.tk.quickcontacts.models.MessagingApp.WHATSAPP,
             com.tk.quickcontacts.models.MessagingApp.SMS,
-            com.tk.quickcontacts.models.MessagingApp.TELEGRAM
+            com.tk.quickcontacts.models.MessagingApp.TELEGRAM,
+            com.tk.quickcontacts.models.MessagingApp.SIGNAL
         )
         _availableActions.value = messagingService.checkAvailableActions(getApplication<Application>().packageManager)
 
@@ -620,6 +621,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             MessagingApp.WHATSAPP -> MessagingApp.SMS
             MessagingApp.SMS -> MessagingApp.WHATSAPP
             MessagingApp.TELEGRAM -> MessagingApp.WHATSAPP
+            MessagingApp.SIGNAL -> MessagingApp.WHATSAPP
         }
         saveSettings()
     }
@@ -955,6 +957,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 com.tk.quickcontacts.models.MessagingApp.WHATSAPP -> "WhatsApp"
                 com.tk.quickcontacts.models.MessagingApp.SMS -> "SMS"
                 com.tk.quickcontacts.models.MessagingApp.TELEGRAM -> "Telegram"
+                com.tk.quickcontacts.models.MessagingApp.SIGNAL -> "Signal"
             }
             android.widget.Toast.makeText(context, "Mock: Opening $appName for $phoneNumber", android.widget.Toast.LENGTH_SHORT).show()
             android.util.Log.d("ContactsViewModel", "Mock: Would open $appName for $phoneNumber")

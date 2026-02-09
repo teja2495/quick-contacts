@@ -149,5 +149,6 @@ private fun defaultMessagingAction(defaultMessagingApp: MessagingApp): String {
         MessagingApp.WHATSAPP -> QuickContactAction.WHATSAPP_CHAT
         MessagingApp.SMS -> QuickContactAction.MESSAGE
         MessagingApp.TELEGRAM -> QuickContactAction.TELEGRAM_CHAT
+        MessagingApp.SIGNAL -> QuickContactAction.SIGNAL_CHAT
     }
 }

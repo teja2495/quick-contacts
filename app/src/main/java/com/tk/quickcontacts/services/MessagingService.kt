@@ -29,6 +29,9 @@ class MessagingService {
         if (isTelegramInstalled(packageManager)) {
             availableApps.add(MessagingApp.TELEGRAM)
         }
+        if (isSignalInstalled(packageManager)) {
+            availableApps.add(MessagingApp.SIGNAL)
+        }
         
         // Debug logging
         android.util.Log.d("QuickContacts", "Available messaging apps: $availableApps")
@@ -281,6 +284,7 @@ class MessagingService {
             MessagingApp.WHATSAPP -> openWhatsAppChat(context, phoneNumber)
             MessagingApp.SMS -> openSmsApp(context, phoneNumber)
             MessagingApp.TELEGRAM -> openTelegramChat(context, phoneNumber)
+            MessagingApp.SIGNAL -> openSignalChat(context, phoneNumber)
         }
     }
     

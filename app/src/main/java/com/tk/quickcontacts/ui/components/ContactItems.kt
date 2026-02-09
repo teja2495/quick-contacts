@@ -55,7 +55,7 @@ fun ContactItem(
     onOpenActionEditor: (Contact) -> Unit = {},
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
@@ -449,7 +449,7 @@ fun RecentCallVerticalItem(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
     getLastShownPhoneNumber: (String) -> String? = { null },
@@ -510,6 +510,10 @@ fun RecentCallVerticalItem(
             },
             onTelegram = { contactToTelegram ->
                 onExecuteAction(context, "Telegram", contactToTelegram.phoneNumber)
+                showContactActionsDialog = false
+            },
+            onSignal = { contactToSignal ->
+                onExecuteAction(context, "Signal", contactToSignal.phoneNumber)
                 showContactActionsDialog = false
             },
             onDismiss = { showContactActionsDialog = false },
@@ -665,6 +669,14 @@ fun RecentCallVerticalItem(
                         Icon(
                             painter = painterResource(id = R.drawable.telegram_icon),
                             contentDescription = "Telegram ${contact.name}",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    MessagingApp.SIGNAL -> {
+                        Icon(
+                            painter = painterResource(id = R.drawable.signal_icon),
+                            contentDescription = "Signal ${contact.name}",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )

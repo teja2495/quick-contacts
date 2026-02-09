@@ -32,7 +32,7 @@ fun SearchResultsContent(
     selectedContacts: List<Contact>,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToContacts: (Context, String) -> Unit = { context, phoneNumber -> 
@@ -185,7 +185,7 @@ fun SearchResultItem(
     selectedContacts: List<Contact>,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToContacts: (Context, String) -> Unit = { _, _ -> },

@@ -71,6 +71,7 @@ private fun buildPrimaryChipsList(availableMessagingApps: Set<MessagingApp>): Li
         Pair("Messages", true),
         Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
         Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
+        Pair("Signal", availableMessagingApps.contains(MessagingApp.SIGNAL)),
         Pair("All Options", true),
         Pair("None", true)
     ).filter { it.second } // Only include available options
@@ -82,6 +83,7 @@ private fun buildSecondaryChipsList(availableMessagingApps: Set<MessagingApp>): 
         Pair("Messages", true),
         Pair("WhatsApp", availableMessagingApps.contains(MessagingApp.WHATSAPP)),
         Pair("Telegram", availableMessagingApps.contains(MessagingApp.TELEGRAM)),
+        Pair("Signal", availableMessagingApps.contains(MessagingApp.SIGNAL)),
         Pair("All Options", true),
         Pair("None", true)
     ).filter { it.second } // Only include available options
@@ -308,7 +310,7 @@ fun ActionToggleDialog(
     isCurrentlySwapped: Boolean,
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onConfirm: (primaryAction: String, secondaryAction: String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -316,12 +318,14 @@ fun ActionToggleDialog(
     val availableActions = mutableListOf("Call")
     if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) availableActions.add("WhatsApp")
     if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) availableActions.add("Telegram")
+    if (availableMessagingApps.contains(MessagingApp.SIGNAL)) availableActions.add("Signal")
     if (availableMessagingApps.contains(MessagingApp.SMS)) availableActions.add("Messages")
     
     val messagingAppName = when (defaultMessagingApp) {
         MessagingApp.WHATSAPP -> "WhatsApp"
         MessagingApp.SMS -> "Messages"
         MessagingApp.TELEGRAM -> "Telegram"
+        MessagingApp.SIGNAL -> "Signal"
     }
     
     val currentPrimary = customActions?.primaryAction ?: "Call"
@@ -499,8 +503,9 @@ fun ContactActionsDialog(
     onSms: (Contact) -> Unit,
     onWhatsApp: (Contact) -> Unit,
     onTelegram: (Contact) -> Unit,
+    onSignal: (Contact) -> Unit,
     onDismiss: () -> Unit,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onAddToQuickList: ((Contact) -> Unit)? = null,
     isInQuickList: Boolean = false,
     onAddToContacts: ((String) -> Unit)? = null,
@@ -768,6 +773,30 @@ fun ContactActionsDialog(
                                             Icon(
                                                 painter = painterResource(id = R.drawable.telegram_icon),
                                                 contentDescription = stringResource(R.string.cd_telegram),
+                                                tint = Color.White,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                if (availableMessagingApps.contains(MessagingApp.SIGNAL)) {
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(80.dp)
+                                            .clickable {
+                                                onSignal(contactWithSelectedNumber)
+                                                onDismiss()
+                                            },
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.signal_icon),
+                                                contentDescription = stringResource(R.string.cd_signal),
                                                 tint = Color.White,
                                                 modifier = Modifier.size(22.dp)
                                             )

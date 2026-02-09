@@ -1,8 +1,11 @@
 package com.tk.quickcontacts.ui.components
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,30 +21,48 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Phone
+import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
 
-private val SettingsCardBackground = Color(0xFF181724)
-private val SettingsAccent = Color(0xFFD0BCFF)
-private val SettingsTitleColor = Color(0xFFF2F1F6)
-private val SettingsBodyColor = Color(0xFFB6B4C4)
-private val SettingsDivider = Color(0xFF343246)
+
+private val MessagingCardPadding = 18.dp
+private val MessagingOptionSpacing = 12.dp
+private val MessagingChipPaddingV = 12.dp
+private val MessagingChipPaddingH = 12.dp
+private val MessagingIconSize = 24.dp
+private val MessagingBorderWidth = 1.dp
 
 @Composable
 fun SettingsScreen(
@@ -82,6 +103,7 @@ fun SettingsScreen(
 
     val isWhatsAppAvailable = availableMessagingApps.contains(MessagingApp.WHATSAPP)
     val isTelegramAvailable = availableMessagingApps.contains(MessagingApp.TELEGRAM)
+    val isSignalAvailable = availableMessagingApps.contains(MessagingApp.SIGNAL)
 
     fun sendFeedbackEmail() {
         val appVersion = try {
@@ -124,66 +146,43 @@ fun SettingsScreen(
     ) {
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(top = 14.dp, bottom = 12.dp),
+            contentPadding = PaddingValues(bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                SettingsGroupCard {
-                    Text(
-                        text = "Default Messaging App",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SettingsTitleColor
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.settings_messaging_app_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SettingsBodyColor
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    MessagingAppOptionRow(
-                        label = stringResource(R.string.messaging_app_sms),
-                        subtitle = null,
-                        iconRes = R.drawable.sms_icon,
-                        iconSize = 18.dp,
-                        selected = defaultMessagingApp == MessagingApp.SMS,
-                        enabled = true,
-                        onClick = { viewModel.setMessagingApp(MessagingApp.SMS) }
-                    )
-                    MessagingAppOptionRow(
-                        label = stringResource(R.string.messaging_app_whatsapp),
-                        subtitle = if (isWhatsAppAvailable) null else stringResource(R.string.settings_not_installed),
-                        iconRes = R.drawable.whatsapp_icon,
-                        iconSize = 22.dp,
-                        selected = defaultMessagingApp == MessagingApp.WHATSAPP,
-                        enabled = isWhatsAppAvailable,
-                        onClick = {
-                            if (isWhatsAppAvailable) {
-                                viewModel.setMessagingApp(MessagingApp.WHATSAPP)
-                            }
+                DefaultMessagingAppCard(
+                    selectedApp = defaultMessagingApp,
+                    onMessagingAppSelected = { app ->
+                        val isInstalled = when (app) {
+                            MessagingApp.SMS -> true
+                            MessagingApp.WHATSAPP -> isWhatsAppAvailable
+                            MessagingApp.TELEGRAM -> isTelegramAvailable
+                            MessagingApp.SIGNAL -> isSignalAvailable
                         }
-                    )
-                    MessagingAppOptionRow(
-                        label = stringResource(R.string.messaging_app_telegram),
-                        subtitle = if (isTelegramAvailable) null else stringResource(R.string.settings_not_installed),
-                        iconRes = R.drawable.telegram_icon,
-                        iconSize = 18.dp,
-                        selected = defaultMessagingApp == MessagingApp.TELEGRAM,
-                        enabled = isTelegramAvailable,
-                        onClick = {
-                            if (isTelegramAvailable) {
-                                viewModel.setMessagingApp(MessagingApp.TELEGRAM)
+                        if (isInstalled) {
+                            viewModel.setMessagingApp(app)
+                        } else {
+                            val appName = when (app) {
+                                MessagingApp.WHATSAPP -> context.getString(R.string.messaging_app_whatsapp)
+                                MessagingApp.TELEGRAM -> context.getString(R.string.messaging_app_telegram)
+                                MessagingApp.SMS -> context.getString(R.string.messaging_app_sms)
+                                MessagingApp.SIGNAL -> context.getString(R.string.messaging_app_signal)
                             }
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.settings_messaging_app_not_installed, appName),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
-                    )
-                }
+                    }
+                )
             }
 
             item {
                 SettingsGroupCard {
                     SettingToggleRow(
-                        title = "Show Recent Calls",
+                        icon = Icons.Rounded.History,
+                        title = "Recent Calls",
                         description = if (hasCallLogPermission) {
                             stringResource(R.string.recent_calls_description)
                         } else {
@@ -205,9 +204,10 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 14.dp),
-                        color = SettingsDivider
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                     SettingToggleRow(
+                        icon = Icons.Rounded.Phone,
                         title = "Direct Dial",
                         description = if (hasCallPermission) {
                             "Calls are made immediately without opening the dialer."
@@ -232,50 +232,39 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsGroupCard {
-                    Text(
-                        text = "Support",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SettingsTitleColor
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { sendFeedbackEmail() }
-                            .background(SettingsAccent.copy(alpha = 0.12f))
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Send Feedback & Bug Reports",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = SettingsTitleColor,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Open",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = SettingsAccent
-                        )
+                SettingsFeedbackDevelopmentCard(
+                    onRateApp = {
+                        val packageName = context.packageName
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("market://details?id=$packageName")
+                                setPackage("com.android.vending")
+                            }
+                            context.startActivity(intent)
+                        } catch (_: ActivityNotFoundException) {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        }
+                    },
+                    onSendFeedback = { sendFeedbackEmail() },
+                    onOpenGitHub = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/teja2495/quick-contacts")))
+                        } catch (_: Exception) {}
                     }
-                }
+                )
             }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 22.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(R.string.settings_version, versionName),
-                style = MaterialTheme.typography.bodySmall,
-                color = SettingsBodyColor
-            )
+
+            item {
+                SettingsVersionDisplay(
+                    versionName = versionName,
+                    modifier = Modifier.padding(top = 40.dp, bottom = 60.dp)
+                )
+            }
         }
     }
 
@@ -375,11 +364,262 @@ private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(30.dp),
-        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
             content = content
+        )
+    }
+}
+
+@Composable
+private fun SettingsFeedbackDevelopmentCard(
+    onRateApp: () -> Unit,
+    onSendFeedback: () -> Unit,
+    onOpenGitHub: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column {
+            listOf(
+                Triple(stringResource(R.string.settings_feedback_rate_title), stringResource(R.string.settings_feedback_rate_desc), Icons.Rounded.Star to onRateApp),
+                Triple(stringResource(R.string.settings_feedback_send_title), stringResource(R.string.settings_feedback_send_desc), Icons.Rounded.Email to onSendFeedback),
+                Triple(stringResource(R.string.settings_feedback_github_title), stringResource(R.string.settings_feedback_github_desc), Icons.Rounded.Code to onOpenGitHub)
+            ).forEachIndexed { index, (title, description, iconAndAction) ->
+                if (index > 0) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = iconAndAction.second)
+                        .padding(contentPadding),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = iconAndAction.first,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronRight,
+                        contentDescription = stringResource(R.string.cd_navigate_forward),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsVersionDisplay(
+    versionName: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val displayVersion = versionName.ifEmpty { "1.0" }
+    val appName = stringResource(R.string.app_name)
+    val developerName = stringResource(R.string.settings_feedback_developer_name)
+    val developerDesc = stringResource(R.string.settings_feedback_developer_desc, developerName)
+    val annotatedDeveloperDesc = buildAnnotatedString {
+        val parts = developerDesc.split(developerName)
+        if (parts.size > 1) {
+            append(parts[0])
+            withStyle(
+                style = SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    fontWeight = FontWeight.Medium
+                )
+            ) {
+                append(developerName)
+            }
+            append(parts[1])
+        } else {
+            append(developerDesc)
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.settings_feedback_developer_title, appName, displayVersion),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = annotatedDeveloperDesc,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.clickable {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://hihello.com/p/e11b6338-b4a5-49d8-93c8-03ac219de738")))
+                } catch (_: Exception) {}
+            }
+        )
+    }
+}
+
+@Composable
+private fun DefaultMessagingAppCard(
+    selectedApp: MessagingApp,
+    onMessagingAppSelected: (MessagingApp) -> Unit
+) {
+    val options = listOf(
+        Pair(MessagingApp.SMS, R.string.messaging_app_sms),
+        Pair(MessagingApp.WHATSAPP, R.string.messaging_app_whatsapp),
+        Pair(MessagingApp.TELEGRAM, R.string.messaging_app_telegram),
+        Pair(MessagingApp.SIGNAL, R.string.messaging_app_signal)
+    )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+    Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MessagingCardPadding),
+            verticalArrangement = Arrangement.spacedBy(MessagingOptionSpacing)
+        ) {
+            Text(
+                text = stringResource(R.string.settings_messaging_card_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth().selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(MessagingOptionSpacing)
+            ) {
+                options.chunked(2).forEach { rowOptions ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MessagingOptionSpacing),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        rowOptions.forEach { (app, labelRes) ->
+                            MessagingOptionChip(
+                                app = app,
+                                labelRes = labelRes,
+                                selected = selectedApp == app,
+                                onClick = { onMessagingAppSelected(app) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        repeat(2 - rowOptions.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessagingOptionChip(
+    app: MessagingApp,
+    labelRes: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val borderColor = if (selected) colorScheme.primary else colorScheme.outlineVariant
+    val backgroundColor = if (selected) colorScheme.primary.copy(alpha = 0.14f) else colorScheme.outlineVariant.copy(alpha = 0.35f)
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .border(MessagingBorderWidth, borderColor, RoundedCornerShape(16.dp))
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton
+            )
+            .padding(vertical = MessagingChipPaddingV, horizontal = MessagingChipPaddingH),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        MessagingOptionIcon(app = app)
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun MessagingOptionIcon(app: MessagingApp) {
+    val tint = MaterialTheme.colorScheme.primary
+    when (app) {
+        MessagingApp.SMS -> Icon(
+            imageVector = Icons.Rounded.Sms,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(MessagingIconSize)
+        )
+        MessagingApp.WHATSAPP -> Icon(
+            painter = painterResource(R.drawable.whatsapp_icon),
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(MessagingIconSize)
+        )
+        MessagingApp.TELEGRAM -> Icon(
+            painter = painterResource(R.drawable.telegram_icon),
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(MessagingIconSize)
+        )
+        MessagingApp.SIGNAL -> Icon(
+            painter = painterResource(R.drawable.signal_icon),
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(MessagingIconSize)
         )
     }
 }
@@ -394,14 +634,15 @@ private fun MessagingAppOptionRow(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val textColor = if (enabled) SettingsTitleColor else SettingsBodyColor.copy(alpha = 0.65f)
+    val colorScheme = MaterialTheme.colorScheme
+    val textColor = if (enabled) colorScheme.onSurface else colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 4.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) SettingsAccent.copy(alpha = 0.14f) else Color.Transparent)
+            .background(if (selected) colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -411,10 +652,10 @@ private fun MessagingAppOptionRow(
             onClick = onClick,
             enabled = enabled,
             colors = RadioButtonDefaults.colors(
-                selectedColor = SettingsAccent,
-                unselectedColor = SettingsBodyColor,
-                disabledSelectedColor = SettingsBodyColor.copy(alpha = 0.45f),
-                disabledUnselectedColor = SettingsBodyColor.copy(alpha = 0.45f)
+                selectedColor = colorScheme.primary,
+                unselectedColor = colorScheme.onSurfaceVariant,
+                disabledSelectedColor = colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                disabledUnselectedColor = colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
             )
         )
         Spacer(modifier = Modifier.width(4.dp))
@@ -425,7 +666,7 @@ private fun MessagingAppOptionRow(
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
-                tint = if (enabled) SettingsAccent else SettingsBodyColor.copy(alpha = 0.55f),
+                tint = if (enabled) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
                 modifier = Modifier.size(iconSize)
             )
         }
@@ -441,7 +682,7 @@ private fun MessagingAppOptionRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = SettingsBodyColor
+                    color = colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -450,6 +691,7 @@ private fun MessagingAppOptionRow(
 
 @Composable
 private fun SettingToggleRow(
+    icon: ImageVector,
     title: String,
     description: String,
     checked: Boolean,
@@ -458,23 +700,30 @@ private fun SettingToggleRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        val colorScheme = MaterialTheme.colorScheme
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (enabled) colorScheme.onSurfaceVariant else colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(24.dp)
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = if (enabled) SettingsTitleColor else SettingsBodyColor
+                color = if (enabled) colorScheme.onSurface else colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = SettingsBodyColor
+                color = colorScheme.onSurfaceVariant
             )
         }
-        Spacer(modifier = Modifier.width(14.dp))
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -486,14 +735,14 @@ private fun SettingToggleRow(
 
 @Composable
 private fun settingsSwitchColors() = SwitchDefaults.colors(
-    checkedThumbColor = Color(0xFF35205A),
-    checkedTrackColor = SettingsAccent,
+    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+    checkedTrackColor = MaterialTheme.colorScheme.primary,
     checkedBorderColor = Color.Transparent,
-    uncheckedThumbColor = Color(0xFFC1BFCC),
-    uncheckedTrackColor = Color(0xFF5C596B),
+    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
     uncheckedBorderColor = Color.Transparent,
-    disabledCheckedThumbColor = Color(0xFF514A63),
-    disabledCheckedTrackColor = Color(0xFF696277),
-    disabledUncheckedThumbColor = Color(0xFF857F92),
-    disabledUncheckedTrackColor = Color(0xFF5A5666)
+    disabledCheckedThumbColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+    disabledCheckedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+    disabledUncheckedThumbColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+    disabledUncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
 )

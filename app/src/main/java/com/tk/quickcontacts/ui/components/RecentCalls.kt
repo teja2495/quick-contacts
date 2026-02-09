@@ -46,7 +46,7 @@ fun RecentCallsSection(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
     showRecentCallsHint: Boolean = false,

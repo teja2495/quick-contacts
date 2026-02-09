@@ -28,7 +28,7 @@ fun ContactList(
     onOpenActionEditor: (Contact) -> Unit = {},
     customActionPreferences: Map<String, CustomActions> = emptyMap(),
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,

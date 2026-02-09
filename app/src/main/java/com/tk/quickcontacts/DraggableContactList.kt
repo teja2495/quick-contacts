@@ -87,7 +87,7 @@ fun ActionToggleDialog(
     isCurrentlySwapped: Boolean,
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onConfirm: (primaryAction: String, secondaryAction: String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -116,7 +116,7 @@ fun ContactList(
     onOpenActionEditor: (Contact) -> Unit = {},
     customActionPreferences: Map<String, CustomActions> = emptyMap(),
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
@@ -162,7 +162,7 @@ fun RecentCallsSection(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit
 ) {
     com.tk.quickcontacts.ui.components.RecentCallsSection(
@@ -189,7 +189,7 @@ fun RecentCallVerticalItem(
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
     modifier: Modifier = Modifier,
     selectedContacts: List<Contact> = emptyList(),
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     onExecuteAction: (Context, String, String) -> Unit
 ) {
     com.tk.quickcontacts.ui.components.RecentCallVerticalItem(
@@ -235,7 +235,7 @@ fun ContactItem(
     onOpenActionEditor: (Contact) -> Unit = {},
     customActions: CustomActions? = null,
     defaultMessagingApp: MessagingApp = MessagingApp.WHATSAPP,
-    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SMS),
+    availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     selectedContacts: List<Contact> = emptyList(),
     onExecuteAction: (Context, String, String) -> Unit,
