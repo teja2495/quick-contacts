@@ -10,6 +10,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -90,6 +92,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     var hasRequestedCallLogPermissionFromSettings by remember { mutableStateOf(false) }
     var callLogPermissionJustDenied by remember { mutableStateOf(false) }
     var phonePermissionJustDenied by remember { mutableStateOf(false) }
+    var hasTappedContinue by remember { mutableStateOf(false) }
 
     fun arePermissionsPermanentlyDenied(): Boolean {
         val activity = context as? Activity ?: return false
@@ -151,11 +154,10 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         }
     }
 
-    val phonePermissionLauncher = rememberLauncherForActivityResult(
+    val phoneOnlyLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCallPermission = isGranted
-        callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
     }
 
     val phonePermissionFromSettingsLauncher = rememberLauncherForActivityResult(
@@ -176,7 +178,11 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasContactsPermission = isGranted
-        phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE)
+        hasRequestedPermissions = true
+        isRequestingPermissions = false
+        if (!isGranted) {
+            hasDeniedPermissionsAfterFirstRequest = true
+        }
     }
 
     val selectedContacts by viewModel.selectedContacts.collectAsState()
@@ -207,8 +213,12 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
     val focusRequester = remember { FocusRequester() }
 
+    LaunchedEffect(hasContactsPermission) {
+        if (!hasContactsPermission) hasTappedContinue = false
+    }
+
     val currentDestination = when {
-        !hasContactsPermission || isRequestingPermissions -> NavDestination.Permission
+        !hasContactsPermission || isRequestingPermissions || (hasContactsPermission && !hasTappedContinue) -> NavDestination.Permission
         actionEditorContact != null -> NavDestination.ActionEditor
         isSettingsScreenOpen -> NavDestination.Settings
         isSearching -> NavDestination.Search
@@ -357,7 +367,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     }
                 },
                 actions = {
-                    if (!isSettingsScreenOpen && !isSearching && actionEditorContact == null && hasContactsPermission) {
+                    if (currentDestination != NavDestination.Permission && !isSettingsScreenOpen && !isSearching && actionEditorContact == null && hasContactsPermission) {
                         IconButton(
                             onClick = { isSettingsScreenOpen = true },
                             modifier = Modifier.padding(end = 24.dp)
@@ -382,16 +392,21 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                 targetState = currentDestination,
                 modifier = Modifier.fillMaxSize(),
                 transitionSpec = {
-                    val goingBack = targetState.depth < initialState.depth
-                    val slideIn = slideInHorizontally(
-                        initialOffsetX = { if (goingBack) -it else it },
-                        animationSpec = tween(300)
-                    )
-                    val slideOut = slideOutHorizontally(
-                        targetOffsetX = { if (goingBack) it else -it },
-                        animationSpec = tween(300)
-                    )
-                    slideIn togetherWith slideOut
+                    val homeToSearch = initialState == NavDestination.Home && targetState == NavDestination.Search
+                    if (homeToSearch) {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else {
+                        val goingBack = targetState.depth < initialState.depth
+                        val slideIn = slideInHorizontally(
+                            initialOffsetX = { if (goingBack) -it else it },
+                            animationSpec = tween(300)
+                        )
+                        val slideOut = slideOutHorizontally(
+                            targetOffsetX = { if (goingBack) it else -it },
+                            animationSpec = tween(300)
+                        )
+                        slideIn togetherWith slideOut
+                    }
                 },
                 label = "nav"
             ) { destination ->
@@ -400,16 +415,29 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         hasCallPermission = hasCallPermission,
                         hasContactsPermission = hasContactsPermission,
                         hasCallLogPermission = hasCallLogPermission,
-                        arePermissionsPermanentlyDenied = arePermissionsPermanentlyDenied(),
-                        onRequestPermissions = {
+                        onRequestContactsPermission = {
                             if (arePermissionsPermanentlyDenied() && hasDeniedPermissionsAfterFirstRequest) {
                                 openAppSettings()
                             } else {
-                                hasRequestedPermissions = true
                                 isRequestingPermissions = true
                                 contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
                             }
-                        }
+                        },
+                        onRequestPhonePermission = {
+                            if (isCallPermissionPermanentlyDenied()) {
+                                openAppSettings()
+                            } else {
+                                phoneOnlyLauncher.launch(Manifest.permission.CALL_PHONE)
+                            }
+                        },
+                        onRequestCallLogPermission = {
+                            if (isCallLogPermissionPermanentlyDenied()) {
+                                openAppSettings()
+                            } else {
+                                callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                            }
+                        },
+                        onContinue = { hasTappedContinue = true }
                     )
 
                     NavDestination.ActionEditor -> {

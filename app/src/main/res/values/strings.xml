@@ -7,7 +7,7 @@
     <string name="title_quick_contacts">Quick Contacts</string>
     <string name="title_quick_list">Quick List</string>
     <string name="title_recent_calls">Recent Calls</string>
-    <string name="title_permissions_required">Permissions Required</string>
+    <string name="title_permissions_required">Permissions</string>
     <string name="title_empty_quick_list">Empty Quick List</string>
     <string name="title_default_messaging_app">Default Messaging App</string>
     <string name="title_show_recent_calls">Show Recent Calls</string>
@@ -26,6 +26,7 @@
     <string name="action_clear_search">Clear search</string>
     <string name="action_dialer">Dialer</string>
     <string name="action_grant_permissions">Grant Permissions</string>
+    <string name="action_continue">Continue</string>
     <string name="action_send_feedback">Send Feedback</string>
     <string name="action_call">Call</string>
     <string name="action_whatsapp">WhatsApp</string>
@@ -55,11 +56,11 @@
     <string name="recent_calls_hint_message">Icons show call types: incoming (green), outgoing (blue), missed/rejected (red)</string>
     
     <!-- Permissions -->
-    <string name="permission_phone_access">Calling (Optional)</string>
+    <string name="permission_phone_access">Calling</string>
     <string name="permission_phone_description">Make calls directly without opening the dialer.</string>
     <string name="permission_contacts_access">Contacts Access</string>
     <string name="permission_contacts_description">Search and display your contacts with their names and photos</string>
-    <string name="permission_call_history_access">Call History Access (Optional)</string>
+    <string name="permission_call_history_access">Call History Access</string>
     <string name="permission_call_history_description">Show your recent calls for quick redial and easy access</string>
     <string name="permission_granted">Permission granted    </string>
     <string name="privacy_protected">Your Privacy is Protected</string>

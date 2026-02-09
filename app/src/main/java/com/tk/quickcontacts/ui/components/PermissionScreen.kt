@@ -1,214 +1,195 @@
 package com.tk.quickcontacts.ui.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Switch
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import com.tk.quickcontacts.R
+
+private val GrantedCheckmarkColor = Color(0xFF4CAF50)
+private val SpacingXLarge = 20.dp
+private val SpacingLarge = 16.dp
+private val IconSize = 24.dp
 
 @Composable
 fun PermissionRequestScreen(
     hasCallPermission: Boolean,
     hasContactsPermission: Boolean,
     hasCallLogPermission: Boolean,
-    arePermissionsPermanentlyDenied: Boolean,
-    onRequestPermissions: () -> Unit
+    onRequestContactsPermission: () -> Unit,
+    onRequestPhonePermission: () -> Unit,
+    onRequestCallLogPermission: () -> Unit,
+    onContinue: () -> Unit,
 ) {
-    // Call History permission is optional
-    val isCallLogPermissionOptional = true
-    val spacing = 16.dp
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp)
-            .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(spacing),
-        contentPadding = PaddingValues(top = 8.dp, bottom = spacing)
+            .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.Start,
     ) {
-        item {
-            // Header icon
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            // Title
-            Text(
-                text = stringResource(R.string.title_permissions_required),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(spacing))
-            // Privacy assurance card with distinct design
+        Text(
+            text = stringResource(R.string.title_permissions_required),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Text(
+            text = stringResource(R.string.privacy_description),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.Start,
+        ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                shape = RoundedCornerShape(20.dp),
             ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(28.dp)
+                Column {
+                    PermissionRow(
+                        title = stringResource(R.string.permission_contacts_access),
+                        description = stringResource(R.string.permission_contacts_description),
+                        isGranted = hasContactsPermission,
+                        onRequestPermission = onRequestContactsPermission,
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = stringResource(R.string.privacy_protected),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.privacy_description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = SpacingXLarge),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+
+                    PermissionRow(
+                        title = stringResource(R.string.permission_phone_access),
+                        description = stringResource(R.string.permission_phone_description),
+                        isGranted = hasCallPermission,
+                        onRequestPermission = onRequestPhonePermission,
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = SpacingXLarge),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+
+                    PermissionRow(
+                        title = stringResource(R.string.permission_call_history_access),
+                        description = stringResource(R.string.permission_call_history_description),
+                        isGranted = hasCallLogPermission,
+                        onRequestPermission = onRequestCallLogPermission,
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(spacing))
-            // Permission cards list
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PermissionCard(
-                    icon = Icons.Default.Person,
-                    title = stringResource(R.string.permission_contacts_access),
-                    description = stringResource(R.string.permission_contacts_description),
-                    isGranted = hasContactsPermission
-                )
-                PermissionCard(
-                    icon = Icons.Default.Phone,
-                    title = stringResource(R.string.permission_phone_access),
-                    description = stringResource(R.string.permission_phone_description),
-                    isGranted = hasCallPermission,
-                    isOptional = true
-                )
-                PermissionCard(
-                    icon = Icons.Default.History,
-                    title = stringResource(R.string.permission_call_history_access),
-                    description = stringResource(R.string.permission_call_history_description),
-                    isGranted = hasCallLogPermission,
-                    isOptional = true
-                )
-            }
-            Spacer(modifier = Modifier.height(spacing))
-            Spacer(modifier = Modifier.height(12.dp))
-            // Grant permissions button
-            Button(
-                onClick = onRequestPermissions,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
-                    text = stringResource(R.string.action_grant_permissions),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
+
+        Spacer(modifier = Modifier.height(SpacingLarge))
+
+        Button(
+            onClick = onContinue,
+            enabled = hasContactsPermission,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 8.dp),
+            shape = RoundedCornerShape(24.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.action_continue),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
 @Composable
-fun PermissionCard(
-    icon: ImageVector,
+private fun PermissionRow(
     title: String,
     description: String,
-    isGranted: Boolean = false,
-    isOptional: Boolean = false
+    isGranted: Boolean,
+    onRequestPermission: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = MaterialTheme.shapes.medium,
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isGranted) 
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
-            else if (isOptional)
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-            else 
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-        )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(SpacingXLarge),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isGranted) 
-                    MaterialTheme.colorScheme.primary
-                else 
-                    MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            // Show checkmark when permission is granted
-            if (isGranted) {
-                Icon(
-                    imageVector = Icons.Default.Done,
-                    contentDescription = "Permission granted",
-                    tint = androidx.compose.ui.graphics.Color(0xFF4CAF50), // Green tint
-                    modifier = Modifier
-                        .size(20.dp)
-                        .padding(start = 8.dp)
-                )
-            }
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (isGranted) {
+            androidx.compose.material3.Icon(
+                imageVector = Icons.Rounded.CheckCircle,
+                contentDescription = stringResource(R.string.permission_granted),
+                tint = GrantedCheckmarkColor,
+                modifier = Modifier
+                    .padding(start = SpacingXLarge)
+                    .size(IconSize),
+            )
+        } else {
+            Switch(
+                checked = false,
+                onCheckedChange = { if (it) onRequestPermission() },
+                modifier = Modifier.padding(start = SpacingXLarge),
+            )
         }
     }
 } 

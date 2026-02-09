@@ -520,23 +520,16 @@ fun ContactActionsDialog(
 
     val phoneNumbers = contact.phoneNumbers
     val hasMultipleNumbers = phoneNumbers.size > 1
-    val reorderedPhoneNumbers = remember(phoneNumbers, getLastShownPhoneNumber(contact.id)) {
-        if (phoneNumbers.size <= 1) phoneNumbers
-        else {
-            val lastShown = getLastShownPhoneNumber(contact.id) ?: return@remember phoneNumbers
-            val idx = phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
-            if (idx <= 0) phoneNumbers
-            else phoneNumbers.toMutableList().apply { add(0, removeAt(idx)) }
-        }
+    var selectedPhoneIndex by remember(contact.id, phoneNumbers) {
+        val lastShown = getLastShownPhoneNumber(contact.id)
+        val idx = if (lastShown == null) 0 else phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+        mutableStateOf(if (idx < 0) 0 else idx.coerceIn(0, (phoneNumbers.size - 1).coerceAtLeast(0)))
     }
-    var selectedPhoneIndex by remember(reorderedPhoneNumbers) {
-        mutableStateOf(0.coerceAtMost((reorderedPhoneNumbers.size - 1).coerceAtLeast(0)))
-    }
-    val selectedPhoneNumber = reorderedPhoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull()
+    val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull()
 
-    LaunchedEffect(selectedPhoneIndex, reorderedPhoneNumbers, hasMultipleNumbers) {
-        if (hasMultipleNumbers && selectedPhoneIndex in reorderedPhoneNumbers.indices) {
-            setLastShownPhoneNumber(contact.id, reorderedPhoneNumbers[selectedPhoneIndex])
+    LaunchedEffect(selectedPhoneIndex, phoneNumbers, hasMultipleNumbers) {
+        if (hasMultipleNumbers && selectedPhoneIndex in phoneNumbers.indices) {
+            setLastShownPhoneNumber(contact.id, phoneNumbers[selectedPhoneIndex])
         }
     }
 
@@ -606,11 +599,9 @@ fun ContactActionsDialog(
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex > 0) {
+                                    if (hasMultipleNumbers && selectedPhoneIndex > 0) {
                                         IconButton(
-                                            onClick = {
-                                                selectedPhoneIndex = (selectedPhoneIndex - 1).coerceAtLeast(0)
-                                            },
+                                            onClick = { selectedPhoneIndex = selectedPhoneIndex - 1 },
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
@@ -620,7 +611,7 @@ fun ContactActionsDialog(
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         }
-                                    } else {
+                                    } else if (hasMultipleNumbers) {
                                         Spacer(modifier = Modifier.size(32.dp))
                                     }
                                     Text(
@@ -630,11 +621,9 @@ fun ContactActionsDialog(
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex < reorderedPhoneNumbers.size - 1) {
+                                    if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
                                         IconButton(
-                                            onClick = {
-                                                selectedPhoneIndex = (selectedPhoneIndex + 1).coerceAtMost(reorderedPhoneNumbers.size - 1)
-                                            },
+                                            onClick = { selectedPhoneIndex = selectedPhoneIndex + 1 },
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
@@ -644,7 +633,7 @@ fun ContactActionsDialog(
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         }
-                                    } else {
+                                    } else if (hasMultipleNumbers) {
                                         Spacer(modifier = Modifier.size(32.dp))
                                     }
                                 }
@@ -859,19 +848,12 @@ fun ContactActionsGridDialog(
     val maxSheetHeight = (config.screenHeightDp * 0.85f).dp
     val phoneNumbers = contact.phoneNumbers
     val hasMultipleNumbers = phoneNumbers.size > 1
-    val reorderedPhoneNumbers = remember(phoneNumbers, getLastShownPhoneNumber(contact.id)) {
-        if (phoneNumbers.size <= 1) phoneNumbers
-        else {
-            val lastShown = getLastShownPhoneNumber(contact.id) ?: return@remember phoneNumbers
-            val idx = phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
-            if (idx <= 0) phoneNumbers
-            else phoneNumbers.toMutableList().apply { add(0, removeAt(idx)) }
-        }
+    var selectedPhoneIndex by remember(contact.id, phoneNumbers) {
+        val lastShown = getLastShownPhoneNumber(contact.id)
+        val idx = if (lastShown == null) 0 else phoneNumbers.indexOfFirst { PhoneNumberUtils.isSameNumber(it, lastShown) }
+        mutableStateOf(if (idx < 0) 0 else idx.coerceIn(0, (phoneNumbers.size - 1).coerceAtLeast(0)))
     }
-    var selectedPhoneIndex by remember(reorderedPhoneNumbers) {
-        mutableStateOf(0.coerceAtMost((reorderedPhoneNumbers.size - 1).coerceAtLeast(0)))
-    }
-    val selectedPhoneNumber = reorderedPhoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
+    val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
 
     val context = LocalContext.current
     var contactFilteredActions by remember(availableActions, selectedPhoneNumber) {
@@ -887,9 +869,9 @@ fun ContactActionsGridDialog(
         }
     }
 
-    LaunchedEffect(selectedPhoneIndex, reorderedPhoneNumbers, hasMultipleNumbers) {
-        if (hasMultipleNumbers && selectedPhoneIndex in reorderedPhoneNumbers.indices) {
-            setLastShownPhoneNumber(contact.id, reorderedPhoneNumbers[selectedPhoneIndex])
+    LaunchedEffect(selectedPhoneIndex, phoneNumbers, hasMultipleNumbers) {
+        if (hasMultipleNumbers && selectedPhoneIndex in phoneNumbers.indices) {
+            setLastShownPhoneNumber(contact.id, phoneNumbers[selectedPhoneIndex])
         }
     }
 
@@ -988,11 +970,9 @@ fun ContactActionsGridDialog(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex > 0) {
+                        if (hasMultipleNumbers && selectedPhoneIndex > 0) {
                             IconButton(
-                                onClick = {
-                                    selectedPhoneIndex = (selectedPhoneIndex - 1).coerceAtLeast(0)
-                                },
+                                onClick = { selectedPhoneIndex = selectedPhoneIndex - 1 },
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
@@ -1001,7 +981,7 @@ fun ContactActionsGridDialog(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                        } else if (reorderedPhoneNumbers.size > 1) {
+                        } else if (hasMultipleNumbers) {
                             Spacer(modifier = Modifier.size(32.dp))
                         }
                         Text(
@@ -1011,11 +991,9 @@ fun ContactActionsGridDialog(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.weight(1f)
                         )
-                        if (reorderedPhoneNumbers.size > 1 && selectedPhoneIndex < reorderedPhoneNumbers.size - 1) {
+                        if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
                             IconButton(
-                                onClick = {
-                                    selectedPhoneIndex = (selectedPhoneIndex + 1).coerceAtMost(reorderedPhoneNumbers.size - 1)
-                                },
+                                onClick = { selectedPhoneIndex = selectedPhoneIndex + 1 },
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
@@ -1024,7 +1002,7 @@ fun ContactActionsGridDialog(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                        } else if (reorderedPhoneNumbers.size > 1) {
+                        } else if (hasMultipleNumbers) {
                             Spacer(modifier = Modifier.size(32.dp))
                         }
                     }
