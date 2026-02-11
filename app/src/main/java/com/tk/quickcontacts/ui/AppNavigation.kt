@@ -97,8 +97,15 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     var hasDeniedPermissionsAfterFirstRequest by remember { mutableStateOf(false) }
     var hasRequestedPhonePermissionFromSettings by remember { mutableStateOf(false) }
     var hasRequestedCallLogPermissionFromSettings by remember { mutableStateOf(false) }
+    var hasRequestedContactsPermissionOnce by remember { mutableStateOf(false) }
+    var hasRequestedPhonePermissionOnce by remember { mutableStateOf(false) }
+    var hasRequestedCallLogPermissionOnce by remember { mutableStateOf(false) }
+    var hasRequestedPhonePermissionFromAction by remember { mutableStateOf(false) }
+    var phonePermissionRequestedFromAction by remember { mutableStateOf(false) }
     var callLogPermissionJustDenied by remember { mutableStateOf(false) }
     var phonePermissionJustDenied by remember { mutableStateOf(false) }
+    var showPhonePermissionSettingsDialog by remember { mutableStateOf(false) }
+    var pendingPhonePermissionAction by remember { mutableStateOf<Pair<String, String>?>(null) }
     fun arePermissionsPermanentlyDenied(): Boolean {
         val activity = context as? Activity ?: return false
         if (!hasRequestedPermissions) return false
@@ -131,10 +138,17 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         context.startActivity(intent)
     }
 
+    fun isPermissionRequestBlocked(permission: String, hasRequestedOnce: Boolean): Boolean {
+        val activity = context as? Activity ?: return false
+        if (!hasRequestedOnce) return false
+        return !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+    }
+
     val callLogPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCallLogPermission = isGranted
+        hasRequestedCallLogPermissionOnce = true
         hasRequestedPermissions = true
         isRequestingPermissions = false
         if (!hasContactsPermission) {
@@ -163,6 +177,22 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCallPermission = isGranted
+        hasRequestedPhonePermissionOnce = true
+        if (!isGranted) {
+            pendingPhonePermissionAction = null
+            val activity = context as? Activity
+            val canShowSystemPermissionDialog = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CALL_PHONE)
+            } ?: true
+            if (!canShowSystemPermissionDialog) {
+                if (phonePermissionRequestedFromAction) {
+                    showPhonePermissionSettingsDialog = true
+                } else {
+                    openAppSettings()
+                }
+            }
+        }
+        phonePermissionRequestedFromAction = false
     }
 
     val phonePermissionFromSettingsLauncher = rememberLauncherForActivityResult(
@@ -183,6 +213,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasContactsPermission = isGranted
+        hasRequestedContactsPermissionOnce = true
         hasRequestedPermissions = true
         isRequestingPermissions = false
         if (!isGranted) {
@@ -203,6 +234,36 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     val availableActions by viewModel.availableActions.collectAsState()
     val hasSeenCallWarning by viewModel.hasSeenCallWarning.collectAsState()
     val callActivityMap by viewModel.callActivityMap.collectAsState()
+    val phonePermissionRequiredForActions = remember {
+        setOf(
+            QuickContactAction.WHATSAPP_VOICE_CALL,
+            QuickContactAction.WHATSAPP_VIDEO_CALL,
+            QuickContactAction.TELEGRAM_VOICE_CALL,
+            QuickContactAction.TELEGRAM_VIDEO_CALL,
+            QuickContactAction.SIGNAL_VOICE_CALL,
+            QuickContactAction.SIGNAL_VIDEO_CALL
+        )
+    }
+
+    fun executeActionWithPermissionGuard(action: String, phoneNumber: String) {
+        if (!hasCallPermission && phonePermissionRequiredForActions.contains(action)) {
+            val activity = context as? Activity
+            val canShowSystemPermissionDialog = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CALL_PHONE)
+            } ?: true
+            if (hasRequestedPhonePermissionFromAction && !canShowSystemPermissionDialog) {
+                pendingPhonePermissionAction = null
+                showPhonePermissionSettingsDialog = true
+                return
+            }
+            pendingPhonePermissionAction = action to phoneNumber
+            hasRequestedPhonePermissionFromAction = true
+            phonePermissionRequestedFromAction = true
+            phoneOnlyLauncher.launch(Manifest.permission.CALL_PHONE)
+            return
+        }
+        viewModel.executeAction(context, action, phoneNumber)
+    }
     fun resolvedActionsFor(contact: Contact): ResolvedQuickContactActions {
         return resolveQuickContactActions(
             customActionPreferences[contact.id],
@@ -265,6 +326,15 @@ fun AppNavigation(viewModel: ContactsViewModel) {
             viewModel.checkAndLoadFavoriteContactsOnFirstLaunch(context)
         } else {
             hasContinuedFromPermissionScreen = false
+        }
+    }
+
+    LaunchedEffect(hasCallPermission) {
+        if (hasCallPermission) {
+            pendingPhonePermissionAction?.let { (action, phoneNumber) ->
+                viewModel.executeAction(context, action, phoneNumber)
+                pendingPhonePermissionAction = null
+            }
         }
     }
 
@@ -348,16 +418,20 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = when {
-                            actionEditorContact != null -> "Change Actions for ${actionEditorContact?.name.orEmpty()}"
-                            isSearching -> stringResource(R.string.title_search)
-                            isSettingsScreenOpen -> stringResource(R.string.title_settings)
-                            else -> stringResource(R.string.title_quick_contacts)
-                        },
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                    if (currentDestination == NavDestination.Permission) {
+                        Box(modifier = Modifier.fillMaxWidth())
+                    } else {
+                        Text(
+                            text = when {
+                                actionEditorContact != null -> "Change Actions for ${actionEditorContact?.name.orEmpty()}"
+                                isSearching -> stringResource(R.string.title_search)
+                                isSettingsScreenOpen -> stringResource(R.string.title_settings)
+                                else -> stringResource(R.string.title_quick_contacts)
+                            },
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
                 },
                 navigationIcon = {
                     if (isSearching || isSettingsScreenOpen || actionEditorContact != null) {
@@ -430,18 +504,29 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         hasContactsPermission = hasContactsPermission,
                         hasCallLogPermission = hasCallLogPermission,
                         onRequestContactsPermission = {
-                            isRequestingPermissions = true
-                            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-                        },
-                        onRequestPhonePermission = {
-                            if (isCallPermissionPermanentlyDenied()) {
+                            if (isPermissionRequestBlocked(Manifest.permission.READ_CONTACTS, hasRequestedContactsPermissionOnce)) {
                                 openAppSettings()
                             } else {
+                                isRequestingPermissions = true
+                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                            }
+                        },
+                        onRequestPhonePermission = {
+                            if (
+                                isCallPermissionPermanentlyDenied() ||
+                                isPermissionRequestBlocked(Manifest.permission.CALL_PHONE, hasRequestedPhonePermissionOnce)
+                            ) {
+                                openAppSettings()
+                            } else {
+                                phonePermissionRequestedFromAction = false
                                 phoneOnlyLauncher.launch(Manifest.permission.CALL_PHONE)
                             }
                         },
                         onRequestCallLogPermission = {
-                            if (isCallLogPermissionPermanentlyDenied()) {
+                            if (
+                                isCallLogPermissionPermanentlyDenied() ||
+                                isPermissionRequestBlocked(Manifest.permission.READ_CALL_LOG, hasRequestedCallLogPermissionOnce)
+                            ) {
                                 openAppSettings()
                             } else {
                                 callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
@@ -461,7 +546,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 selectedContacts = selectedContacts,
                                 hasSeenCallWarning = hasSeenCallWarning,
                                 onExecuteAction = { executionContext, action, phoneNumber ->
-                                    viewModel.executeAction(executionContext, action, phoneNumber)
+                                    executeActionWithPermissionGuard(action, phoneNumber)
                                 },
                                 onUpdateContactNumber = { contactToUpdate, selectedNumber ->
                                     viewModel.updateContactNumber(contactToUpdate, selectedNumber)
@@ -501,7 +586,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 availableMessagingApps = availableMessagingApps,
                                 availableActions = availableActions,
                                 onExecuteAction = { ctx, action, phoneNumber ->
-                                    viewModel.executeAction(ctx, action, phoneNumber)
+                                    executeActionWithPermissionGuard(action, phoneNumber)
                                 }
                             )
                         SearchBar(
@@ -545,7 +630,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                     availableMessagingApps = availableMessagingApps,
                                     availableActions = availableActions,
                                     onExecuteAction = { ctx, action, phoneNumber ->
-                                        viewModel.executeAction(ctx, action, phoneNumber)
+                                        executeActionWithPermissionGuard(action, phoneNumber)
                                     },
                                     onAddToQuickList = { contact ->
                                         viewModel.addContact(contact)
@@ -652,7 +737,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         onContactClick = { contact ->
                                             val resolvedActions = resolvedActionsFor(contact)
                                             if (resolvedActions.cardTapAction != QuickContactAction.NONE) {
-                                                viewModel.executeAction(context, resolvedActions.cardTapAction, contact.phoneNumber)
+                                                executeActionWithPermissionGuard(resolvedActions.cardTapAction, contact.phoneNumber)
                                             }
                                         },
                                         editMode = editMode,
@@ -665,7 +750,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         onWhatsAppClick = { contact ->
                                             val resolvedActions = resolvedActionsFor(contact)
                                             if (resolvedActions.firstButtonTapAction != QuickContactAction.NONE) {
-                                                viewModel.executeAction(context, resolvedActions.firstButtonTapAction, contact.phoneNumber)
+                                                executeActionWithPermissionGuard(resolvedActions.firstButtonTapAction, contact.phoneNumber)
                                             }
                                         },
                                         onContactImageClick = { contact ->
@@ -681,7 +766,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         availableActions = availableActions,
                                         selectedContacts = selectedContacts,
                                         onExecuteAction = { ctx, action, phoneNumber ->
-                                            viewModel.executeAction(ctx, action, phoneNumber)
+                                            executeActionWithPermissionGuard(action, phoneNumber)
                                         },
                                         onUpdateContactNumber = { contact, selectedNumber ->
                                             viewModel.updateContactNumber(contact, selectedNumber)
@@ -710,6 +795,39 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     }
                 }
             }
+        }
+        if (showPhonePermissionSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showPhonePermissionSettingsDialog = false },
+                title = {
+                    Text(
+                        text = "Phone permission needed",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Phone permission is needed for this to work.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPhonePermissionSettingsDialog = false }) {
+                        Text("Close")
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showPhonePermissionSettingsDialog = false
+                            openAppSettings()
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                }
+            )
         }
     }
 }

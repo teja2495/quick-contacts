@@ -452,12 +452,14 @@ object ContactUtils {
 
         if (safeAgeMs < oneHourMs) {
             val minutes = safeAgeMs / oneMinuteMs
-            return "$minutes minutes ago"
+            val minuteUnit = if (minutes == 1L) "minute" else "minutes"
+            return "$minutes $minuteUnit ago"
         }
 
         if (safeAgeMs < sixHoursMs) {
             val hours = safeAgeMs / oneHourMs
-            return "$hours hour(s) ago"
+            val hourUnit = if (hours == 1L) "hour" else "hours"
+            return "$hours $hourUnit ago"
         }
 
         val now = Calendar.getInstance().apply { timeInMillis = nowMs }
