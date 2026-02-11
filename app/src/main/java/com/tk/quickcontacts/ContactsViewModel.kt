@@ -15,8 +15,10 @@ import com.tk.quickcontacts.utils.PhoneNumberUtils
 import com.tk.quickcontacts.utils.Mocks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,40 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 
 class ContactsViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        private val NUMBER_LIKE_REGEX = Regex("^[\\d\\s+\\-()]+$")
+
+        internal fun shouldPublishSearchResults(
+            requestId: Long,
+            latestRequestId: Long,
+            requestQuery: String,
+            currentQuery: String
+        ): Boolean = requestId == latestRequestId && requestQuery == currentQuery
+
+        internal fun applyPhoneQueryFallback(
+            query: String,
+            isPhoneNumberQuery: Boolean,
+            baseResults: List<Contact>
+        ): List<Contact> {
+            if (!isPhoneNumberQuery || baseResults.isNotEmpty()) {
+                return baseResults
+            }
+
+            val normalizedQuery = query.trim()
+            val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
+            val dummyContact = Contact(
+                id = "search_number_${normalizedQuery}",
+                name = formattedName,
+                phoneNumber = query,
+                phoneNumbers = listOf(query),
+                photo = null,
+                photoUri = null,
+                callType = null
+            )
+            return listOf(dummyContact)
+        }
+    }
+
     // Services
     private val preferencesRepository = PreferencesRepository(application)
     private val contactService = ContactService()
@@ -120,8 +156,15 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Search debouncing
-    private var searchJob: kotlinx.coroutines.Job? = null
+    private var searchJob: Job? = null
     private val searchDebounceDelay = 300L // 300ms debounce
+    private var latestSearchRequestId = 0L
+
+    private var loadRecentCallsJob: Job? = null
+    private var loadAllRecentCallsJob: Job? = null
+    private var refreshRecentCallsJob: Job? = null
+    private var lastResumeRefreshTimeMs = 0L
+    private val resumeRefreshThrottleMs = 2000L
 
     init {
         if (Mocks.ENABLE_MOCK_MODE) {
@@ -398,67 +441,47 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         searchJob?.cancel()
         
         if (query.isNotEmpty()) {
+            val requestId = ++latestSearchRequestId
+            val queryAtRequest = query
             // Use debouncing to avoid excessive database queries
             searchJob = viewModelScope.launch {
                 delay(searchDebounceDelay) // Wait for user to finish typing
-                
-                val numberLikeRegex = Regex("^[\\d\\s+\\-()]+$")
-                val isPhoneNumberQuery = numberLikeRegex.matches(query)
-                
-                if (Mocks.ENABLE_MOCK_MODE) {
-                    // Search in mock contacts
-                    val searchResults = _allContacts.value.filter { contact ->
-                        contact.name.lowercase().contains(query.lowercase()) ||
-                        contact.phoneNumber.contains(query)
+
+                if (!shouldPublishSearchResults(requestId, latestSearchRequestId, queryAtRequest, _searchQuery.value)) {
+                    return@launch
+                }
+
+                val isPhoneNumberQuery = NUMBER_LIKE_REGEX.matches(queryAtRequest)
+
+                val baseResults = if (Mocks.ENABLE_MOCK_MODE) {
+                    withContext(Dispatchers.Default) {
+                        _allContacts.value.filter { contact ->
+                            contact.name.lowercase().contains(queryAtRequest.lowercase()) ||
+                            contact.phoneNumber.contains(queryAtRequest)
+                        }
                     }
-                    
-                    // If it's a phone number query and no results, add dummy contact
-                    val finalResults = if (isPhoneNumberQuery && searchResults.isEmpty()) {
-                        val normalizedQuery = query.trim()
-                        val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
-                        val dummyContact = Contact(
-                            id = "search_number_${normalizedQuery}",
-                            name = formattedName,
-                            phoneNumber = query,
-                            phoneNumbers = listOf(query),
-                            photo = null,
-                            photoUri = null,
-                            callType = null
-                        )
-                        listOf(dummyContact)
-                    } else {
-                        searchResults
-                    }
-                    
-                    _searchResults.value = finalResults
-                    android.util.Log.d("ContactsViewModel", "Mock search completed: ${finalResults.size} contacts found")
                 } else {
-                    // Use the ContactService for advanced search functionality
                     val context = getApplication<Application>().applicationContext
-                    val searchResults = contactService.searchContacts(context, query)
-                    
-                    // If it's a phone number query and no results, add dummy contact
-                    val finalResults = if (isPhoneNumberQuery && searchResults.isEmpty()) {
-                        val normalizedQuery = query.trim()
-                        val formattedName = PhoneNumberUtils.formatPhoneNumber(query)
-                        val dummyContact = Contact(
-                            id = "search_number_${normalizedQuery}",
-                            name = formattedName,
-                            phoneNumber = query,
-                            phoneNumbers = listOf(query),
-                            photo = null,
-                            photoUri = null,
-                            callType = null
-                        )
-                        listOf(dummyContact)
-                    } else {
-                        searchResults
+                    withContext(Dispatchers.IO) {
+                        contactService.searchContacts(context, queryAtRequest)
                     }
-                    
+                }
+
+                val finalResults = applyPhoneQueryFallback(
+                    query = queryAtRequest,
+                    isPhoneNumberQuery = isPhoneNumberQuery,
+                    baseResults = baseResults
+                )
+
+                if (shouldPublishSearchResults(requestId, latestSearchRequestId, queryAtRequest, _searchQuery.value)) {
                     _searchResults.value = finalResults
+                    if (Mocks.ENABLE_MOCK_MODE) {
+                        android.util.Log.d("ContactsViewModel", "Mock search completed: ${finalResults.size} contacts found")
+                    }
                 }
             }
         } else {
+            latestSearchRequestId++
             _searchResults.value = emptyList()
             android.util.Log.d("ContactsViewModel", "Empty query, clearing search results")
         }
@@ -1052,8 +1075,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             android.util.Log.d("ContactsViewModel", "Skipping loadRecentCalls in mock mode")
             return
         }
-        
-        viewModelScope.launch(Dispatchers.IO) {
+
+        if (loadRecentCallsJob?.isActive == true) {
+            return
+        }
+
+        loadRecentCallsJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoadingRecentCalls.value = true
                 android.util.Log.d("ContactsViewModel", "Starting loadRecentCalls - cached calls: ${_cachedRecentCalls.value.size}")
@@ -1096,6 +1123,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 }
             } finally {
                 _isLoadingRecentCalls.value = false
+                loadRecentCallsJob = null
             }
         }
     }
@@ -1106,8 +1134,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             android.util.Log.d("ContactsViewModel", "Skipping loadAllRecentCalls in mock mode")
             return
         }
-        
-        viewModelScope.launch(Dispatchers.IO) {
+
+        if (loadAllRecentCallsJob?.isActive == true) {
+            return
+        }
+
+        loadAllRecentCallsJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoadingRecentCalls.value = true
                 android.util.Log.d("ContactsViewModel", "Starting loadAllRecentCalls - cached all calls: ${_cachedAllRecentCalls.value.size}")
@@ -1138,6 +1170,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 _allRecentCalls.value = emptyList()
             } finally {
                 _isLoadingRecentCalls.value = false
+                loadAllRecentCallsJob = null
             }
         }
     }
@@ -1148,8 +1181,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             android.util.Log.d("ContactsViewModel", "Skipping refreshRecentCallsOnAppResume in mock mode")
             return
         }
-        
-        viewModelScope.launch(Dispatchers.IO) {
+
+        val now = System.currentTimeMillis()
+        if (now - lastResumeRefreshTimeMs < resumeRefreshThrottleMs) {
+            return
+        }
+        lastResumeRefreshTimeMs = now
+
+        if (refreshRecentCallsJob?.isActive == true) {
+            return
+        }
+
+        refreshRecentCallsJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Only refresh if recent calls are visible
                 if (!_isRecentCallsVisible.value) {
@@ -1176,6 +1219,8 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 
             } catch (e: Exception) {
                 android.util.Log.e("ContactsViewModel", "Error refreshing recent calls on app resume", e)
+            } finally {
+                refreshRecentCallsJob = null
             }
         }
     }
@@ -1247,6 +1292,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                contactService.prewarmSearchIndex(context)
                 val contacts = contactService.getAllContacts(context)
                 val validContacts = contacts.filter { ContactUtils.isValidContact(it) }
                 _allContacts.value = validContacts
@@ -1328,18 +1374,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                     _callActivityMap.value = emptyMap()
                     return@launch
                 }
-                
-                val callActivityMap = mutableMapOf<String, Contact>()
-                
-                // Load call activity for ALL quick list contacts (not just those with "Call" as primary action)
-                selectedContacts.forEach { contact ->
-                    val callActivity = contactService.getLatestCallActivityForContact(context, contact.phoneNumbers)
-                    if (callActivity != null) {
-                        callActivityMap[contact.id] = callActivity
-                    }
-                }
-                
-                _callActivityMap.value = callActivityMap
+
+                _callActivityMap.value = contactService.getLatestCallActivityForContacts(
+                    context = context,
+                    contacts = selectedContacts
+                )
                 
             } catch (e: Exception) {
                 android.util.Log.e("ContactsViewModel", "Error loading call activity for quick list", e)

@@ -91,31 +91,17 @@ object ContactUtils {
     /**
      * Get contact photo URI for a given contact ID with validation
      */
+    @Suppress("UNUSED_PARAMETER")
     fun getContactPhotoUri(context: Context, contactId: String): String? {
         if (contactId.isBlank()) {
             return null
         }
-        
-        return try {
-            val photoUri = Uri.withAppendedPath(
-                ContactsContract.Contacts.CONTENT_URI,
-                contactId
-            ).let { contactUri ->
-                Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Photo.CONTENT_DIRECTORY)
-            }
-            
-            // Check if photo exists by trying to open an input stream
-            val inputStream = context.contentResolver.openInputStream(photoUri)
-            if (inputStream != null) {
-                inputStream.close()
-                photoUri.toString()
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            // Photo doesn't exist or can't be accessed
-            android.util.Log.d("ContactUtils", "Contact photo not available for ID: $contactId")
-            null
+
+        return Uri.withAppendedPath(
+            ContactsContract.Contacts.CONTENT_URI,
+            contactId
+        ).let { contactUri ->
+            Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Photo.CONTENT_DIRECTORY).toString()
         }
     }
     

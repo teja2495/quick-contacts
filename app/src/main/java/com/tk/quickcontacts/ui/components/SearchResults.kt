@@ -52,6 +52,7 @@ fun SearchResultsContent(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
+    val messagingActionCache = remember(defaultMessagingApp) { mutableMapOf<String, String>() }
 
     LazyColumn(
         state = listState,
@@ -144,7 +145,10 @@ fun SearchResultsContent(
             
             // Search results (they're already sorted by priority in ContactService, 
             // with reverseLayout=true, most relevant will be closest to search bar)
-            items(searchResults) { contact ->
+            items(
+                items = searchResults,
+                key = { contact -> contact.id }
+            ) { contact ->
                 SearchResultItem(
                     contact = contact,
                     onContactClick = { contact ->
@@ -178,7 +182,30 @@ fun SearchResultsContent(
                     onExecuteAction = onExecuteAction,
                     onAddToContacts = onAddToContacts,
                     getLastShownPhoneNumber = viewModel::getLastShownPhoneNumber,
-                    setLastShownPhoneNumber = viewModel::setLastShownPhoneNumber
+                    setLastShownPhoneNumber = viewModel::setLastShownPhoneNumber,
+                    resolveMessagingAction = { candidate ->
+                        val numbersKey = candidate.phoneNumbers
+                            .ifEmpty { listOf(candidate.phoneNumber) }
+                            .joinToString("|") { PhoneNumberUtils.normalizePhoneNumber(it) }
+                        val cacheKey = "${candidate.id}|${defaultMessagingApp.name}|$numbersKey"
+                        messagingActionCache[cacheKey] ?: run {
+                            val defaultMessagingAction = resolveQuickContactActions(null, defaultMessagingApp).secondButtonTapAction
+                            val resolvedAction = if (!defaultMessagingApp.requiresContactAccountCheck()) {
+                                defaultMessagingAction
+                            } else {
+                                val allNumbers = candidate.phoneNumbers
+                                    .ifEmpty { listOf(candidate.phoneNumber) }
+                                    .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
+                                val appAction = defaultMessagingApp.toChatAction()
+                                val hasAccountOnDefaultApp = allNumbers.any { number ->
+                                    ContactActionAvailability.getContactAvailableActions(context, number).contains(appAction)
+                                }
+                                if (hasAccountOnDefaultApp) defaultMessagingAction else QuickContactAction.MESSAGE
+                            }
+                            messagingActionCache[cacheKey] = resolvedAction
+                            resolvedAction
+                        }
+                    }
                 )
             }
         }
@@ -203,7 +230,8 @@ fun SearchResultItem(
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToContacts: (Context, String) -> Unit = { _, _ -> },
     getLastShownPhoneNumber: (String) -> String? = { null },
-    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> },
+    resolveMessagingAction: (Contact) -> String
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -211,28 +239,13 @@ fun SearchResultItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val defaultMessagingAction = remember(defaultMessagingApp) {
-        resolveQuickContactActions(null, defaultMessagingApp).secondButtonTapAction
-    }
     val messagingAction = remember(
-        context,
+        contact.id,
         contact.phoneNumber,
         contact.phoneNumbers,
-        defaultMessagingApp,
-        defaultMessagingAction
+        defaultMessagingApp
     ) {
-        if (!defaultMessagingApp.requiresContactAccountCheck()) {
-            defaultMessagingAction
-        } else {
-            val allNumbers = contact.phoneNumbers
-                .ifEmpty { listOf(contact.phoneNumber) }
-                .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
-            val appAction = defaultMessagingApp.toChatAction()
-            val hasAccountOnDefaultApp = allNumbers.any { number ->
-                ContactActionAvailability.getContactAvailableActions(context, number).contains(appAction)
-            }
-            if (hasAccountOnDefaultApp) defaultMessagingAction else QuickContactAction.MESSAGE
-        }
+        resolveMessagingAction(contact)
     }
     
     // Phone number selection dialog

@@ -31,6 +31,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorder
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import android.content.Context
@@ -140,19 +141,19 @@ fun ContactItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .clip(MaterialTheme.shapes.large)
-            .combinedClickable(
-                enabled = true,
-                onClick = {
-                    if (editMode) {
-                        onOpenActionEditor(contact)
-                    } else {
-                        executeResolvedAction(resolvedActions.cardTapAction, contact.phoneNumber)
-                    }
-                },
-                onLongClick = {
-                    if (!editMode) {
-                        executeResolvedAction(resolvedActions.cardLongPressAction, contact.phoneNumber)
-                    }
+            .then(
+                if (editMode) {
+                    Modifier.clickable { onOpenActionEditor(contact) }
+                } else {
+                    Modifier.combinedClickable(
+                        enabled = true,
+                        onClick = {
+                            executeResolvedAction(resolvedActions.cardTapAction, contact.phoneNumber)
+                        },
+                        onLongClick = {
+                            executeResolvedAction(resolvedActions.cardLongPressAction, contact.phoneNumber)
+                        }
+                    )
                 }
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -178,7 +179,7 @@ fun ContactItem(
                         .padding(end = 16.dp)
                         .then(
                             if (reorderState != null) {
-                                Modifier.detectReorder(reorderState)
+                                Modifier.detectReorderAfterLongPress(reorderState)
                             } else {
                                 Modifier
                             }
