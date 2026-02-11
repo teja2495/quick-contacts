@@ -5,17 +5,19 @@ A fast and privacy-focused Android app for quick access to your most important c
 ## Features
 
 - **Quick Contact List**: Add your most important contacts for instant access
-- **Recent Calls**: View and redial your recent calls
-- **Direct Actions**: Call, message, or open messaging apps with one tap
+- **Recent Calls**: View and redial your recent calls (GitHub release only)
+- **Direct Actions**: Call, message, or open messaging apps (WhatsApp, Telegram, Signal, SMS) with one tap
+- **Audio & Video Calls**: Start audio and video calls directly in all supported apps
 - **Search**: Quickly find any contact in your phonebook by name or phone number
 - **Customizable Actions**: Set different actions for each contact
+- **Refreshed Settings**: Updated settings screen for a cleaner, more intuitive experience
 - **Offline Operation**: Works entirely offline - no internet required
 
 ## Screenshots
 
-| Homescreen | Recent Calls | Tap Actions | Settings |
-|------------|--------------|-------------|----------|
-| ![Homescreen](screenshots/homescreen.jpg) | ![Recent Calls](screenshots/recent-calls.jpg) | ![Tap Actions](screenshots/tap-actions.jpg) | ![Settings](screenshots/settings.jpg) |
+| Homescreen | All Options | Tap Actions | Settings |
+|------------|-------------|-------------|----------|
+| ![Homescreen](screenshots/1.jpg) | ![All Options](screenshots/3.jpg) | ![Tap Actions](screenshots/2.jpg) | ![Settings](screenshots/4.jpg) |
 
 ## Privacy-First Design
 
@@ -55,6 +57,7 @@ Quick Contacts is built with your privacy in mind:
 - Recent calls appear at the top of the main screen
 - Tap any recent call to redial
 - Call types are color-coded (incoming, outgoing, missed)
+- Note: Recent calls is currently exclusive to the GitHub release build
 
 ## Privacy Policy
 

@@ -245,10 +245,12 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         editMode = false
     }
 
-    LaunchedEffect(hasCallLogPermission, hasContactsPermission, selectedContacts, isRecentCallsVisible) {
+    LaunchedEffect(hasCallLogPermission, isRecentCallsVisible, isRecentCallsExpanded) {
         if (isRecentCallsVisible && hasCallLogPermission) {
             viewModel.loadRecentCalls(context)
-            viewModel.loadAllRecentCalls(context)
+            if (isRecentCallsExpanded) {
+                viewModel.loadAllRecentCalls(context)
+            }
         }
     }
 
