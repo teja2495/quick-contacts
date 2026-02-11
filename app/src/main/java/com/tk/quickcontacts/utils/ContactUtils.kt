@@ -57,13 +57,16 @@ object ContactUtils {
             val validPhoneNumbers = contact.phoneNumbers.filter { phoneNumber ->
                 phoneNumber.isNotBlank() && PhoneNumberUtils.isValidPhoneNumber(phoneNumber)
             }
+            val uniquePhoneNumbers = validPhoneNumbers.distinctBy { phoneNumber ->
+                PhoneNumberUtils.normalizePhoneNumber(phoneNumber)
+            }
             
-            if (validPhoneNumbers.isEmpty()) {
+            if (uniquePhoneNumbers.isEmpty()) {
                 return null
             }
             
-            val primaryPhoneNumber = validPhoneNumbers.firstOrNull { PhoneNumberUtils.isSameNumber(it, contact.phoneNumber) }
-                ?: validPhoneNumbers.first()
+            val primaryPhoneNumber = uniquePhoneNumbers.firstOrNull { PhoneNumberUtils.isSameNumber(it, contact.phoneNumber) }
+                ?: uniquePhoneNumbers.first()
             
             // Clean name (remove excessive whitespace, etc.)
             val cleanName = contact.name.trim().replace(Regex("\\s+"), " ")
@@ -76,7 +79,7 @@ object ContactUtils {
                 id = contact.id.trim(),
                 name = cleanName,
                 phoneNumber = primaryPhoneNumber,
-                phoneNumbers = validPhoneNumbers,
+                phoneNumbers = uniquePhoneNumbers,
                 photo = contact.photo,
                 photoUri = contact.photoUri?.takeIf { it.isNotBlank() },
                 callType = contact.callType,
