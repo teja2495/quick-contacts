@@ -17,7 +17,7 @@ A fast and privacy-focused Android app for quick access to your most important c
 
 | Homescreen | All Options | Tap Actions | Settings |
 |------------|-------------|-------------|----------|
-| ![Homescreen](screenshots/homescreen.jpg) | ![All Options](screenshots/all-options.jpg) | ![Tap Actions](screenshots/tap-actions.jpg) | ![Settings](screenshots/settings.jpg) |
+| ![Homescreen](screenshots/1.jpg) | ![All Options](screenshots/3.jpg) | ![Tap Actions](screenshots/2.jpg) | ![Settings](screenshots/4.jpg) |
 
 ## Privacy-First Design
 
