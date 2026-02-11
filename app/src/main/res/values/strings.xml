@@ -56,8 +56,8 @@
     <string name="recent_calls_hint_message">Icons show call types: incoming (green), outgoing (blue), missed/rejected (red)</string>
     
     <!-- Permissions -->
-    <string name="permission_phone_access">Calling</string>
-    <string name="permission_phone_description">Make calls directly without opening the dialer.</string>
+    <string name="permission_phone_access">Phone</string>
+    <string name="permission_phone_description">Required to call your contacts via Phone, WhatsApp, Telegram, or Signal.</string>
     <string name="permission_contacts_access">Contacts Access</string>
     <string name="permission_contacts_description">Search and display your contacts with their names and photos</string>
     <string name="permission_call_history_access">Call History Access</string>
@@ -78,6 +78,8 @@
     <string name="settings_refresh_contacts">Refresh contacts</string>
     <string name="settings_refresh_contacts_description">Clear cache and reload contacts from device</string>
     <string name="settings_refresh_contacts_toast">Contacts refreshed</string>
+    <string name="settings_permissions_title">Permissions</string>
+    <string name="settings_permissions_desc">Manage app permissions</string>
     
     <!-- Messaging Apps -->
     <string name="messaging_app_sms">Messages</string>

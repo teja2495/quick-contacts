@@ -1,6 +1,5 @@
 package com.tk.quickcontacts.ui.components
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -26,6 +25,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Email
@@ -69,6 +69,7 @@ private val MessagingBorderWidth = 1.dp
 fun SettingsScreen(
     viewModel: ContactsViewModel,
     onBackClick: () -> Unit,
+    onOpenPermissions: () -> Unit,
     hasCallLogPermission: Boolean = true,
     onRequestCallLogPermission: (() -> Unit)? = null,
     isCallLogPermissionPermanentlyDenied: Boolean = false,
@@ -247,7 +248,8 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsFeedbackDevelopmentCard(
+                SettingsSupportDevelopmentCard(
+                    onOpenPermissions = onOpenPermissions,
                     onSendFeedback = { sendFeedbackEmail() },
                     onOpenGitHub = {
                         try {
@@ -372,7 +374,8 @@ private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun SettingsFeedbackDevelopmentCard(
+private fun SettingsSupportDevelopmentCard(
+    onOpenPermissions: () -> Unit,
     onSendFeedback: () -> Unit,
     onOpenGitHub: () -> Unit,
     modifier: Modifier = Modifier
@@ -385,6 +388,7 @@ private fun SettingsFeedbackDevelopmentCard(
     ) {
         Column {
             listOf(
+                Triple(stringResource(R.string.settings_permissions_title), stringResource(R.string.settings_permissions_desc), Icons.Rounded.AdminPanelSettings to onOpenPermissions),
                 Triple(stringResource(R.string.settings_feedback_send_title), stringResource(R.string.settings_feedback_send_desc), Icons.Rounded.Email to onSendFeedback),
                 Triple(stringResource(R.string.settings_feedback_github_title), stringResource(R.string.settings_feedback_github_desc), Icons.Rounded.Code to onOpenGitHub)
             ).forEachIndexed { index, (title, description, iconAndAction) ->

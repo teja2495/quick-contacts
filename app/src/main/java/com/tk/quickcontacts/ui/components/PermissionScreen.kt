@@ -47,31 +47,44 @@ fun PermissionRequestScreen(
     onRequestPhonePermission: () -> Unit,
     onRequestCallLogPermission: () -> Unit,
     onContinue: () -> Unit,
+    showContinueButton: Boolean = true,
+    isFromSettings: Boolean = false,
 ) {
-    Column(
-        modifier = Modifier
+    val containerModifier = if (isFromSettings) {
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 24.dp)
+    } else {
+        Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .safeDrawingPadding()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp)
+    }
+
+    Column(
+        modifier = containerModifier,
         horizontalAlignment = Alignment.Start,
     ) {
-        Text(
-            text = stringResource(R.string.title_permissions_required),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        if (!isFromSettings) {
+            Text(
+                text = stringResource(R.string.title_permissions_required),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
 
         Text(
             text = stringResource(R.string.privacy_description),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Start,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = if (isFromSettings) 0.dp else 8.dp),
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(if (isFromSettings) 16.dp else 32.dp))
 
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
@@ -124,20 +137,22 @@ fun PermissionRequestScreen(
 
         Spacer(modifier = Modifier.height(SpacingLarge))
 
-        Button(
-            onClick = onContinue,
-            enabled = hasContactsPermission,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 8.dp),
-            shape = RoundedCornerShape(24.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.action_continue),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-            )
+        if (showContinueButton) {
+            Button(
+                onClick = onContinue,
+                enabled = hasContactsPermission,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 8.dp),
+                shape = RoundedCornerShape(24.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.action_continue),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
