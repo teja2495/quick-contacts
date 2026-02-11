@@ -15,8 +15,6 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,24 +47,10 @@ fun SearchResultsContent(
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToContacts: (Context, String) -> Unit = { context, phoneNumber ->
         viewModel.addNewContactToPhone(context, phoneNumber)
-    },
-    onScrollAwayFromBottom: () -> Unit = {},
-    onReachedBottom: () -> Unit = {}
+    }
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    var wasAtBottom by remember { mutableStateOf(true) }
-
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-        }.distinctUntilChanged().collect { atBottom ->
-            if (atBottom != wasAtBottom) {
-                wasAtBottom = atBottom
-                if (atBottom) onReachedBottom() else onScrollAwayFromBottom()
-            }
-        }
-    }
 
     LazyColumn(
         state = listState,

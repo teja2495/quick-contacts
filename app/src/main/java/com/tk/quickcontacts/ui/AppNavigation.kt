@@ -89,7 +89,11 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
     var hasRequestedPermissions by remember { mutableStateOf(false) }
     var isRequestingPermissions by remember { mutableStateOf(false) }
-    var hasContinuedFromPermissionScreen by remember { mutableStateOf(false) }
+    var hasContinuedFromPermissionScreen by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
     var hasDeniedPermissionsAfterFirstRequest by remember { mutableStateOf(false) }
     var hasRequestedPhonePermissionFromSettings by remember { mutableStateOf(false) }
     var hasRequestedCallLogPermissionFromSettings by remember { mutableStateOf(false) }
@@ -484,7 +488,6 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     )
 
                     NavDestination.Search -> run {
-                        val focusManager = LocalFocusManager.current
                         Column(modifier = Modifier.fillMaxSize()) {
                             SearchResultsContent(
                                 viewModel = viewModel,
@@ -497,9 +500,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 availableActions = availableActions,
                                 onExecuteAction = { ctx, action, phoneNumber ->
                                     viewModel.executeAction(ctx, action, phoneNumber)
-                                },
-                                onScrollAwayFromBottom = { focusManager.clearFocus() },
-                                onReachedBottom = { focusRequester.requestFocus() }
+                                }
                             )
                         SearchBar(
                             query = searchQuery,
