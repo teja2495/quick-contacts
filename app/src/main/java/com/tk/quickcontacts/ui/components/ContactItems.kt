@@ -438,7 +438,8 @@ fun RecentCallVerticalItem(
     onAddToQuickList: ((Contact) -> Unit)? = null,
     onRemoveFromQuickList: ((Contact) -> Unit)? = null,
     getLastShownPhoneNumber: (String) -> String? = { null },
-    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
+    setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> },
+    nowMs: Long = -1L
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -591,7 +592,11 @@ fun RecentCallVerticalItem(
                     )
                     Text(
                         text = contact.callTimestamp?.let { timestamp ->
-                            com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(timestamp)
+                            if (nowMs >= 0L) {
+                                com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(timestamp, nowMs)
+                            } else {
+                                com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(timestamp)
+                            }
                         } ?: contact.callType.replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.bodySmall,
                         color = when (contact.callType) {

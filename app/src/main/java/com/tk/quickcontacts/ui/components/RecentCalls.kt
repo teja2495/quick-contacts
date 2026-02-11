@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.delay
 
 @Composable
 fun RecentCallsSection(
@@ -55,6 +56,9 @@ fun RecentCallsSection(
 
     
     if (recentCalls.isNotEmpty()) {
+        val displayedRecentCalls = if (isExpanded) recentCalls else recentCalls.take(2)
+        val nowMs by rememberRecentCallsTimestampNow(displayedRecentCalls)
+
         val rotationAngle by animateFloatAsState(
             targetValue = if (isExpanded) 180f else 0f,
             animationSpec = tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
@@ -132,7 +136,7 @@ fun RecentCallsSection(
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                recentCalls.take(2).forEach { contact ->
+                                displayedRecentCalls.forEach { contact ->
                                     RecentCallVerticalItem(
                                         contact = contact,
                                         onContactClick = onContactClick,
@@ -147,7 +151,8 @@ fun RecentCallsSection(
                                         onAddToQuickList = onAddToQuickList,
                                         onRemoveFromQuickList = onRemoveFromQuickList,
                                         getLastShownPhoneNumber = getLastShownPhoneNumber,
-                                        setLastShownPhoneNumber = setLastShownPhoneNumber
+                                        setLastShownPhoneNumber = setLastShownPhoneNumber,
+                                        nowMs = nowMs
                                     )
                                 }
                             }
@@ -188,7 +193,8 @@ fun RecentCallsSection(
                                                 onAddToQuickList = onAddToQuickList,
                                                 onRemoveFromQuickList = onRemoveFromQuickList,
                                                 getLastShownPhoneNumber = getLastShownPhoneNumber,
-                                                setLastShownPhoneNumber = setLastShownPhoneNumber
+                                                setLastShownPhoneNumber = setLastShownPhoneNumber,
+                                                nowMs = nowMs
                                             )
                                             // Add subtle divider between items (except after the last item)
                                             if (index < currentRecentCalls.size - 1) {
@@ -210,4 +216,43 @@ fun RecentCallsSection(
             }
         }
     }
-} 
+}
+
+@Composable
+private fun rememberRecentCallsTimestampNow(recentCalls: List<Contact>): State<Long> {
+    val nowMsState = remember { mutableStateOf(System.currentTimeMillis()) }
+    val timestamps = remember(recentCalls) { recentCalls.mapNotNull { it.callTimestamp } }
+
+    LaunchedEffect(timestamps) {
+        while (true) {
+            val currentTime = System.currentTimeMillis()
+            nowMsState.value = currentTime
+
+            val nextDelayMs = computeNextRecentCallRefreshDelayMs(timestamps, currentTime) ?: break
+            delay(nextDelayMs)
+        }
+    }
+
+    return nowMsState
+}
+
+private fun computeNextRecentCallRefreshDelayMs(timestamps: List<Long>, nowMs: Long): Long? {
+    val oneMinuteMs = 60_000L
+    val oneHourMs = 3_600_000L
+
+    val minDelayMs = timestamps
+        .mapNotNull { timestamp ->
+            val ageMs = (nowMs - timestamp).coerceAtLeast(0L)
+            when {
+                ageMs < oneMinuteMs -> oneMinuteMs - ageMs
+                ageMs < oneHourMs -> {
+                    val remainder = ageMs % oneMinuteMs
+                    if (remainder == 0L) oneMinuteMs else oneMinuteMs - remainder
+                }
+                else -> null
+            }
+        }
+        .minOrNull()
+
+    return minDelayMs?.coerceAtLeast(1_000L)
+}

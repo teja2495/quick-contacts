@@ -443,50 +443,51 @@ object ContactUtils {
     }
     
     /**
-     * Format call timestamp according to the specified requirements:
-     * - Time format (e.g., "2:30 PM") for calls less than an hour ago
-     * - "time in AM, PM" for today's calls
-     * - "Yesterday" for yesterday's calls
-     * - day name (Monday, Tuesday, etc.) for calls in the last week
-     * - date format (May 24) for calls beyond 1 week
+     * Format call timestamp according to home recent-calls requirements.
      */
     fun formatCallTimestamp(timestamp: Long): String {
-        val now = Calendar.getInstance()
+        return formatCallTimestamp(timestamp, System.currentTimeMillis())
+    }
+
+    internal fun formatCallTimestamp(timestamp: Long, nowMs: Long): String {
+        val oneMinuteMs = 60_000L
+        val oneHourMs = 3_600_000L
+        val sixHoursMs = 21_600_000L
+
+        val safeAgeMs = (nowMs - timestamp).coerceAtLeast(0L)
         val callDate = Calendar.getInstance().apply { timeInMillis = timestamp }
-        
-        // Calculate time difference in milliseconds
-        val timeDiff = now.timeInMillis - callDate.timeInMillis
-        val minutesDiff = timeDiff / (1000 * 60)
-        val hoursDiff = timeDiff / (1000 * 60 * 60)
-        
-        // Check if it's less than an hour ago - show time format
-        if (hoursDiff < 1) {
-            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-            return timeFormat.format(callDate.time)
+
+        if (safeAgeMs < oneMinuteMs) {
+            return "Just Now"
         }
-        
-        // Check if it's today (but more than an hour ago)
+
+        if (safeAgeMs < oneHourMs) {
+            val minutes = safeAgeMs / oneMinuteMs
+            return "$minutes minutes ago"
+        }
+
+        if (safeAgeMs < sixHoursMs) {
+            val hours = safeAgeMs / oneHourMs
+            return "$hours hour(s) ago"
+        }
+
+        val now = Calendar.getInstance().apply { timeInMillis = nowMs }
+        val timeFormat = SimpleDateFormat("h:mma", Locale.ENGLISH)
+
         if (isSameDay(now, callDate)) {
-            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
             return timeFormat.format(callDate.time)
         }
-        
-        // Check if it's yesterday
-        val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+        val yesterday = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            add(Calendar.DAY_OF_YEAR, -1)
+        }
         if (isSameDay(yesterday, callDate)) {
-            return "Yesterday"
+            return "Yesterday • ${timeFormat.format(callDate.time)}"
         }
-        
-        // Check if it's within the last week
-        val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }
-        if (callDate.after(weekAgo)) {
-            val dayFormat = SimpleDateFormat("EEEE", Locale.getDefault())
-            return dayFormat.format(callDate.time)
-        }
-        
-        // Beyond 1 week, show date
-        val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
-        return dateFormat.format(callDate.time)
+
+        val dayFormat = SimpleDateFormat("EEE", Locale.ENGLISH)
+        return "${dayFormat.format(callDate.time)} • ${timeFormat.format(callDate.time)}"
     }
     
     /**
