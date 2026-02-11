@@ -56,6 +56,7 @@ class ContactService {
         val normalizedName: String,
         val nameParts: List<String>,
         val normalizedPhoneNumber: String,
+        val comparablePhoneNumber: String,
         val photoUri: String?
     )
 
@@ -176,6 +177,7 @@ class ContactService {
             normalizedName = normalizedName,
             nameParts = normalizedName.split(WHITESPACE_REGEX),
             normalizedPhoneNumber = toDigits(number),
+            comparablePhoneNumber = PhoneNumberUtils.normalizePhoneNumber(number),
             photoUri = photoUri
         )
     }
@@ -405,13 +407,13 @@ class ContactService {
                     )
                     if (ContactUtils.isValidContact(newContact)) {
                         seenContactsMap[row.id] = newContact
-                        normalizedNumbersByContact[row.id] = mutableSetOf(row.normalizedPhoneNumber)
+                        normalizedNumbersByContact[row.id] = mutableSetOf(row.comparablePhoneNumber)
                     }
                 } else {
                     val normalizedSet = normalizedNumbersByContact.getOrPut(row.id) {
                         existingContact.phoneNumbers.map { PhoneNumberUtils.normalizePhoneNumber(it) }.toMutableSet()
                     }
-                    if (normalizedSet.add(row.normalizedPhoneNumber)) {
+                    if (normalizedSet.add(row.comparablePhoneNumber)) {
                         val updatedContact = existingContact.copy(
                             phoneNumbers = existingContact.phoneNumbers + row.number
                         )
@@ -550,13 +552,13 @@ class ContactService {
                 )
                 if (ContactUtils.isValidContact(contact)) {
                     seenContactsMap[row.id] = contact
-                    normalizedNumbersByContact[row.id] = mutableSetOf(row.normalizedPhoneNumber)
+                    normalizedNumbersByContact[row.id] = mutableSetOf(row.comparablePhoneNumber)
                 }
             } else {
                 val normalizedSet = normalizedNumbersByContact.getOrPut(row.id) {
                     existingContact.phoneNumbers.map { PhoneNumberUtils.normalizePhoneNumber(it) }.toMutableSet()
                 }
-                if (normalizedSet.add(row.normalizedPhoneNumber)) {
+                if (normalizedSet.add(row.comparablePhoneNumber)) {
                     val updatedContact = existingContact.copy(phoneNumbers = existingContact.phoneNumbers + row.number)
                     if (ContactUtils.isValidContact(updatedContact)) {
                         seenContactsMap[row.id] = updatedContact
