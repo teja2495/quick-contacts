@@ -33,7 +33,6 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Sms
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -248,23 +247,6 @@ fun SettingsScreen(
 
             item {
                 SettingsFeedbackDevelopmentCard(
-                    onRateApp = {
-                        val packageName = context.packageName
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("market://details?id=$packageName")
-                                setPackage("com.android.vending")
-                            }
-                            context.startActivity(intent)
-                        } catch (_: ActivityNotFoundException) {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        }
-                    },
                     onSendFeedback = { sendFeedbackEmail() },
                     onOpenGitHub = {
                         try {
@@ -390,7 +372,6 @@ private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun SettingsFeedbackDevelopmentCard(
-    onRateApp: () -> Unit,
     onSendFeedback: () -> Unit,
     onOpenGitHub: () -> Unit,
     modifier: Modifier = Modifier
@@ -403,7 +384,6 @@ private fun SettingsFeedbackDevelopmentCard(
     ) {
         Column {
             listOf(
-                Triple(stringResource(R.string.settings_feedback_rate_title), stringResource(R.string.settings_feedback_rate_desc), Icons.Rounded.Star to onRateApp),
                 Triple(stringResource(R.string.settings_feedback_send_title), stringResource(R.string.settings_feedback_send_desc), Icons.Rounded.Email to onSendFeedback),
                 Triple(stringResource(R.string.settings_feedback_github_title), stringResource(R.string.settings_feedback_github_desc), Icons.Rounded.Code to onOpenGitHub)
             ).forEachIndexed { index, (title, description, iconAndAction) ->

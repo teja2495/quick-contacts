@@ -121,8 +121,6 @@
     <string name="feedback_subject">Quick Contacts Feedback</string>
     <string name="settings_feedback_send_title">Send Feedback</string>
     <string name="settings_feedback_send_desc">Report bugs or request features</string>
-    <string name="settings_feedback_rate_title">Rate Quick Contacts</string>
-    <string name="settings_feedback_rate_desc">Leave a 5 star rating if you find this app useful</string>
     <string name="settings_feedback_github_title">Development</string>
     <string name="settings_feedback_github_desc">View this project\'s source code on GitHub</string>
     <string name="settings_feedback_developer_title">%1$s v%2$s</string>
