@@ -80,6 +80,23 @@ fun ContactItem(
         customActions = customActions,
         defaultMessagingApp = defaultMessagingApp
     )
+    val cardTapActionLabel = when (resolvedActions.cardTapAction) {
+        QuickContactAction.CALL -> "Call"
+        QuickContactAction.MESSAGE -> "Message"
+        QuickContactAction.GOOGLE_MEET -> "Meet"
+        QuickContactAction.WHATSAPP_CHAT -> "WhatsApp"
+        QuickContactAction.TELEGRAM_CHAT -> "Telegram"
+        QuickContactAction.SIGNAL_CHAT -> "Signal"
+        QuickContactAction.WHATSAPP_VOICE_CALL -> "WhatsApp Audio"
+        QuickContactAction.TELEGRAM_VOICE_CALL -> "Telegram Audio"
+        QuickContactAction.SIGNAL_VOICE_CALL -> "Signal Audio"
+        QuickContactAction.WHATSAPP_VIDEO_CALL -> "WhatsApp Video"
+        QuickContactAction.TELEGRAM_VIDEO_CALL -> "Telegram Video"
+        QuickContactAction.SIGNAL_VIDEO_CALL -> "Signal Video"
+        QuickContactAction.ALL_OPTIONS -> "All Options"
+        QuickContactAction.NONE -> null
+        else -> resolvedActions.cardTapAction
+    }
 
     fun executeResolvedAction(action: String, phoneNumber: String) {
         when {
@@ -251,34 +268,13 @@ fun ContactItem(
                     }
                 }
                 
-                if (!editMode && callActivity?.callType != null && callActivity.callTimestamp != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = when (callActivity.callType) {
-                                "missed" -> Icons.AutoMirrored.Filled.CallMissed
-                                "rejected" -> Icons.AutoMirrored.Filled.CallReceived
-                                "incoming" -> Icons.AutoMirrored.Filled.CallReceived
-                                "outgoing" -> Icons.AutoMirrored.Filled.CallMade
-                                else -> Icons.Default.Call
-                            },
-                            contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
-                            tint = when (callActivity.callType) {
-                                "missed" -> Color(0xFFE57373)
-                                "rejected" -> Color(0xFFE57373)
-                                "incoming" -> Color(0xFF81C784)
-                                "outgoing" -> Color(0xFF64B5F6)
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            modifier = Modifier.size(14.dp)
-                        )
+                if (!editMode) {
+                    cardTapActionLabel?.let { actionLabel ->
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
+                            text = actionLabel,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             fontSize = 11.sp
                         )
                     }

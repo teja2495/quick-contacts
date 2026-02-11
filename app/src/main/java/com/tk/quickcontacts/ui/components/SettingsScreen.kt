@@ -181,32 +181,33 @@ fun SettingsScreen(
 
             item {
                 SettingsGroupCard {
-                    SettingToggleRow(
-                        icon = Icons.Rounded.History,
-                        title = "Recent Calls",
-                        description = if (hasCallLogPermission) {
-                            stringResource(R.string.recent_calls_description)
-                        } else {
-                            "Requires call history permission to display recent calls."
-                        },
-                        checked = isRecentCallsVisible && hasCallLogPermission,
-                        enabled = true,
-                        onCheckedChange = { newValue ->
-                            if (newValue && !hasCallLogPermission) {
-                                if (isCallLogPermissionPermanentlyDenied) {
-                                    showPermissionSettingsDialog = true
-                                } else {
-                                    onRequestCallLogPermission?.invoke()
-                                }
-                            } else {
-                                viewModel.toggleRecentCallsVisibility()
-                            }
-                        }
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 14.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
+                    // Temporarily hidden for Play review compliance.
+                    // SettingToggleRow(
+                    //     icon = Icons.Rounded.History,
+                    //     title = "Recent Calls",
+                    //     description = if (hasCallLogPermission) {
+                    //         stringResource(R.string.recent_calls_description)
+                    //     } else {
+                    //         "Requires call history permission to display recent calls."
+                    //     },
+                    //     checked = isRecentCallsVisible && hasCallLogPermission,
+                    //     enabled = true,
+                    //     onCheckedChange = { newValue ->
+                    //         if (newValue && !hasCallLogPermission) {
+                    //             if (isCallLogPermissionPermanentlyDenied) {
+                    //                 showPermissionSettingsDialog = true
+                    //             } else {
+                    //                 onRequestCallLogPermission?.invoke()
+                    //             }
+                    //         } else {
+                    //             viewModel.toggleRecentCallsVisibility()
+                    //         }
+                    //     }
+                    // )
+                    // HorizontalDivider(
+                    //     modifier = Modifier.padding(vertical = 14.dp),
+                    //     color = MaterialTheme.colorScheme.outlineVariant
+                    // )
                     SettingToggleRow(
                         icon = Icons.Rounded.Phone,
                         title = "Direct Dial",

@@ -105,18 +105,19 @@ fun PermissionRequestScreen(
                         onRequestPermission = onRequestPhonePermission,
                     )
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = SpacingXLarge),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
-
-                    PermissionRow(
-                        title = stringResource(R.string.permission_call_history_access),
-                        description = stringResource(R.string.permission_call_history_description),
-                        isGranted = hasCallLogPermission,
-                        onRequestPermission = onRequestCallLogPermission,
-                    )
+                    // Temporarily hidden for Play review compliance.
+                    // HorizontalDivider(
+                    //     modifier = Modifier.padding(horizontal = SpacingXLarge),
+                    //     thickness = 0.5.dp,
+                    //     color = MaterialTheme.colorScheme.outlineVariant,
+                    // )
+                    //
+                    // PermissionRow(
+                    //     title = stringResource(R.string.permission_call_history_access),
+                    //     description = stringResource(R.string.permission_call_history_description),
+                    //     isGranted = hasCallLogPermission,
+                    //     onRequestPermission = onRequestCallLogPermission,
+                    // )
                 }
             }
         }
