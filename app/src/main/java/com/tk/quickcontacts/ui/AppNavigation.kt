@@ -89,13 +89,12 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
     var hasRequestedPermissions by remember { mutableStateOf(false) }
     var isRequestingPermissions by remember { mutableStateOf(false) }
+    var hasContinuedFromPermissionScreen by remember { mutableStateOf(false) }
     var hasDeniedPermissionsAfterFirstRequest by remember { mutableStateOf(false) }
     var hasRequestedPhonePermissionFromSettings by remember { mutableStateOf(false) }
     var hasRequestedCallLogPermissionFromSettings by remember { mutableStateOf(false) }
     var callLogPermissionJustDenied by remember { mutableStateOf(false) }
     var phonePermissionJustDenied by remember { mutableStateOf(false) }
-    var hasTappedContinue by remember { mutableStateOf(false) }
-
     fun arePermissionsPermanentlyDenied(): Boolean {
         val activity = context as? Activity ?: return false
         if (!hasRequestedPermissions) return false
@@ -200,8 +199,6 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     val availableActions by viewModel.availableActions.collectAsState()
     val hasSeenCallWarning by viewModel.hasSeenCallWarning.collectAsState()
     val callActivityMap by viewModel.callActivityMap.collectAsState()
-    val isFirstTimeLaunch by viewModel.isFirstTimeLaunch.collectAsState()
-
     fun resolvedActionsFor(contact: Contact): ResolvedQuickContactActions {
         return resolveQuickContactActions(
             customActionPreferences[contact.id],
@@ -216,12 +213,9 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(hasContactsPermission) {
-        if (!hasContactsPermission) hasTappedContinue = false
-    }
-
     val currentDestination = when {
-        isFirstTimeLaunch && (!hasContactsPermission || isRequestingPermissions || (hasContactsPermission && !hasTappedContinue)) -> NavDestination.Permission
+        !hasContactsPermission || isRequestingPermissions -> NavDestination.Permission
+        !hasContinuedFromPermissionScreen -> NavDestination.Permission
         actionEditorContact != null -> NavDestination.ActionEditor
         isSettingsScreenOpen -> NavDestination.Settings
         isSearching -> NavDestination.Search
@@ -263,6 +257,8 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     LaunchedEffect(hasContactsPermission) {
         if (hasContactsPermission) {
             viewModel.checkAndLoadFavoriteContactsOnFirstLaunch(context)
+        } else {
+            hasContinuedFromPermissionScreen = false
         }
     }
 
@@ -428,12 +424,8 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         hasContactsPermission = hasContactsPermission,
                         hasCallLogPermission = hasCallLogPermission,
                         onRequestContactsPermission = {
-                            if (arePermissionsPermanentlyDenied() && hasDeniedPermissionsAfterFirstRequest) {
-                                openAppSettings()
-                            } else {
-                                isRequestingPermissions = true
-                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-                            }
+                            isRequestingPermissions = true
+                            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
                         },
                         onRequestPhonePermission = {
                             if (isCallPermissionPermanentlyDenied()) {
@@ -449,7 +441,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
                             }
                         },
-                        onContinue = { hasTappedContinue = true }
+                        onContinue = { hasContinuedFromPermissionScreen = true }
                     )
 
                     NavDestination.ActionEditor -> {

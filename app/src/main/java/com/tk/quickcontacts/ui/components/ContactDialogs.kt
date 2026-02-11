@@ -873,9 +873,7 @@ fun ContactActionsGridDialog(
     val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
 
     val context = LocalContext.current
-    var contactFilteredActions by remember(selectedPhoneNumber) {
-        mutableStateOf(emptySet<String>())
-    }
+    var contactFilteredActions by remember { mutableStateOf(emptySet<String>()) }
     LaunchedEffect(selectedPhoneNumber, context) {
         contactFilteredActions = withContext(Dispatchers.IO) {
             ContactActionAvailability.getContactAvailableActions(

@@ -361,7 +361,6 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 _isFirstTimeLaunch.value = false
                 android.util.Log.d("QuickContacts", "First launch setup completed")
             } else {
-                android.util.Log.d("QuickContacts", "No favorite contacts found, marking first launch complete")
                 preferencesRepository.markFirstLaunchComplete()
                 _isFirstTimeLaunch.value = false
             }
