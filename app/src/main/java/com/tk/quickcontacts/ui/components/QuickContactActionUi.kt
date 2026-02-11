@@ -259,7 +259,7 @@ fun QuickContactActionIcon(
             Icon(
                 painter = painterResource(id = R.drawable.telegram_icon),
                 contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = Color(0xFF0088CC),
                 modifier = modifier
             )
         }
