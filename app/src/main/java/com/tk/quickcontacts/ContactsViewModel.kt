@@ -1258,6 +1258,24 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun refreshContacts(context: Context) {
+        if (Mocks.ENABLE_MOCK_MODE) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                contactService.clearCache()
+                preferencesRepository.clearCache()
+                val contacts = contactService.getAllContacts(context)
+                val validContacts = contacts.filter { ContactUtils.isValidContact(it) }
+                _allContacts.value = validContacts
+                loadContacts()
+                filterContacts()
+                android.util.Log.d("ContactsViewModel", "Refreshed contacts: cleared cache and loaded ${validContacts.size}")
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsViewModel", "Error refreshing contacts", e)
+            }
+        }
+    }
+
     // State consistency validation
     private fun validateStateConsistency() {
         try {

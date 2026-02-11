@@ -75,6 +75,9 @@
     <string name="settings_recent_calls_description">Display recent calls at the top of the main screen for quick access</string>
     <string name="settings_not_installed">Not installed</string>
     <string name="settings_version">Version %s</string>
+    <string name="settings_refresh_contacts">Refresh contacts</string>
+    <string name="settings_refresh_contacts_description">Clear cache and reload contacts from device</string>
+    <string name="settings_refresh_contacts_toast">Contacts refreshed</string>
     
     <!-- Messaging Apps -->
     <string name="messaging_app_sms">Messages</string>
