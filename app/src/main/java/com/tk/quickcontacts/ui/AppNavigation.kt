@@ -47,6 +47,7 @@ private sealed class NavDestination(val depth: Int) {
     data object Home : NavDestination(1)
     data object Search : NavDestination(2)
     data object Settings : NavDestination(2)
+    data object SettingsPermission : NavDestination(3)
     data object ActionEditor : NavDestination(2)
 }
 
@@ -57,6 +58,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
     var isSearching by remember { mutableStateOf(false) }
     var isSettingsScreenOpen by remember { mutableStateOf(false) }
+    var isPermissionsScreenFromSettingsOpen by remember { mutableStateOf(false) }
     var actionEditorContact by remember { mutableStateOf<Contact?>(null) }
     var actionEditorContactForTransition by remember { mutableStateOf<Contact?>(null) }
 
@@ -282,18 +284,20 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         !hasContactsPermission || isRequestingPermissions -> NavDestination.Permission
         !hasContinuedFromPermissionScreen -> NavDestination.Permission
         actionEditorContact != null -> NavDestination.ActionEditor
+        isPermissionsScreenFromSettingsOpen -> NavDestination.SettingsPermission
         isSettingsScreenOpen -> NavDestination.Settings
         isSearching -> NavDestination.Search
         else -> NavDestination.Home
     }
 
-    BackHandler(enabled = isSearching || isSettingsScreenOpen || actionEditorContact != null) {
+    BackHandler(enabled = isSearching || isSettingsScreenOpen || isPermissionsScreenFromSettingsOpen || actionEditorContact != null) {
         when {
             actionEditorContact != null -> actionEditorContact = null
             isSearching -> {
                 viewModel.updateSearchQuery("")
                 isSearching = false
             }
+            isPermissionsScreenFromSettingsOpen -> isPermissionsScreenFromSettingsOpen = false
             isSettingsScreenOpen -> isSettingsScreenOpen = false
         }
     }
@@ -302,7 +306,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         isRecentCallsExpanded = false
     }
 
-    BackHandler(enabled = editMode && !isSearching && !isSettingsScreenOpen && actionEditorContact == null) {
+    BackHandler(enabled = editMode && !isSearching && !isSettingsScreenOpen && !isPermissionsScreenFromSettingsOpen && actionEditorContact == null) {
         editMode = false
     }
 
@@ -425,6 +429,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                             text = when {
                                 actionEditorContact != null -> "Change Actions for ${actionEditorContact?.name.orEmpty()}"
                                 isSearching -> stringResource(R.string.title_search)
+                                isPermissionsScreenFromSettingsOpen -> stringResource(R.string.title_permissions_required)
                                 isSettingsScreenOpen -> stringResource(R.string.title_settings)
                                 else -> stringResource(R.string.title_quick_contacts)
                             },
@@ -434,7 +439,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     }
                 },
                 navigationIcon = {
-                    if (isSearching || isSettingsScreenOpen || actionEditorContact != null) {
+                    if (isSearching || isSettingsScreenOpen || isPermissionsScreenFromSettingsOpen || actionEditorContact != null) {
                         IconButton(
                             onClick = {
                                 when {
@@ -443,6 +448,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         viewModel.updateSearchQuery("")
                                         isSearching = false
                                     }
+                                    isPermissionsScreenFromSettingsOpen -> isPermissionsScreenFromSettingsOpen = false
                                     isSettingsScreenOpen -> isSettingsScreenOpen = false
                                 }
                             }
@@ -561,6 +567,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     NavDestination.Settings -> SettingsScreen(
                         viewModel = viewModel,
                         onBackClick = { isSettingsScreenOpen = false },
+                        onOpenPermissions = { isPermissionsScreenFromSettingsOpen = true },
                         hasCallLogPermission = hasCallLogPermission,
                         onRequestCallLogPermission = {
                             callLogPermissionFromSettingsLauncher.launch(Manifest.permission.READ_CALL_LOG)
@@ -572,6 +579,42 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         },
                         isCallPermissionPermanentlyDenied = isCallPermissionPermanentlyDenied(),
                         onOpenAppSettings = { openAppSettings() }
+                    )
+
+                    NavDestination.SettingsPermission -> PermissionRequestScreen(
+                        hasCallPermission = hasCallPermission,
+                        hasContactsPermission = hasContactsPermission,
+                        hasCallLogPermission = hasCallLogPermission,
+                        onRequestContactsPermission = {
+                            if (isPermissionRequestBlocked(Manifest.permission.READ_CONTACTS, hasRequestedContactsPermissionOnce)) {
+                                openAppSettings()
+                            } else {
+                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                            }
+                        },
+                        onRequestPhonePermission = {
+                            if (
+                                isCallPermissionPermanentlyDenied() ||
+                                isPermissionRequestBlocked(Manifest.permission.CALL_PHONE, hasRequestedPhonePermissionOnce)
+                            ) {
+                                openAppSettings()
+                            } else {
+                                phonePermissionFromSettingsLauncher.launch(Manifest.permission.CALL_PHONE)
+                            }
+                        },
+                        onRequestCallLogPermission = {
+                            if (
+                                isCallLogPermissionPermanentlyDenied() ||
+                                isPermissionRequestBlocked(Manifest.permission.READ_CALL_LOG, hasRequestedCallLogPermissionOnce)
+                            ) {
+                                openAppSettings()
+                            } else {
+                                callLogPermissionFromSettingsLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                            }
+                        },
+                        onContinue = {},
+                        showContinueButton = false,
+                        isFromSettings = true
                     )
 
                     NavDestination.Search -> run {

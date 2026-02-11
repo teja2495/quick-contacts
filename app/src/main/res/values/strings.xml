@@ -78,6 +78,8 @@
     <string name="settings_refresh_contacts">Refresh contacts</string>
     <string name="settings_refresh_contacts_description">Clear cache and reload contacts from device</string>
     <string name="settings_refresh_contacts_toast">Contacts refreshed</string>
+    <string name="settings_permissions_title">Permissions</string>
+    <string name="settings_permissions_desc">Manage app permissions</string>
     
     <!-- Messaging Apps -->
     <string name="messaging_app_sms">Messages</string>
