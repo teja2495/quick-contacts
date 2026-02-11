@@ -32,6 +32,7 @@ import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.PhoneNumberSelectionDialog
+import com.tk.quickcontacts.utils.ContactActionAvailability
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 
 @Composable
@@ -210,8 +211,28 @@ fun SearchResultItem(
     var dialogAction by remember { mutableStateOf<String?>(null) }
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val messagingAction = remember(defaultMessagingApp) {
+    val defaultMessagingAction = remember(defaultMessagingApp) {
         resolveQuickContactActions(null, defaultMessagingApp).secondButtonTapAction
+    }
+    val messagingAction = remember(
+        context,
+        contact.phoneNumber,
+        contact.phoneNumbers,
+        defaultMessagingApp,
+        defaultMessagingAction
+    ) {
+        if (!defaultMessagingApp.requiresContactAccountCheck()) {
+            defaultMessagingAction
+        } else {
+            val allNumbers = contact.phoneNumbers
+                .ifEmpty { listOf(contact.phoneNumber) }
+                .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
+            val appAction = defaultMessagingApp.toChatAction()
+            val hasAccountOnDefaultApp = allNumbers.any { number ->
+                ContactActionAvailability.getContactAvailableActions(context, number).contains(appAction)
+            }
+            if (hasAccountOnDefaultApp) defaultMessagingAction else QuickContactAction.MESSAGE
+        }
     }
     
     // Phone number selection dialog
@@ -436,4 +457,17 @@ fun SearchResultItem(
             }
         }
     }
-} 
+}
+
+private fun MessagingApp.requiresContactAccountCheck(): Boolean {
+    return this == MessagingApp.WHATSAPP || this == MessagingApp.TELEGRAM || this == MessagingApp.SIGNAL
+}
+
+private fun MessagingApp.toChatAction(): String {
+    return when (this) {
+        MessagingApp.WHATSAPP -> QuickContactAction.WHATSAPP_CHAT
+        MessagingApp.TELEGRAM -> QuickContactAction.TELEGRAM_CHAT
+        MessagingApp.SIGNAL -> QuickContactAction.SIGNAL_CHAT
+        MessagingApp.SMS -> QuickContactAction.MESSAGE
+    }
+}
