@@ -37,6 +37,8 @@ object SignalActions {
         onShowToast: ((Int) -> Unit)? = null,
     ): Boolean {
         if (!PhoneNumberUtils.isValidPhoneNumber(phoneNumber)) return false
+        val dataId = resolveSignalDataId(context, phoneNumber, ContactMethodMimeTypes.SIGNAL_MESSAGE)
+        if (dataId != null && openSignalChat(context, dataId, onShowToast)) return true
         return try {
             val cleaned = PhoneNumberUtils.cleanPhoneNumber(phoneNumber) ?: return false
             val uri = Uri.parse("smsto:${Uri.encode(cleaned)}")

@@ -1,28 +1,40 @@
 package com.tk.quickcontacts.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.PhoneNumberSelectionDialog
+import com.tk.quickcontacts.utils.PhoneNumberUtils
 
 @Composable
 fun SearchResultsContent(
@@ -35,16 +47,32 @@ fun SearchResultsContent(
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
-    onAddToContacts: (Context, String) -> Unit = { context, phoneNumber -> 
+    onAddToContacts: (Context, String) -> Unit = { context, phoneNumber ->
         viewModel.addNewContactToPhone(context, phoneNumber)
-    }
+    },
+    onScrollAwayFromBottom: () -> Unit = {},
+    onReachedBottom: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    
+    val listState = rememberLazyListState()
+    var wasAtBottom by remember { mutableStateOf(true) }
+
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }.distinctUntilChanged().collect { atBottom ->
+            if (atBottom != wasAtBottom) {
+                wasAtBottom = atBottom
+                if (atBottom) onReachedBottom() else onScrollAwayFromBottom()
+            }
+        }
+    }
+
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 0.dp, bottom = 10.dp),
-        reverseLayout = true // This makes the LazyColumn scroll from bottom to top
+        reverseLayout = true
     ) {
         if (searchQuery.isEmpty()) {
             item {
@@ -120,8 +148,8 @@ fun SearchResultsContent(
             // Instruction text first (will appear between search results and search bar due to reverseLayout)
             item {
                 Text(
-                    text = "Tap + to add to your quick list",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Tap contact to add it to your quick list",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -196,7 +224,11 @@ fun SearchResultItem(
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
+    var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val messagingAction = remember(defaultMessagingApp) {
+        resolveQuickContactActions(null, defaultMessagingApp).secondButtonTapAction
+    }
     
     // Phone number selection dialog
     if (showPhoneNumberDialog) {
@@ -248,6 +280,7 @@ fun SearchResultItem(
             },
             onDismiss = { showContactActionsDialog = false },
             onAddToQuickList = { contactToAdd -> onAddContact(contactToAdd) },
+            onRemoveFromQuickList = { contactToRemove -> onRemoveContact(contactToRemove) },
             isInQuickList = selectedContacts.any { it.id == contact.id },
             onAddToContacts = { phoneNumber -> onAddToContacts(context, phoneNumber) },
             getLastShownPhoneNumber = getLastShownPhoneNumber,
@@ -279,45 +312,68 @@ fun SearchResultItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Toggle quick contacts button
-            if (contact.phoneNumbers.size > 1) {
-                // For multiple numbers, always open dialog, do not show tick/+
-                IconButton(
-                    onClick = {
-                        dialogAction = "add"
-                        showPhoneNumberDialog = true
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add ${contact.name} to quick contacts",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            } else {
-                IconButton(
-                    onClick = {
-                        if (isSelected) {
-                            onRemoveContact(contact)
-                        } else {
-                            onAddContact(contact)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .combinedClickable(
+                        onClick = {
+                            if (contact.phoneNumbers.size > 1) {
+                                dialogAction = "add"
+                                showPhoneNumberDialog = true
+                            } else {
+                                if (isSelected) {
+                                    onRemoveContact(contact)
+                                } else {
+                                    onAddContact(contact)
+                                }
+                            }
                         }
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
+                    )
+            ) {
+                if (contact.photoUri != null && !imageLoadFailed) {
+                    Image(
+                        painter = rememberAsyncImagePainter(
+                            model = ImageRequest.Builder(context)
+                                .data(contact.photoUri)
+                                .crossfade(true)
+                                .size(48, 48)
+                                .memoryCacheKey("contact_${contact.id}")
+                                .build(),
+                            onError = { imageLoadFailed = true }
+                        ),
+                        contentDescription = "Contact photo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                if (isSelected && contact.phoneNumbers.size <= 1) {
                     Icon(
-                        imageVector = if (isSelected) Icons.Default.Done else Icons.Default.Add,
-                        contentDescription = if (isSelected)
-                            "Remove ${contact.name} from quick contacts"
-                        else
-                            "Add ${contact.name} to quick contacts",
-                        tint = if (isSelected)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(24.dp)
+                        imageVector = Icons.Default.Done,
+                        contentDescription = "In quick list",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 2.dp, y = 2.dp)
+                            .size(20.dp)
+                            .background(Color(0xFF4CAF50), CircleShape)
                     )
                 }
             }
@@ -336,33 +392,63 @@ fun SearchResultItem(
                     fontWeight = FontWeight.Medium
                 )
                 
-                if (contact.phoneNumbers.size > 1) {
-                    Text(
-                        text = "${contact.phoneNumbers.size} numbers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
+                Text(
+                    text = if (contact.phoneNumbers.size > 1) "${contact.phoneNumbers.size} numbers"
+                        else PhoneNumberUtils.formatPhoneNumber(contact.phoneNumber),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
             
-            IconButton(
-                onClick = {
-                    if (contact.phoneNumbers.size > 1) {
-                        dialogAction = "call"
-                        showPhoneNumberDialog = true
-                    } else {
-                        onContactClick(contact)
-                    }
-                },
-                modifier = Modifier.size(48.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Phone,
-                    contentDescription = "Call ${contact.name}",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .combinedClickable(
+                            onClick = {
+                                if (contact.phoneNumbers.size > 1) {
+                                    dialogAction = "call"
+                                    showPhoneNumberDialog = true
+                                } else {
+                                    onContactClick(contact)
+                                }
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QuickContactActionIcon(
+                        action = QuickContactAction.CALL,
+                        contentDescription = "Call ${contact.name}",
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                if (messagingAction != QuickContactAction.NONE) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    if (contact.phoneNumbers.size > 1) {
+                                        dialogAction = messagingAction
+                                        showPhoneNumberDialog = true
+                                    } else {
+                                        onExecuteAction(context, messagingAction, contact.phoneNumber)
+                                    }
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        QuickContactActionIcon(
+                            action = messagingAction,
+                            contentDescription = "$messagingAction ${contact.name}",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
             }
         }
     }

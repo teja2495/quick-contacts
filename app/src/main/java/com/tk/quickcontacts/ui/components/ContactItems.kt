@@ -139,6 +139,7 @@ fun ContactItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(MaterialTheme.shapes.large)
             .combinedClickable(
                 enabled = true,
                 onClick = {
@@ -435,6 +436,7 @@ fun RecentCallVerticalItem(
     availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
+    onRemoveFromQuickList: ((Contact) -> Unit)? = null,
     getLastShownPhoneNumber: (String) -> String? = { null },
     setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
@@ -490,6 +492,7 @@ fun RecentCallVerticalItem(
             },
             onDismiss = { showContactActionsDialog = false },
             onAddToQuickList = { contactToAdd -> onAddToQuickList?.invoke(contactToAdd) },
+            onRemoveFromQuickList = { contactToRemove -> onRemoveFromQuickList?.invoke(contactToRemove) },
             isInQuickList = selectedContacts.any { it.id == contact.id },
             getLastShownPhoneNumber = getLastShownPhoneNumber,
             setLastShownPhoneNumber = setLastShownPhoneNumber
@@ -499,6 +502,7 @@ fun RecentCallVerticalItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
             .combinedClickable(
                 onClick = { 
                     showContactActionsDialog = true

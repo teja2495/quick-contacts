@@ -2,6 +2,8 @@ package com.tk.quickcontacts.utils
 
 import android.content.Context
 import android.telephony.TelephonyManager
+import com.google.i18n.phonenumbers.NumberParseException
+import com.google.i18n.phonenumbers.PhoneNumberUtil
 import java.util.Locale
 import java.util.regex.Pattern
 
@@ -9,6 +11,8 @@ import java.util.regex.Pattern
  * Utility functions for phone number operations
  */
 object PhoneNumberUtils {
+
+    private val phoneNumberUtil = PhoneNumberUtil.getInstance()
     
     // Phone number validation patterns
     private val PHONE_PATTERN = Pattern.compile("^[+]?[0-9\\s\\-\\(\\)]{7,20}$")
@@ -97,48 +101,68 @@ object PhoneNumberUtils {
     fun formatPhoneNumberForDisplay(phoneNumber: String): String = formatPhoneNumber(phoneNumber)
 
     /**
-     * Safely format a phone number for display with validation
+     * Safely format a phone number for display using libphonenumber (same as quick-search).
      */
     fun formatPhoneNumber(phoneNumber: String): String {
-        if (!isValidPhoneNumber(phoneNumber)) {
-            return phoneNumber // Return original if invalid
-        }
-        
-        val cleaned = phoneNumber.replace(Regex("[^+\\d]"), "")
-        
+        if (phoneNumber.isBlank()) return phoneNumber
+
+        val trimmed = phoneNumber.trim()
+        val digits = trimmed.filter { it.isDigit() }
+        if (digits.isEmpty()) return phoneNumber
+
+        val region = Locale.getDefault().country
+        val regionCode = if (region.isNullOrBlank()) "ZZ" else region
+        val parseRegion = if (trimmed.startsWith("+")) "ZZ" else regionCode
+
         return try {
-            when {
-                // US/Canada number with +1 country code
-                cleaned.startsWith("+1") && cleaned.length == 12 -> {
-                    val digits = cleaned.substring(2)
-                    "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
-                }
-                // US/Canada number without country code (10 digits)
-                !cleaned.startsWith("+") && cleaned.length == 10 -> {
-                    "(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6)}"
-                }
-                // US/Canada number with country code but no +
-                cleaned.startsWith("1") && cleaned.length == 11 -> {
-                    val digits = cleaned.substring(1)
-                    "+1 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
-                }
-                // International number with country code
-                cleaned.startsWith("+") && cleaned.length > 7 -> {
-                    val countryCode = cleaned.substring(0, cleaned.length - 10)
-                    val localNumber = cleaned.substring(cleaned.length - 10)
-                    if (localNumber.length == 10) {
-                        "$countryCode (${localNumber.substring(0, 3)}) ${localNumber.substring(3, 6)}-${localNumber.substring(6)}"
-                    } else {
-                        cleaned // Fallback to cleaned number
-                    }
-                }
-                // Other formats - just return cleaned
-                else -> cleaned
+            val parsed = phoneNumberUtil.parse(trimmed, parseRegion)
+            val format = if (trimmed.startsWith("+")) {
+                PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL
+            } else {
+                PhoneNumberUtil.PhoneNumberFormat.NATIONAL
             }
-        } catch (e: Exception) {
-            android.util.Log.w("PhoneNumberUtils", "Error formatting phone number: $phoneNumber", e)
-            cleaned // Return cleaned version as fallback
+            phoneNumberUtil.format(parsed, format)
+        } catch (e: NumberParseException) {
+            formatPhoneNumberFallback(trimmed, digits)
         }
+    }
+
+    private fun formatPhoneNumberFallback(phoneNumber: String, digits: String): String {
+        if (phoneNumber.startsWith("+")) {
+            return formatInternationalNumber("+$digits")
+        }
+        if (digits.length == 10) {
+            return formatUSNumber(digits)
+        }
+        return formatInternationalNumber(digits)
+    }
+
+    private fun formatInternationalNumber(number: String): String {
+        val digits = number.filter { it.isDigit() }
+        val hasPlus = number.startsWith("+")
+        if (digits.length <= 3) return number
+        val formatted = StringBuilder()
+        if (hasPlus) formatted.append("+")
+        val countryCodeLength = when {
+            digits.length >= 10 -> 1
+            digits.length >= 9 -> 2
+            else -> 3
+        }
+        formatted.append(digits.substring(0, countryCodeLength)).append(" ")
+        val remainingDigits = digits.substring(countryCodeLength)
+        var index = 0
+        while (index < remainingDigits.length) {
+            val chunkSize = if (remainingDigits.length - index <= 4) 4 else 3
+            if (index > 0) formatted.append(" ")
+            formatted.append(remainingDigits.substring(index, (index + chunkSize).coerceAtMost(remainingDigits.length)))
+            index += chunkSize
+        }
+        return formatted.toString()
+    }
+
+    private fun formatUSNumber(digits: String): String {
+        if (digits.length != 10) return digits
+        return "(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
     }
     
     /**

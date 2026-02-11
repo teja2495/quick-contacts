@@ -851,6 +851,7 @@ fun ContactActionsGridDialog(
     onActionSelected: (String, String) -> Unit,
     onDismiss: () -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
+    onRemoveFromQuickList: ((Contact) -> Unit)? = null,
     isInQuickList: Boolean = false,
     onAddToContacts: ((String) -> Unit)? = null,
     getLastShownPhoneNumber: (String) -> String? = { null },
@@ -1120,12 +1121,44 @@ fun ContactActionsGridDialog(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
-                                        contentDescription = "Add to Quick List",
+                                        contentDescription = stringResource(R.string.contact_add_to_quick_list),
                                         tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(
-                                        text = "Add to Quick List",
+                                        text = stringResource(R.string.contact_add_to_quick_list),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                        if (onRemoveFromQuickList != null && isInQuickList) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .clickable {
+                                        onRemoveFromQuickList(contact.copy(phoneNumber = selectedPhoneNumber))
+                                        requestDismiss()
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Remove,
+                                        contentDescription = stringResource(R.string.contact_remove_from_quick_list_button),
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.contact_remove_from_quick_list_button),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurface

@@ -180,7 +180,7 @@ private fun ContactActionButtonIcon(
         QuickContactAction.SIGNAL_CHAT -> Icon(
             painter = painterResource(id = R.drawable.signal_icon),
             contentDescription = null,
-            tint = tint,
+            tint = Color(0xFF3A76F0),
             modifier = Modifier.size(LargeIconSize)
         )
         QuickContactAction.SIGNAL_VIDEO_CALL -> Icon(

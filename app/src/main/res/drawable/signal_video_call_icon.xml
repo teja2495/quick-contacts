@@ -10,10 +10,10 @@
         android:scaleX="1.2"
         android:scaleY="1.2">
         <path
-            android:fillColor="#3B45FD"
+            android:fillColor="#3A76F0"
             android:pathData="M8,12h22c2.2,0,4,1.8,4,4v16c0,2.2-1.8,4-4,4H8c-2.2,0-4-1.8-4-4V16C4,13.8,5.8,12,8,12z" />
         <path
-            android:fillColor="#2D35D3"
+            android:fillColor="#3A76F0"
             android:pathData="M44,35 34,29 34,19 44,13z" />
         <group
             android:scaleX="0.08"

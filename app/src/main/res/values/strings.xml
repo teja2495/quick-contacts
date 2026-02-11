@@ -89,6 +89,7 @@
     <string name="contact_actions_different">Primary and secondary actions must be different</string>
     <string name="contact_already_in_quick_list">Already in quick list</string>
     <string name="contact_add_to_quick_list">Add to quick list</string>
+    <string name="contact_remove_from_quick_list_button">Remove from quick list</string>
     <string name="contact_call">Call %s</string>
     <string name="contact_whatsapp">Send WhatsApp message to %s</string>
     <string name="contact_sms">Send SMS to %s</string>

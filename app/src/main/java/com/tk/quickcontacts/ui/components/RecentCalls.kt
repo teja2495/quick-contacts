@@ -50,6 +50,7 @@ fun RecentCallsSection(
     availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
+    onRemoveFromQuickList: ((Contact) -> Unit)? = null,
     showRecentCallsHint: Boolean = false,
     onDismissRecentCallsHint: () -> Unit = {},
     getLastShownPhoneNumber: (String) -> String? = { null },
@@ -273,6 +274,7 @@ fun RecentCallsSection(
                                         availableActions = availableActions,
                                         onExecuteAction = onExecuteAction,
                                         onAddToQuickList = onAddToQuickList,
+                                        onRemoveFromQuickList = onRemoveFromQuickList,
                                         getLastShownPhoneNumber = getLastShownPhoneNumber,
                                         setLastShownPhoneNumber = setLastShownPhoneNumber
                                     )
@@ -313,6 +315,7 @@ fun RecentCallsSection(
                                                 availableActions = availableActions,
                                                 onExecuteAction = onExecuteAction,
                                                 onAddToQuickList = onAddToQuickList,
+                                                onRemoveFromQuickList = onRemoveFromQuickList,
                                                 getLastShownPhoneNumber = getLastShownPhoneNumber,
                                                 setLastShownPhoneNumber = setLastShownPhoneNumber
                                             )

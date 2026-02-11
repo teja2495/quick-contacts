@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
@@ -57,6 +58,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     var isSearching by remember { mutableStateOf(false) }
     var isSettingsScreenOpen by remember { mutableStateOf(false) }
     var actionEditorContact by remember { mutableStateOf<Contact?>(null) }
+    var actionEditorContactForTransition by remember { mutableStateOf<Contact?>(null) }
 
     var hasCallPermission by remember {
         mutableStateOf(
@@ -264,6 +266,15 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         }
     }
 
+    LaunchedEffect(actionEditorContact) {
+        if (actionEditorContact != null) {
+            actionEditorContactForTransition = actionEditorContact
+        } else {
+            delay(350)
+            actionEditorContactForTransition = null
+        }
+    }
+
     LaunchedEffect(isSearching) {
         if (isSearching) {
             focusRequester.requestFocus()
@@ -442,7 +453,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     )
 
                     NavDestination.ActionEditor -> {
-                        actionEditorContact?.let { selectedContact ->
+                        (actionEditorContact ?: actionEditorContactForTransition)?.let { selectedContact ->
                             QuickContactActionEditorScreen(
                                 contact = selectedContact,
                                 customActions = customActionPreferences[selectedContact.id],
@@ -480,20 +491,24 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         onOpenAppSettings = { openAppSettings() }
                     )
 
-                    NavDestination.Search -> Column(modifier = Modifier.fillMaxSize()) {
-                        SearchResultsContent(
-                            viewModel = viewModel,
-                            searchQuery = searchQuery,
-                            searchResults = searchResults,
-                            selectedContacts = selectedContacts,
-                            defaultMessagingApp = defaultMessagingApp,
-                            modifier = Modifier.weight(1f),
-                            availableMessagingApps = availableMessagingApps,
-                            availableActions = availableActions,
-                            onExecuteAction = { ctx, action, phoneNumber ->
-                                viewModel.executeAction(ctx, action, phoneNumber)
-                            }
-                        )
+                    NavDestination.Search -> run {
+                        val focusManager = LocalFocusManager.current
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            SearchResultsContent(
+                                viewModel = viewModel,
+                                searchQuery = searchQuery,
+                                searchResults = searchResults,
+                                selectedContacts = selectedContacts,
+                                defaultMessagingApp = defaultMessagingApp,
+                                modifier = Modifier.weight(1f),
+                                availableMessagingApps = availableMessagingApps,
+                                availableActions = availableActions,
+                                onExecuteAction = { ctx, action, phoneNumber ->
+                                    viewModel.executeAction(ctx, action, phoneNumber)
+                                },
+                                onScrollAwayFromBottom = { focusManager.clearFocus() },
+                                onReachedBottom = { focusRequester.requestFocus() }
+                            )
                         SearchBar(
                             query = searchQuery,
                             onQueryChange = viewModel::updateSearchQuery,
@@ -503,6 +518,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                                 .imePadding()
                         )
+                        }
                     }
 
                     NavDestination.Home -> Column(modifier = Modifier.fillMaxSize()) {
@@ -538,6 +554,9 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                     },
                                     onAddToQuickList = { contact ->
                                         viewModel.addContact(contact)
+                                    },
+                                    onRemoveFromQuickList = { contact ->
+                                        viewModel.removeContact(contact)
                                     },
                                     showRecentCallsHint = showRecentCallsHint,
                                     onDismissRecentCallsHint = {

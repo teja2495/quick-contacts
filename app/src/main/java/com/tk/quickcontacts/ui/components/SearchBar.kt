@@ -95,7 +95,7 @@ fun FakeSearchBar(
     }
     
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -111,11 +111,8 @@ fun FakeSearchBar(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Search area - clickable to open search
             Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onClick() },
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -190,10 +187,10 @@ fun FakeSearchBar(
                         val appItems = buildList {
                             add(OpenAppItem.Phone)
                             add(OpenAppItem.Sms)
+                            if (isGoogleMeetInstalled) add(OpenAppItem.GoogleMeet)
                             if (availableMessagingApps.value.contains(MessagingApp.WHATSAPP)) add(OpenAppItem.WhatsApp)
                             if (availableMessagingApps.value.contains(MessagingApp.TELEGRAM)) add(OpenAppItem.Telegram)
                             if (availableMessagingApps.value.contains(MessagingApp.SIGNAL)) add(OpenAppItem.Signal)
-                            if (isGoogleMeetInstalled) add(OpenAppItem.GoogleMeet)
                         }
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -292,7 +289,7 @@ private fun OpenAppCard(
                 OpenAppItem.Signal -> Icon(
                     painter = painterResource(R.drawable.signal_icon),
                     contentDescription = null,
-                    tint = Color.Unspecified,
+                    tint = Color(0xFF3A76F0),
                     modifier = Modifier.size(24.dp)
                 )
                 OpenAppItem.GoogleMeet -> Icon(
