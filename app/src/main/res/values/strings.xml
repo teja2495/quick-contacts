@@ -46,6 +46,9 @@
     <string name="search_instruction">Type a name or phone number to search through all your contacts</string>
     <string name="search_no_results">Try a different search term</string>
     <string name="search_add_instruction">Tap + to add to your quick list</string>
+    <string name="search_on">Search on</string>
+    <string name="google">Google</string>
+    <string name="maps">Maps</string>
     
     <!-- Edit Mode -->
     <string name="edit_hint">Tap contact to change actions</string>

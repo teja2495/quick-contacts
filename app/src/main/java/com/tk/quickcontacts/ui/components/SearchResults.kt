@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import android.content.Context
+import com.tk.quickcontacts.R
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
@@ -46,6 +49,8 @@ fun SearchResultsContent(
     availableMessagingApps: Set<MessagingApp> = setOf(MessagingApp.WHATSAPP, MessagingApp.TELEGRAM, MessagingApp.SIGNAL, MessagingApp.SMS),
     availableActions: Set<String> = emptySet(),
     onExecuteAction: (Context, String, String) -> Unit,
+    onSearchOnGoogle: (String) -> Unit = {},
+    onSearchInGoogleMaps: (String) -> Unit = {},
     onAddToContacts: (Context, String) -> Unit = { context, phoneNumber ->
         viewModel.addNewContactToPhone(context, phoneNumber)
     }
@@ -96,6 +101,59 @@ fun SearchResultsContent(
                 }
             }
         } else if (searchResults.isEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = { onSearchOnGoogle(searchQuery) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.search_on),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_google_icon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = stringResource(R.string.google))
+                            }
+                        }
+                    }
+
+                    FilledTonalButton(
+                        onClick = { onSearchInGoogleMaps(searchQuery) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.search_on),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_google_maps_icon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = stringResource(R.string.maps))
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Column(
                     modifier = Modifier

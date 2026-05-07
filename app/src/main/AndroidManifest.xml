@@ -22,6 +22,8 @@
         <package android:name="org.telegram.messenger" />
         <package android:name="org.thoughtcrime.securesms" />
         <package android:name="com.google.android.apps.tachyon" />
+        <package android:name="com.google.android.googlequicksearchbox" />
+        <package android:name="com.google.android.apps.maps" />
     </queries>
 
     <application

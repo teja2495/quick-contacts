@@ -2,6 +2,7 @@ package com.tk.quickcontacts.ui
 
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -38,6 +39,7 @@ import androidx.core.app.ActivityCompat
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.R
+import com.tk.quickcontacts.actions.GoogleSearchActions
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.ui.components.*
 import kotlinx.coroutines.delay
@@ -144,6 +146,31 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         val activity = context as? Activity ?: return false
         if (!hasRequestedOnce) return false
         return !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+    }
+
+    fun launchExternalSearch(urlBase: String, query: String, packageName: String? = null) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isEmpty()) return
+        val encodedQuery = Uri.encode(trimmedQuery)
+        val searchUri = Uri.parse("$urlBase$encodedQuery")
+        val baseIntent = Intent(Intent.ACTION_VIEW, searchUri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (packageName.isNullOrBlank()) {
+            context.startActivity(baseIntent)
+            return
+        }
+        try {
+            context.startActivity(
+                baseIntent.apply {
+                    setPackage(packageName)
+                }
+            )
+        } catch (_: ActivityNotFoundException) {
+            context.startActivity(Intent(Intent.ACTION_VIEW, searchUri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        }
     }
 
     val callLogPermissionLauncher = rememberLauncherForActivityResult(
@@ -630,6 +657,19 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 availableActions = availableActions,
                                 onExecuteAction = { ctx, action, phoneNumber ->
                                     executeActionWithPermissionGuard(action, phoneNumber)
+                                },
+                                onSearchOnGoogle = { query ->
+                                    GoogleSearchActions.openGoogleSearch(
+                                        context = context,
+                                        query = "${query.trim()} phone number?"
+                                    )
+                                },
+                                onSearchInGoogleMaps = { query ->
+                                    launchExternalSearch(
+                                        urlBase = "https://maps.google.com/?q=",
+                                        query = query,
+                                        packageName = "com.google.android.apps.maps"
+                                    )
                                 }
                             )
                         SearchBar(

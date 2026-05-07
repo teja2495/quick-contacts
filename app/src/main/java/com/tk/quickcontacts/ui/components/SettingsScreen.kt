@@ -490,7 +490,7 @@ private fun SettingsVersionDisplay(
             textAlign = TextAlign.Center,
             modifier = Modifier.clickable {
                 try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://hihello.com/p/e11b6338-b4a5-49d8-93c8-03ac219de738")))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://teja2495.github.io/teja-karlapudi-links/")))
                 } catch (_: Exception) {}
             }
         )
