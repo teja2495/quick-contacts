@@ -256,7 +256,11 @@ fun SearchResultsContent(
                                     .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
                                 val appAction = defaultMessagingApp.toChatAction()
                                 val hasAccountOnDefaultApp = allNumbers.any { number ->
-                                    ContactActionAvailability.getContactAvailableActions(context, number).contains(appAction)
+                                    ContactActionAvailability.getContactAvailableActions(
+                                        context = context,
+                                        contactId = candidate.id.toLongOrNull(),
+                                        phoneNumber = number
+                                    ).contains(appAction)
                                 }
                                 if (hasAccountOnDefaultApp) defaultMessagingAction else QuickContactAction.MESSAGE
                             }

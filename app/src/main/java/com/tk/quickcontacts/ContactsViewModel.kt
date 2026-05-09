@@ -2,6 +2,8 @@ package com.tk.quickcontacts
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tk.quickcontacts.models.CustomActions
@@ -11,6 +13,7 @@ import com.tk.quickcontacts.services.ContactService
 import com.tk.quickcontacts.services.MessagingService
 import com.tk.quickcontacts.services.PhoneService
 import com.tk.quickcontacts.utils.ContactUtils
+import com.tk.quickcontacts.utils.ContactActionAvailability
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import com.tk.quickcontacts.utils.Mocks
 import kotlinx.coroutines.CoroutineScope
@@ -1002,6 +1005,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun executeAction(context: Context, action: String, phoneNumber: String) {
+        ContactActionAvailability.getEmailFromAction(action)?.let { email ->
+            openEmail(context, email)
+            return
+        }
+        if (ContactActionAvailability.isThirdPartyAppAction(action)) {
+            ContactActionAvailability.openThirdPartyAppAction(context, action)
+            return
+        }
         when (action) {
             "None" -> {
                 // Do nothing when "None" is selected
@@ -1024,6 +1035,21 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             else -> {
                 android.util.Log.w("ContactsViewModel", "Unknown action: $action")
             }
+        }
+    }
+
+    private fun openEmail(context: Context, emailAddress: String) {
+        if (emailAddress.isBlank()) {
+            return
+        }
+        try {
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:${Uri.encode(emailAddress)}")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsViewModel", "Error opening email app for: $emailAddress", e)
         }
     }
 

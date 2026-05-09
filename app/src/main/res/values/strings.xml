@@ -32,6 +32,8 @@
     <string name="action_whatsapp">WhatsApp</string>
     <string name="action_sms">Messages</string>
     <string name="action_telegram">Telegram</string>
+    <string name="action_email">Email</string>
+    <string name="action_open_app">Open app</string>
     <string name="action_add">Add</string>
     <string name="action_remove">Remove</string>
     <string name="action_drag_to_reorder">Drag to reorder</string>
@@ -104,6 +106,8 @@
     <string name="contact_telegram">Send Telegram message to %s</string>
     <string name="contact_remove_from_quick_list">Remove %s from quick contacts</string>
     <string name="contact_add_to_quick_contacts">Add %s to quick contacts</string>
+    <string name="contact_more_available_options">More Available Options</string>
+    <string name="contact_no_options_available">No methods available</string>
     
     <!-- Content Descriptions -->
     <string name="cd_search">Search</string>
