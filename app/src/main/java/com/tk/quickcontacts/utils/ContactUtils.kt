@@ -177,6 +177,57 @@ object ContactUtils {
 
         return null
     }
+
+    /**
+     * Returns per-number type labels (for example, Mobile/Home/Work) keyed by normalized number.
+     */
+    fun getPhoneNumberTypeLabels(context: Context, contactId: String): Map<String, String> {
+        val resolvedContactId = contactId.toLongOrNull() ?: return emptyMap()
+        return try {
+            val labelsByNumber = LinkedHashMap<String, String>()
+            context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    ContactsContract.CommonDataKinds.Phone.TYPE,
+                    ContactsContract.CommonDataKinds.Phone.LABEL
+                ),
+                "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                arrayOf(resolvedContactId.toString()),
+                null
+            )?.use { cursor ->
+                val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val typeIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+                val labelIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL)
+
+                if (numberIndex >= 0 && typeIndex >= 0) {
+                    while (cursor.moveToNext()) {
+                        val number = cursor.getString(numberIndex) ?: continue
+                        val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
+                        if (normalizedNumber.isBlank() || labelsByNumber.containsKey(normalizedNumber)) {
+                            continue
+                        }
+
+                        val type = cursor.getInt(typeIndex)
+                        val customLabel = if (labelIndex >= 0) cursor.getString(labelIndex) else null
+                        val typeLabel = ContactsContract.CommonDataKinds.Phone.getTypeLabel(
+                            context.resources,
+                            type,
+                            customLabel
+                        )?.toString()?.trim().orEmpty()
+
+                        if (typeLabel.isNotBlank()) {
+                            labelsByNumber[normalizedNumber] = typeLabel
+                        }
+                    }
+                }
+            }
+            labelsByNumber
+        } catch (e: Exception) {
+            android.util.Log.w("ContactUtils", "Error loading phone labels for contact: $contactId", e)
+            emptyMap()
+        }
+    }
     
     /**
      * Get contact by phone number lookup optimized for recent calls

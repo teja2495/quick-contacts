@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,6 +60,7 @@ import com.tk.quickcontacts.R
 import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.utils.ContactActionAvailability
+import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -117,6 +119,71 @@ private fun buildActionRows(actions: List<String>): List<List<String>> {
         it == QuickContactAction.ALL_OPTIONS || it == QuickContactAction.NONE
     }
     return normal.chunked(3) + if (fullWidthRow.isNotEmpty()) listOf(fullWidthRow) else emptyList()
+}
+
+private fun orderedExecutableActions(actions: Set<String>): List<String> {
+    val knownOrdered = QuickContactAction.executableOptions.filter { it in actions }
+    val unknownOrdered = actions
+        .filter { it !in QuickContactAction.executableOptions }
+        .sortedBy { popupActionLabel(it).lowercase() }
+    return knownOrdered + unknownOrdered
+}
+
+private fun isEmailAction(action: String): Boolean = ContactActionAvailability.isEmailAction(action)
+private fun isThirdPartyAppAction(action: String): Boolean = ContactActionAvailability.isThirdPartyAppAction(action)
+
+private fun popupActionLabel(action: String): String {
+    ContactActionAvailability.getEmailFromAction(action)?.let { return it }
+    ContactActionAvailability.getThirdPartyAppActionLabel(action)?.let { return sanitizeAdditionalOptionLabel(it) }
+    return action
+}
+
+private fun sanitizeAdditionalOptionLabel(label: String): String {
+    val trimmed = label.trim()
+    val suffixRegexes = listOf(
+        Regex("""\s*\(([^)]*)\)\s*$"""),
+        Regex("""\s*\[([^]]*)]\s*$""")
+    )
+    for (regex in suffixRegexes) {
+        val match = regex.find(trimmed) ?: continue
+        val suffix = match.groupValues.getOrNull(1)?.trim().orEmpty()
+        val looksLikePhone = suffix.any { it.isDigit() } ||
+            suffix.contains("+") ||
+            suffix.contains("-")
+        if (looksLikePhone) {
+            return trimmed.removeRange(match.range).trim()
+        }
+    }
+    return trimmed
+}
+
+@Composable
+private fun ThirdPartyActionIcon(action: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val packageName = remember(action, context) {
+        ContactActionAvailability.resolveThirdPartyAppPackageName(context, action)
+    }
+    val appIcon = remember(packageName, context) {
+        packageName?.let { pkg ->
+            runCatching { context.packageManager.getApplicationIcon(pkg) }.getOrNull()
+        }
+    }
+
+    if (appIcon != null) {
+        Icon(
+            painter = rememberAsyncImagePainter(model = appIcon),
+            contentDescription = stringResource(R.string.action_open_app),
+            tint = Color.Unspecified,
+            modifier = modifier
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Default.Apps,
+            contentDescription = stringResource(R.string.action_open_app),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+        )
+    }
 }
 
 @Composable
@@ -539,10 +606,24 @@ fun ContactActionsDialog(
         mutableStateOf(if (idx < 0) 0 else idx.coerceIn(0, (phoneNumbers.size - 1).coerceAtLeast(0)))
     }
     val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull()
+    var phoneTypeLabels by remember(contact.id) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val selectedPhoneTypeLabel = remember(selectedPhoneNumber, phoneTypeLabels) {
+        selectedPhoneNumber?.let { number ->
+            phoneTypeLabels[PhoneNumberUtils.normalizePhoneNumber(number)]
+        }
+    }
 
     LaunchedEffect(selectedPhoneIndex, phoneNumbers, hasMultipleNumbers) {
         if (hasMultipleNumbers && selectedPhoneIndex in phoneNumbers.indices) {
             setLastShownPhoneNumber(contact.id, phoneNumbers[selectedPhoneIndex])
+        }
+    }
+
+    LaunchedEffect(contact.id, hasMultipleNumbers, context) {
+        phoneTypeLabels = if (hasMultipleNumbers) {
+            withContext(Dispatchers.IO) { ContactUtils.getPhoneNumberTypeLabels(context, contact.id) }
+        } else {
+            emptyMap()
         }
     }
 
@@ -607,47 +688,61 @@ fun ContactActionsDialog(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             selectedPhoneNumber?.let { phoneNumber ->
-                                Row(
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    if (hasMultipleNumbers && selectedPhoneIndex > 0) {
-                                        IconButton(
-                                            onClick = { selectedPhoneIndex = selectedPhoneIndex - 1 },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ChevronLeft,
-                                                contentDescription = "Previous number",
-                                                tint = Color.White.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(20.dp)
-                                            )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (hasMultipleNumbers && selectedPhoneIndex > 0) {
+                                            IconButton(
+                                                onClick = { selectedPhoneIndex = selectedPhoneIndex - 1 },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ChevronLeft,
+                                                    contentDescription = "Previous number",
+                                                    tint = Color.White.copy(alpha = 0.7f),
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        } else if (hasMultipleNumbers) {
+                                            Spacer(modifier = Modifier.size(32.dp))
                                         }
-                                    } else if (hasMultipleNumbers) {
-                                        Spacer(modifier = Modifier.size(32.dp))
+                                        Text(
+                                            text = PhoneNumberUtils.formatPhoneNumberForDisplay(phoneNumber),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.White,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
+                                            IconButton(
+                                                onClick = { selectedPhoneIndex = selectedPhoneIndex + 1 },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ChevronRight,
+                                                    contentDescription = "Next number",
+                                                    tint = Color.White.copy(alpha = 0.7f),
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        } else if (hasMultipleNumbers) {
+                                            Spacer(modifier = Modifier.size(32.dp))
+                                        }
                                     }
-                                    Text(
-                                        text = PhoneNumberUtils.formatPhoneNumberForDisplay(phoneNumber),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color.White,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
-                                        IconButton(
-                                            onClick = { selectedPhoneIndex = selectedPhoneIndex + 1 },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ChevronRight,
-                                                contentDescription = "Next number",
-                                                tint = Color.White.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    } else if (hasMultipleNumbers) {
-                                        Spacer(modifier = Modifier.size(32.dp))
+                                    if (hasMultipleNumbers && !selectedPhoneTypeLabel.isNullOrBlank()) {
+                                        Text(
+                                            text = selectedPhoneTypeLabel,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.72f),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
                                     }
                                 }
                             }
@@ -871,6 +966,10 @@ fun ContactActionsGridDialog(
         mutableStateOf(if (idx < 0) 0 else idx.coerceIn(0, (phoneNumbers.size - 1).coerceAtLeast(0)))
     }
     val selectedPhoneNumber = phoneNumbers.getOrNull(selectedPhoneIndex) ?: contact.phoneNumbers.firstOrNull() ?: ""
+    var phoneTypeLabels by remember(contact.id) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val selectedPhoneTypeLabel = remember(selectedPhoneNumber, phoneTypeLabels) {
+        phoneTypeLabels[PhoneNumberUtils.normalizePhoneNumber(selectedPhoneNumber)]
+    }
 
     val context = LocalContext.current
     var contactFilteredActions by remember { mutableStateOf(emptySet<String>()) }
@@ -878,6 +977,7 @@ fun ContactActionsGridDialog(
         contactFilteredActions = withContext(Dispatchers.IO) {
             ContactActionAvailability.getContactAvailableActions(
                 context = context,
+                contactId = contact.id.toLongOrNull(),
                 phoneNumber = selectedPhoneNumber
             )
         }
@@ -886,6 +986,14 @@ fun ContactActionsGridDialog(
     LaunchedEffect(selectedPhoneIndex, phoneNumbers, hasMultipleNumbers) {
         if (hasMultipleNumbers && selectedPhoneIndex in phoneNumbers.indices) {
             setLastShownPhoneNumber(contact.id, phoneNumbers[selectedPhoneIndex])
+        }
+    }
+
+    LaunchedEffect(contact.id, hasMultipleNumbers, context) {
+        phoneTypeLabels = if (hasMultipleNumbers) {
+            withContext(Dispatchers.IO) { ContactUtils.getPhoneNumberTypeLabels(context, contact.id) }
+        } else {
+            emptyMap()
         }
     }
 
@@ -996,47 +1104,61 @@ fun ContactActionsGridDialog(
                             )
                         }
                     }
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (hasMultipleNumbers && selectedPhoneIndex > 0) {
-                            IconButton(
-                                onClick = { selectedPhoneIndex = selectedPhoneIndex - 1 },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ChevronLeft,
-                                    contentDescription = "Previous number",
-                                    modifier = Modifier.size(20.dp)
-                                )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (hasMultipleNumbers && selectedPhoneIndex > 0) {
+                                IconButton(
+                                    onClick = { selectedPhoneIndex = selectedPhoneIndex - 1 },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronLeft,
+                                        contentDescription = "Previous number",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            } else if (hasMultipleNumbers) {
+                                Spacer(modifier = Modifier.size(32.dp))
                             }
-                        } else if (hasMultipleNumbers) {
-                            Spacer(modifier = Modifier.size(32.dp))
+                            Text(
+                                text = PhoneNumberUtils.formatPhoneNumberForDisplay(selectedPhoneNumber),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
+                                IconButton(
+                                    onClick = { selectedPhoneIndex = selectedPhoneIndex + 1 },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = "Next number",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            } else if (hasMultipleNumbers) {
+                                Spacer(modifier = Modifier.size(32.dp))
+                            }
                         }
-                        Text(
-                            text = PhoneNumberUtils.formatPhoneNumberForDisplay(selectedPhoneNumber),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
-                            IconButton(
-                                onClick = { selectedPhoneIndex = selectedPhoneIndex + 1 },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = "Next number",
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        } else if (hasMultipleNumbers) {
-                            Spacer(modifier = Modifier.size(32.dp))
+                        if (hasMultipleNumbers && !selectedPhoneTypeLabel.isNullOrBlank()) {
+                            Text(
+                                text = selectedPhoneTypeLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
                     Column(
@@ -1045,6 +1167,17 @@ fun ContactActionsGridDialog(
                             .padding(top = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        val implementedActions = remember(contactFilteredActions) {
+                            QuickContactAction.executableOptionsFiltered(contactFilteredActions)
+                        }
+                        val allAvailableActions = remember(contactFilteredActions) {
+                            orderedExecutableActions(contactFilteredActions)
+                        }
+                        val remainingAvailableActions = remember(implementedActions, allAvailableActions) {
+                            val implementedSet = implementedActions.toSet()
+                            allAvailableActions.filterNot { it in implementedSet }
+                        }
+
                         if (isUnknownContact && onAddToContacts != null) {
                             Card(
                                 modifier = Modifier
@@ -1081,7 +1214,7 @@ fun ContactActionsGridDialog(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            for (rowActions in QuickContactAction.executableOptionsFiltered(contactFilteredActions).chunked(3)) {
+                            for (rowActions in implementedActions.chunked(3)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1099,6 +1232,66 @@ fun ContactActionsGridDialog(
                                     }
                                 }
                             }
+                        }
+                        if (remainingAvailableActions.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    remainingAvailableActions.forEachIndexed { index, action ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    onActionSelected(action, selectedPhoneNumber)
+                                                    requestDismiss()
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            if (isEmailAction(action)) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Email,
+                                                    contentDescription = stringResource(R.string.action_email),
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            } else if (isThirdPartyAppAction(action)) {
+                                                ThirdPartyActionIcon(
+                                                    action = action,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            } else {
+                                                QuickContactActionIcon(
+                                                    action = action,
+                                                    contentDescription = action,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                            Text(
+                                                text = popupActionLabel(action),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        if (index < remainingAvailableActions.lastIndex) {
+                                            HorizontalDivider(
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                                                thickness = 1.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (implementedActions.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.contact_no_options_available),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         if (onAddToQuickList != null && !isInQuickList) {
                             Card(

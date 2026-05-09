@@ -24,6 +24,10 @@
         <package android:name="com.google.android.apps.tachyon" />
         <package android:name="com.google.android.googlequicksearchbox" />
         <package android:name="com.google.android.apps.maps" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="vnd.android.cursor.item/*" />
+        </intent>
     </queries>
 
     <application
