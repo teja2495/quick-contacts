@@ -28,9 +28,15 @@ android {
             )
         }
         debug {
+            applicationIdSuffix = ".debug"
+            isDebuggable = true
+            isJniDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
         }
+    }
+    adbOptions {
+        installOptions("--user", "0")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
