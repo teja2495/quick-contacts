@@ -58,7 +58,7 @@ fun ContactList(
             }
         ),
         contentPadding = PaddingValues(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         items(
             items = contactItems,

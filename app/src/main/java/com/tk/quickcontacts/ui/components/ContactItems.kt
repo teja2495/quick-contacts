@@ -139,7 +139,7 @@ fun ContactItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(MaterialTheme.shapes.large)
             .then(
                 if (editMode) {
