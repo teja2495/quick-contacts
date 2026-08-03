@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.R
+import com.tk.quickcontacts.BuildConfig
 
 private val GrantedCheckmarkColor = Color(0xFF4CAF50)
 private val SpacingXLarge = 20.dp
@@ -118,18 +119,20 @@ fun PermissionRequestScreen(
                         onRequestPermission = onRequestPhonePermission,
                     )
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = SpacingXLarge),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
+                    if (!BuildConfig.DISABLE_RECENT_CALLS) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = SpacingXLarge),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
 
-                    PermissionRow(
-                        title = stringResource(R.string.permission_call_history_access),
-                        description = stringResource(R.string.permission_call_history_description),
-                        isGranted = hasCallLogPermission,
-                        onRequestPermission = onRequestCallLogPermission,
-                    )
+                        PermissionRow(
+                            title = stringResource(R.string.permission_call_history_access),
+                            description = stringResource(R.string.permission_call_history_description),
+                            isGranted = hasCallLogPermission,
+                            onRequestPermission = onRequestCallLogPermission,
+                        )
+                    }
                 }
             }
         }

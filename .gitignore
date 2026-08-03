@@ -1,5 +1,6 @@
 # Gradle files
 .gradle/
+.gradle-codex/
 build/
 gradle-app.setting
 !gradle-wrapper.jar

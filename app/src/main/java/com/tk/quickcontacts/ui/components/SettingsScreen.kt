@@ -54,6 +54,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.ContactsViewModel
+import com.tk.quickcontacts.BuildConfig
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
 
@@ -151,7 +152,7 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            item {
+            if (!BuildConfig.DISABLE_RECENT_CALLS) item {
                 DefaultMessagingAppCard(
                     selectedApp = defaultMessagingApp,
                     onMessagingAppSelected = { app ->

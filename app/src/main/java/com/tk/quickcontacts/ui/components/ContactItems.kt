@@ -36,6 +36,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import android.content.Context
 import com.tk.quickcontacts.Contact
+import com.tk.quickcontacts.BuildConfig
 import com.tk.quickcontacts.R
 import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.models.MessagingApp
@@ -81,6 +82,23 @@ fun ContactItem(
         customActions = customActions,
         defaultMessagingApp = defaultMessagingApp
     )
+    val cardTapActionLabel = when (resolvedActions.cardTapAction) {
+        QuickContactAction.CALL -> "Call"
+        QuickContactAction.MESSAGE -> "Message"
+        QuickContactAction.GOOGLE_MEET -> "Meet"
+        QuickContactAction.WHATSAPP_CHAT -> "WhatsApp"
+        QuickContactAction.TELEGRAM_CHAT -> "Telegram"
+        QuickContactAction.SIGNAL_CHAT -> "Signal"
+        QuickContactAction.WHATSAPP_VOICE_CALL -> "WhatsApp Audio"
+        QuickContactAction.TELEGRAM_VOICE_CALL -> "Telegram Audio"
+        QuickContactAction.SIGNAL_VOICE_CALL -> "Signal Audio"
+        QuickContactAction.WHATSAPP_VIDEO_CALL -> "WhatsApp Video"
+        QuickContactAction.TELEGRAM_VIDEO_CALL -> "Telegram Video"
+        QuickContactAction.SIGNAL_VIDEO_CALL -> "Signal Video"
+        QuickContactAction.ALL_OPTIONS -> "All Options"
+        QuickContactAction.NONE -> null
+        else -> resolvedActions.cardTapAction
+    }
 
     fun executeResolvedAction(action: String, phoneNumber: String) {
         when {
@@ -252,7 +270,17 @@ fun ContactItem(
                     }
                 }
                 
-                if (!editMode && callActivity?.callType != null && callActivity.callTimestamp != null) {
+                if (!editMode && BuildConfig.DISABLE_RECENT_CALLS) {
+                    cardTapActionLabel?.let { actionLabel ->
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = actionLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            fontSize = 11.sp
+                        )
+                    }
+                } else if (!editMode && callActivity?.callType != null && callActivity.callTimestamp != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

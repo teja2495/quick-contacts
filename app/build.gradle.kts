@@ -12,14 +12,15 @@ android {
         applicationId = "com.tk.quickcontacts"
         minSdk = 24
         targetSdk = 36
-        versionCode = 14
-        versionName = "2.1"
+        versionCode = 15
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            buildConfigField("boolean", "DISABLE_RECENT_CALLS", "false")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -27,7 +28,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("googlePlayRelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "DISABLE_RECENT_CALLS", "true")
+        }
         debug {
+            buildConfigField("boolean", "DISABLE_RECENT_CALLS", "false")
             applicationIdSuffix = ".debug"
             isDebuggable = true
             isJniDebuggable = true
@@ -47,7 +54,20 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+}
+
+tasks.register("app-release") {
+    group = "build"
+    description = "Builds the standard release APK."
+    dependsOn("assembleRelease")
+}
+
+tasks.register("google-play-release") {
+    group = "build"
+    description = "Builds the Google Play APK and AAB without recent-calls access."
+    dependsOn("assembleGooglePlayRelease", "bundleGooglePlayRelease")
 }
 
 dependencies {
