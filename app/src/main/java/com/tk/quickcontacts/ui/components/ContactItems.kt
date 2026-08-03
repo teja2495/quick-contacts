@@ -286,24 +286,33 @@ fun ContactItem(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = when (callActivity.callType) {
-                                "missed" -> Icons.AutoMirrored.Filled.CallMissed
-                                "rejected" -> Icons.AutoMirrored.Filled.CallReceived
-                                "incoming" -> Icons.AutoMirrored.Filled.CallReceived
-                                "outgoing" -> Icons.AutoMirrored.Filled.CallMade
-                                else -> Icons.Default.Call
-                            },
-                            contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
-                            tint = when (callActivity.callType) {
-                                "missed" -> Color(0xFFE57373)
-                                "rejected" -> Color(0xFFE57373)
-                                "incoming" -> Color(0xFF81C784)
-                                "outgoing" -> Color(0xFF64B5F6)
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            modifier = Modifier.size(14.dp)
-                        )
+                        if (callActivity.callSource == "whatsapp") {
+                            Icon(
+                                painter = painterResource(R.drawable.whatsapp_icon),
+                                contentDescription = "WhatsApp call",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = when (callActivity.callType) {
+                                    "missed" -> Icons.AutoMirrored.Filled.CallMissed
+                                    "rejected" -> Icons.AutoMirrored.Filled.CallReceived
+                                    "incoming" -> Icons.AutoMirrored.Filled.CallReceived
+                                    "outgoing" -> Icons.AutoMirrored.Filled.CallMade
+                                    else -> Icons.Default.Call
+                                },
+                                contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
+                                tint = when (callActivity.callType) {
+                                    "missed" -> Color(0xFFE57373)
+                                    "rejected" -> Color(0xFFE57373)
+                                    "incoming" -> Color(0xFF81C784)
+                                    "outgoing" -> Color(0xFF64B5F6)
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                         Text(
                             text = com.tk.quickcontacts.utils.ContactUtils.formatCallTimestamp(callActivity.callTimestamp!!),
                             style = MaterialTheme.typography.bodySmall,
@@ -486,7 +495,7 @@ fun RecentCallVerticalItem(
                     phoneNumbers = listOf(selectedNumber)
                 )
                 when (dialogAction) {
-                    "call" -> onContactClick(contactWithSelectedNumber)
+                    "call" -> if (contact.callSource == "whatsapp") onWhatsAppClick(contactWithSelectedNumber) else onContactClick(contactWithSelectedNumber)
                     "whatsapp" -> onWhatsAppClick(contactWithSelectedNumber)
                     "sms" -> onExecuteAction(context, "Messages", selectedNumber)
                     "telegram" -> onExecuteAction(context, "Telegram", selectedNumber)
@@ -515,7 +524,7 @@ fun RecentCallVerticalItem(
             onActionSelected = { action, phoneNumber ->
                 when {
                     action == QuickContactAction.NONE || action == QuickContactAction.ALL_OPTIONS -> Unit
-                    action == QuickContactAction.CALL -> onContactClick(contact.copy(phoneNumber = phoneNumber))
+                    action == QuickContactAction.CALL -> if (contact.callSource == "whatsapp") onWhatsAppClick(contact.copy(phoneNumber = phoneNumber)) else onContactClick(contact.copy(phoneNumber = phoneNumber))
                     else -> onExecuteAction(context, action, phoneNumber)
                 }
                 showContactActionsDialog = false
@@ -647,17 +656,26 @@ fun RecentCallVerticalItem(
                     dialogAction = "call"
                     showPhoneNumberDialog = true
                 } else {
-                    onContactClick(contact)
+                    if (contact.callSource == "whatsapp") onWhatsAppClick(contact) else onContactClick(contact)
                 }
             },
             modifier = Modifier.size(48.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Call,
-                contentDescription = "Call ${contact.name}",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
+            if (contact.callSource == "whatsapp") {
+                Icon(
+                    painter = painterResource(R.drawable.whatsapp_voice_call_icon),
+                    contentDescription = "WhatsApp call ${contact.name}",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Call,
+                    contentDescription = "Call ${contact.name}",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }

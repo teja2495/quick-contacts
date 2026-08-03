@@ -605,7 +605,10 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                             phonePermissionFromSettingsLauncher.launch(Manifest.permission.CALL_PHONE)
                         },
                         isCallPermissionPermanentlyDenied = isCallPermissionPermanentlyDenied(),
-                        onOpenAppSettings = { openAppSettings() }
+                        onOpenAppSettings = { openAppSettings() },
+                        onRequestWhatsAppNotificationAccess = {
+                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        }
                     )
 
                     NavDestination.SettingsPermission -> PermissionRequestScreen(
@@ -693,7 +696,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
                                     onWhatsAppClick = { contact ->
-                                        viewModel.openMessagingApp(context, contact.phoneNumber)
+                                        viewModel.openWhatsAppVoiceCall(context, contact.phoneNumber)
                                     },
                                     onContactImageClick = { contact ->
                                         viewModel.openContactInContactsApp(context, contact)

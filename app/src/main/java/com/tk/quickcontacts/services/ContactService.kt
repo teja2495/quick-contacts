@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.provider.CallLog
 import android.provider.ContactsContract
 import com.tk.quickcontacts.Contact
+import com.tk.quickcontacts.BuildConfig
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import java.util.concurrent.ConcurrentHashMap
@@ -529,11 +530,49 @@ class ContactService {
                 }
             }
 
-            return recentCallsList
+            return mergeWhatsAppRecentCalls(context, recentCallsList, selectedContactIds)
         } catch (e: Exception) {
             android.util.Log.e("QuickContacts", "Error loading recent calls: ${e.message}")
             return emptyList()
         }
+    }
+
+    private fun mergeWhatsAppRecentCalls(
+        context: Context,
+        regularCalls: List<Contact>,
+        selectedContactIds: Set<String>
+    ): List<Contact> {
+        if (!BuildConfig.ENABLE_WHATSAPP_RECENT_CALLS || !WhatsAppCallStore.isEnabled(context)) return regularCalls
+
+        val whatsappCalls = WhatsAppCallStore.load(context).mapNotNull { event ->
+            val contact = event.phoneNumber
+                ?.takeIf { PhoneNumberUtils.isValidPhoneNumber(it) }
+                ?.let { ContactUtils.getContactByPhoneNumberForRecentCalls(context, it, event.name) }
+                ?: ContactUtils.getContactByNameForRecentCalls(context, event.name)
+
+            val resolvedContact = contact ?: event.phoneNumber
+                ?.takeIf { PhoneNumberUtils.isValidPhoneNumber(it) }
+                ?.let { number ->
+                    Contact(
+                        id = "whatsapp_call_${event.timestamp}_${number.hashCode()}",
+                        name = event.name,
+                        phoneNumber = number,
+                        phoneNumbers = listOf(number)
+                    )
+                }
+                ?: return@mapNotNull null
+
+            if (selectedContactIds.contains(resolvedContact.id)) return@mapNotNull null
+            resolvedContact.copy(
+                callType = event.callType,
+                callTimestamp = event.timestamp,
+                callSource = "whatsapp"
+            )
+        }
+
+        return (regularCalls + whatsappCalls)
+            .sortedByDescending { it.callTimestamp ?: Long.MIN_VALUE }
+            .take(RECENT_CALLS_LIMIT)
     }
 
     private fun aggregateRowsToContacts(rows: List<SearchRow>): List<Contact> {
@@ -708,7 +747,53 @@ class ContactService {
             android.util.Log.e("QuickContacts", "Error getting latest call activity for contacts: ${e.message}")
         }
 
-        return result
+        return mergeWhatsAppCallActivityForContacts(context, contacts, result)
+    }
+
+    private fun mergeWhatsAppCallActivityForContacts(
+        context: Context,
+        contacts: List<Contact>,
+        regularActivity: MutableMap<String, Contact>
+    ): Map<String, Contact> {
+        if (!BuildConfig.ENABLE_WHATSAPP_RECENT_CALLS || !WhatsAppCallStore.isEnabled(context)) {
+            return regularActivity
+        }
+
+        val contactsByNumber = mutableMapOf<String, MutableList<Contact>>()
+        val contactsByName = mutableMapOf<String, MutableList<Contact>>()
+        contacts.forEach { contact ->
+            contact.phoneNumbers.forEach { number ->
+                val normalizedNumber = PhoneNumberUtils.normalizePhoneNumber(number)
+                if (normalizedNumber.isNotBlank()) {
+                    contactsByNumber.getOrPut(normalizedNumber) { mutableListOf() }.add(contact)
+                }
+            }
+            val normalizedName = contact.name.trim().lowercase()
+            if (normalizedName.isNotBlank()) {
+                contactsByName.getOrPut(normalizedName) { mutableListOf() }.add(contact)
+            }
+        }
+
+        WhatsAppCallStore.load(context).forEach { event ->
+            val contactsForEvent = event.phoneNumber
+                ?.let { PhoneNumberUtils.normalizePhoneNumber(it) }
+                ?.let { contactsByNumber[it] }
+                ?: contactsByName[event.name.trim().lowercase()]
+                ?: emptyList()
+
+            contactsForEvent.forEach { contact ->
+                val currentActivity = regularActivity[contact.id]
+                if (currentActivity?.callTimestamp == null || event.timestamp > currentActivity.callTimestamp) {
+                    regularActivity[contact.id] = contact.copy(
+                        callType = event.callType,
+                        callTimestamp = event.timestamp,
+                        callSource = "whatsapp"
+                    )
+                }
+            }
+        }
+
+        return regularActivity
     }
 
     /**

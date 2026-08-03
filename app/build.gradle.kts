@@ -21,6 +21,7 @@ android {
     buildTypes {
         release {
             buildConfigField("boolean", "DISABLE_RECENT_CALLS", "false")
+            buildConfigField("boolean", "ENABLE_WHATSAPP_RECENT_CALLS", "true")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -32,9 +33,11 @@ android {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
             buildConfigField("boolean", "DISABLE_RECENT_CALLS", "true")
+            buildConfigField("boolean", "ENABLE_WHATSAPP_RECENT_CALLS", "false")
         }
         debug {
             buildConfigField("boolean", "DISABLE_RECENT_CALLS", "false")
+            buildConfigField("boolean", "ENABLE_WHATSAPP_RECENT_CALLS", "true")
             applicationIdSuffix = ".debug"
             isDebuggable = true
             isJniDebuggable = true

@@ -19,5 +19,7 @@ data class Contact(
     @Expose
     val callType: String? = null, // Call type: "missed", "rejected", "incoming", "outgoing", or null for non-call contacts
     @Expose
-    val callTimestamp: Long? = null // Timestamp of the call in milliseconds
-) 
+    val callTimestamp: Long? = null, // Timestamp of the call in milliseconds
+    @Expose
+    val callSource: String? = null // "whatsapp" for calls captured from WhatsApp notifications
+)

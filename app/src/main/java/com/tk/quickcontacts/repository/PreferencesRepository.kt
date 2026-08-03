@@ -248,6 +248,13 @@ class PreferencesRepository(context: Context) {
             Pair(true, MessagingApp.WHATSAPP)
         }
     }
+
+    fun saveWhatsAppRecentCallsEnabled(isEnabled: Boolean) {
+        sharedPreferences.edit().putBoolean("whatsapp_recent_calls_enabled", isEnabled).apply()
+    }
+
+    fun loadWhatsAppRecentCallsEnabled(): Boolean =
+        sharedPreferences.getBoolean("whatsapp_recent_calls_enabled", false)
     
     // Direct dial setting
     fun saveDirectDialEnabled(isEnabled: Boolean) {

@@ -122,6 +122,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     // Settings preferences
     private val _isRecentCallsVisible = MutableStateFlow(true)
     val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible.asStateFlow()
+
+    private val _isWhatsAppRecentCallsEnabled = MutableStateFlow(false)
+    val isWhatsAppRecentCallsEnabled: StateFlow<Boolean> = _isWhatsAppRecentCallsEnabled.asStateFlow()
     
     private val _defaultMessagingApp = MutableStateFlow(MessagingApp.WHATSAPP)
     val defaultMessagingApp: StateFlow<MessagingApp> = _defaultMessagingApp.asStateFlow()
@@ -598,6 +601,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _isRecentCallsVisible.value = isRecentCallsVisible
         _defaultMessagingApp.value = defaultMessagingApp
         _isDirectDialEnabled.value = preferencesRepository.loadDirectDialEnabled()
+        _isWhatsAppRecentCallsEnabled.value = preferencesRepository.loadWhatsAppRecentCallsEnabled()
     }
 
     private fun saveSettings() {
@@ -663,6 +667,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         saveSettings()
     }
 
+    fun setWhatsAppRecentCallsEnabled(isEnabled: Boolean) {
+        _isWhatsAppRecentCallsEnabled.value = isEnabled
+        preferencesRepository.saveWhatsAppRecentCallsEnabled(isEnabled)
+        if (isEnabled) loadRecentCalls(getApplication<Application>().applicationContext)
+    }
+
     fun setMessagingApp(app: MessagingApp) {
         _defaultMessagingApp.value = app
         saveSettings()
@@ -708,6 +718,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 refreshMockRecentCalls()
             }
             filterContacts()
+            refreshRecentCallsForQuickListChange()
             // Validate state consistency
             validateStateConsistency()
         } catch (e: Exception) {
@@ -727,6 +738,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
                 refreshMockRecentCalls()
             }
             filterContacts()
+            refreshRecentCallsForQuickListChange()
             
             // Validate state consistency
             validateStateConsistency()
@@ -753,6 +765,16 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         } catch (e: Exception) {
             android.util.Log.e("ContactsViewModel", "Error moving contact from $fromIndex to $toIndex", e)
         }
+    }
+
+    private fun refreshRecentCallsForQuickListChange() {
+        if (Mocks.ENABLE_MOCK_MODE) return
+        val context = getApplication<Application>().applicationContext
+        loadRecentCalls(context)
+        if (_allRecentCalls.value.isNotEmpty()) {
+            loadAllRecentCalls(context)
+        }
+        loadCallActivityForQuickList(context)
     }
 
     fun updateContactNumber(contact: Contact, selectedNumber: String) {

@@ -83,7 +83,8 @@ object ContactUtils {
                 photo = contact.photo,
                 photoUri = contact.photoUri?.takeIf { it.isNotBlank() },
                 callType = contact.callType,
-                callTimestamp = contact.callTimestamp
+                callTimestamp = contact.callTimestamp,
+                callSource = contact.callSource
             )
         } catch (e: Exception) {
             android.util.Log.w("ContactUtils", "Error sanitizing contact: ${contact.id}", e)
@@ -285,6 +286,41 @@ object ContactUtils {
             null
         } catch (e: Exception) {
             android.util.Log.e("ContactUtils", "Error getting contact by phone number for recent calls: $phoneNumber", e)
+            null
+        }
+    }
+
+    /** Resolves a WhatsApp notification title when WhatsApp did not include a phone number. */
+    fun getContactByNameForRecentCalls(context: Context, name: String): Contact? {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return null
+        return try {
+            context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER
+                ),
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ? COLLATE NOCASE",
+                arrayOf(trimmedName),
+                null
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val id = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID))
+                val displayName = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))
+                val number = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                if (id.isNullOrBlank() || displayName.isNullOrBlank() || number.isNullOrBlank()) return@use null
+                Contact(
+                    id = id,
+                    name = displayName,
+                    phoneNumber = number,
+                    phoneNumbers = listOf(number),
+                    photoUri = getContactPhotoUri(context, id)
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("ContactUtils", "Error finding contact by name for recent call: $trimmedName", e)
             null
         }
     }

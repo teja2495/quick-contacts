@@ -1,7 +1,9 @@
 package com.tk.quickcontacts.ui.components
 
 import android.content.Intent
+import android.content.ComponentName
 import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,6 +59,7 @@ import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.BuildConfig
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.R
+import com.tk.quickcontacts.services.WhatsAppCallNotificationListener
 
 
 private val MessagingCardPadding = 18.dp
@@ -65,6 +68,19 @@ private val MessagingChipPaddingV = 12.dp
 private val MessagingChipPaddingH = 12.dp
 private val MessagingIconSize = 24.dp
 private val MessagingBorderWidth = 1.dp
+
+private fun hasWhatsAppNotificationAccess(context: android.content.Context): Boolean {
+    val enabledListeners = Settings.Secure.getString(
+        context.contentResolver,
+        "enabled_notification_listeners"
+    ).orEmpty()
+    return enabledListeners.split(':')
+        .mapNotNull(ComponentName::unflattenFromString)
+        .any { component ->
+            component.packageName == context.packageName &&
+                component.className == WhatsAppCallNotificationListener::class.java.name
+        }
+}
 
 @Composable
 fun SettingsScreen(
@@ -78,11 +94,13 @@ fun SettingsScreen(
     onRequestCallPermission: (() -> Unit)? = null,
     isCallPermissionPermanentlyDenied: Boolean = false,
     onOpenAppSettings: (() -> Unit)? = null,
+    onRequestWhatsAppNotificationAccess: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
     val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
+    val isWhatsAppRecentCallsEnabled by viewModel.isWhatsAppRecentCallsEnabled.collectAsState()
     val isDirectDialEnabled by viewModel.isDirectDialEnabled.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
@@ -98,6 +116,25 @@ fun SettingsScreen(
 
     var showPermissionSettingsDialog by remember { mutableStateOf(false) }
     var showCallPermissionSettingsDialog by remember { mutableStateOf(false) }
+    var showWhatsAppNotificationAccessDialog by remember { mutableStateOf(false) }
+
+    if (showWhatsAppNotificationAccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showWhatsAppNotificationAccessDialog = false },
+            title = { Text("Allow notification access?") },
+            text = { Text("Quick Contacts needs notification access to add WhatsApp calls to Recent Calls. It reads only WhatsApp call notifications.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setWhatsAppRecentCallsEnabled(true)
+                    onRequestWhatsAppNotificationAccess?.invoke()
+                    showWhatsAppNotificationAccessDialog = false
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWhatsAppNotificationAccessDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     // Refresh available messaging apps when settings screen is opened
     LaunchedEffect(Unit) {
@@ -205,6 +242,30 @@ fun SettingsScreen(
                             }
                         }
                     )
+                    if (isRecentCallsVisible && BuildConfig.ENABLE_WHATSAPP_RECENT_CALLS) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 14.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        SettingToggleRow(
+                            icon = Icons.Rounded.History,
+                            title = "WhatsApp Calls",
+                            description = "Add WhatsApp calls to Recent Calls.",
+                            checked = isWhatsAppRecentCallsEnabled,
+                            enabled = true,
+                            onCheckedChange = { isEnabled ->
+                                if (isEnabled) {
+                                    if (hasWhatsAppNotificationAccess(context)) {
+                                        viewModel.setWhatsAppRecentCallsEnabled(true)
+                                    } else {
+                                        showWhatsAppNotificationAccessDialog = true
+                                    }
+                                } else {
+                                    viewModel.setWhatsAppRecentCallsEnabled(false)
+                                }
+                            }
+                        )
+                    }
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 14.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
