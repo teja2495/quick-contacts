@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.tk.quickcontacts"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.tk.quickcontacts"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 14
         versionName = "2.1"
 

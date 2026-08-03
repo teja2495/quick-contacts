@@ -34,6 +34,7 @@ import com.tk.quickcontacts.R
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.ContactsViewModel
 import com.tk.quickcontacts.models.MessagingApp
+import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.PhoneNumberSelectionDialog
 import com.tk.quickcontacts.utils.ContactActionAvailability
 import com.tk.quickcontacts.utils.PhoneNumberUtils
@@ -58,6 +59,7 @@ fun SearchResultsContent(
     val context = LocalContext.current
     val listState = rememberLazyListState()
     val messagingActionCache = remember(defaultMessagingApp) { mutableMapOf<String, String>() }
+    val searchActionPreferences by viewModel.searchActionPreferences.collectAsState()
 
     LazyColumn(
         state = listState,
@@ -207,6 +209,12 @@ fun SearchResultsContent(
                 items = searchResults,
                 key = { contact -> contact.id }
             ) { contact ->
+                val phoneNumbers = contact.phoneNumbers.ifEmpty { listOf(contact.phoneNumber) }
+                val configuredPhoneNumber = viewModel.getLastShownPhoneNumber(contact.id)
+                    ?.takeIf { rememberedNumber ->
+                        phoneNumbers.any { PhoneNumberUtils.isSameNumber(it, rememberedNumber) }
+                    }
+                    ?: contact.phoneNumber
                 SearchResultItem(
                     contact = contact,
                     onContactClick = { contact ->
@@ -241,6 +249,13 @@ fun SearchResultsContent(
                     onAddToContacts = onAddToContacts,
                     getLastShownPhoneNumber = viewModel::getLastShownPhoneNumber,
                     setLastShownPhoneNumber = viewModel::setLastShownPhoneNumber,
+                    configuredPhoneNumber = configuredPhoneNumber,
+                    customActions = searchActionPreferences[
+                        "${contact.id}|${PhoneNumberUtils.normalizePhoneNumber(configuredPhoneNumber)}"
+                    ],
+                    onReplaceAction = { contactId, phoneNumber, slot, action ->
+                        viewModel.setSearchAction(contactId, phoneNumber, slot, action)
+                    },
                     resolveMessagingAction = { candidate ->
                         val numbersKey = candidate.phoneNumbers
                             .ifEmpty { listOf(candidate.phoneNumber) }
@@ -293,21 +308,44 @@ fun SearchResultItem(
     onAddToContacts: (Context, String) -> Unit = { _, _ -> },
     getLastShownPhoneNumber: (String) -> String? = { null },
     setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> },
+    configuredPhoneNumber: String = contact.phoneNumber,
+    customActions: CustomActions? = null,
+    onReplaceAction: (String, String, QuickContactActionSlot, String) -> Unit = { _, _, _, _ -> },
     resolveMessagingAction: (Contact) -> String
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
+    var actionSlotToReplace by remember { mutableStateOf<QuickContactActionSlot?>(null) }
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val messagingAction = remember(
+    val resolvedActions = remember(
         contact.id,
-        contact.phoneNumber,
-        contact.phoneNumbers,
+        configuredPhoneNumber,
+        customActions,
         defaultMessagingApp
     ) {
+        resolveQuickContactActions(customActions, defaultMessagingApp)
+    }
+    val callAction = resolvedActions.firstButtonTapAction
+    val messagingAction = if (customActions?.secondButtonTapAction != null) {
+        resolvedActions.secondButtonTapAction
+    } else {
         resolveMessagingAction(contact)
+    }
+
+    fun runButtonAction(action: String) {
+        when {
+            action == QuickContactAction.NONE -> Unit
+            action == QuickContactAction.ALL_OPTIONS -> showContactActionsDialog = true
+            customActions != null -> onExecuteAction(context, action, configuredPhoneNumber)
+            contact.phoneNumbers.size > 1 -> {
+                dialogAction = action
+                showPhoneNumberDialog = true
+            }
+            else -> onExecuteAction(context, action, contact.phoneNumber)
+        }
     }
     
     // Phone number selection dialog
@@ -350,15 +388,32 @@ fun SearchResultItem(
         ContactActionsGridDialog(
             contact = contact,
             availableActions = availableActions,
+            title = actionSlotToReplace?.let { slot ->
+                val currentAction = when (slot) {
+                    QuickContactActionSlot.FIRST_BUTTON_TAP -> callAction
+                    QuickContactActionSlot.SECOND_BUTTON_TAP -> messagingAction
+                    else -> return@let null
+                }
+                "Replace $currentAction with"
+            },
             onActionSelected = { action, phoneNumber ->
-                when {
-                    action == QuickContactAction.NONE || action == QuickContactAction.ALL_OPTIONS -> Unit
-                    action == QuickContactAction.CALL -> onContactClick(contact.copy(phoneNumber = phoneNumber))
-                    else -> onExecuteAction(context, action, phoneNumber)
+                val slot = actionSlotToReplace
+                if (slot != null) {
+                    onReplaceAction(contact.id, phoneNumber, slot, action)
+                    actionSlotToReplace = null
+                } else {
+                    when {
+                        action == QuickContactAction.NONE || action == QuickContactAction.ALL_OPTIONS -> Unit
+                        action == QuickContactAction.CALL -> onContactClick(contact.copy(phoneNumber = phoneNumber))
+                        else -> onExecuteAction(context, action, phoneNumber)
+                    }
                 }
                 showContactActionsDialog = false
             },
-            onDismiss = { showContactActionsDialog = false },
+            onDismiss = {
+                showContactActionsDialog = false
+                actionSlotToReplace = null
+            },
             onAddToQuickList = { contactToAdd -> onAddContact(contactToAdd) },
             onRemoveFromQuickList = { contactToRemove -> onRemoveContact(contactToRemove) },
             isInQuickList = selectedContacts.any { it.id == contact.id },
@@ -485,24 +540,21 @@ fun SearchResultItem(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                if (callAction != QuickContactAction.NONE) Box(
                     modifier = Modifier
                         .size(48.dp)
                         .combinedClickable(
-                            onClick = {
-                                if (contact.phoneNumbers.size > 1) {
-                                    dialogAction = "call"
-                                    showPhoneNumberDialog = true
-                                } else {
-                                    onContactClick(contact)
-                                }
+                            onClick = { runButtonAction(callAction) },
+                            onLongClick = {
+                                actionSlotToReplace = QuickContactActionSlot.FIRST_BUTTON_TAP
+                                showContactActionsDialog = true
                             }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     QuickContactActionIcon(
-                        action = QuickContactAction.CALL,
-                        contentDescription = "Call ${contact.name}",
+                        action = callAction,
+                        contentDescription = "$callAction ${contact.name}",
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -511,13 +563,10 @@ fun SearchResultItem(
                         modifier = Modifier
                             .size(48.dp)
                             .combinedClickable(
-                                onClick = {
-                                    if (contact.phoneNumbers.size > 1) {
-                                        dialogAction = messagingAction
-                                        showPhoneNumberDialog = true
-                                    } else {
-                                        onExecuteAction(context, messagingAction, contact.phoneNumber)
-                                    }
+                                onClick = { runButtonAction(messagingAction) },
+                                onLongClick = {
+                                    actionSlotToReplace = QuickContactActionSlot.SECOND_BUTTON_TAP
+                                    showContactActionsDialog = true
                                 }
                             ),
                         contentAlignment = Alignment.Center

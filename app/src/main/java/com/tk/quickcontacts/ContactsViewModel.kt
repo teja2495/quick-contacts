@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.tk.quickcontacts.models.CustomActions
 import com.tk.quickcontacts.models.MessagingApp
 import com.tk.quickcontacts.repository.PreferencesRepository
+import com.tk.quickcontacts.ui.components.QuickContactActionSlot
+import com.tk.quickcontacts.ui.components.resolveQuickContactActions
 import com.tk.quickcontacts.services.ContactService
 import com.tk.quickcontacts.services.MessagingService
 import com.tk.quickcontacts.services.PhoneService
@@ -114,6 +116,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private val _customActionPreferences = MutableStateFlow<Map<String, CustomActions>>(emptyMap())
     val customActionPreferences: StateFlow<Map<String, CustomActions>> = _customActionPreferences.asStateFlow()
 
+    private val _searchActionPreferences = MutableStateFlow<Map<String, CustomActions>>(emptyMap())
+    val searchActionPreferences: StateFlow<Map<String, CustomActions>> = _searchActionPreferences.asStateFlow()
+
     // Settings preferences
     private val _isRecentCallsVisible = MutableStateFlow(true)
     val isRecentCallsVisible: StateFlow<Boolean> = _isRecentCallsVisible.asStateFlow()
@@ -176,6 +181,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             loadContacts()
             loadActionPreferences()
             loadCustomActionPreferences()
+            loadSearchActionPreferences()
             loadSettings()
             checkAvailableMessagingApps()
             // Load saved recent calls (this will populate both recent calls and cached calls)
@@ -580,6 +586,13 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         preferencesRepository.saveCustomActionPreferences(_customActionPreferences.value)
     }
 
+    private fun loadSearchActionPreferences() {
+        _searchActionPreferences.value = preferencesRepository.loadSearchActionPreferences()
+    }
+
+    private fun searchActionPreferenceKey(contactId: String, phoneNumber: String): String =
+        "$contactId|${PhoneNumberUtils.normalizePhoneNumber(phoneNumber)}"
+
     private fun loadSettings() {
         val (isRecentCallsVisible, defaultMessagingApp) = preferencesRepository.loadSettings()
         _isRecentCallsVisible.value = isRecentCallsVisible
@@ -619,6 +632,18 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         currentPreferences.remove(contactId)
         _customActionPreferences.value = currentPreferences
         saveCustomActionPreferences()
+    }
+
+    fun getSearchActions(contactId: String, phoneNumber: String): CustomActions? =
+        _searchActionPreferences.value[searchActionPreferenceKey(contactId, phoneNumber)]
+
+    fun setSearchAction(contactId: String, phoneNumber: String, actionSlot: QuickContactActionSlot, action: String) {
+        val key = searchActionPreferenceKey(contactId, phoneNumber)
+        val current = resolveQuickContactActions(_searchActionPreferences.value[key], _defaultMessagingApp.value)
+        val updatedPreferences = _searchActionPreferences.value.toMutableMap()
+        updatedPreferences[key] = current.update(actionSlot, action).toCustomActions()
+        _searchActionPreferences.value = updatedPreferences
+        preferencesRepository.saveSearchActionPreferences(updatedPreferences)
     }
 
     fun getLastShownPhoneNumber(contactId: String): String? =

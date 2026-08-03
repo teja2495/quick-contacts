@@ -23,6 +23,7 @@ class PreferencesRepository(context: Context) {
     private var cachedContacts: List<Contact>? = null
     private var cachedActionPreferences: Map<String, Boolean>? = null
     private var cachedCustomActionPreferences: Map<String, CustomActions>? = null
+    private var cachedSearchActionPreferences: Map<String, CustomActions>? = null
     private var cachedSettings: Pair<Boolean, MessagingApp>? = null
 
     // Contact management with validation
@@ -161,6 +162,40 @@ class PreferencesRepository(context: Context) {
             emptyMap()
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error loading custom action preferences", e)
+            emptyMap()
+        }
+    }
+
+    fun saveSearchActionPreferences(preferences: Map<String, CustomActions>) {
+        try {
+            sharedPreferences.edit()
+                .putString("search_action_preferences", gson.toJson(preferences))
+                .apply()
+            cachedSearchActionPreferences = preferences
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error saving search action preferences", e)
+        }
+    }
+
+    fun loadSearchActionPreferences(): Map<String, CustomActions> {
+        cachedSearchActionPreferences?.let { return it }
+
+        return try {
+            val json = sharedPreferences.getString("search_action_preferences", null)
+            if (json == null) {
+                emptyMap()
+            } else {
+                val type = object : TypeToken<Map<String, CustomActions>>() {}.type
+                (gson.fromJson<Map<String, CustomActions>>(json, type) ?: emptyMap()).also {
+                    cachedSearchActionPreferences = it
+                }
+            }
+        } catch (e: JsonSyntaxException) {
+            android.util.Log.e("PreferencesRepository", "Error parsing search action preferences JSON", e)
+            sharedPreferences.edit().remove("search_action_preferences").apply()
+            emptyMap()
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Error loading search action preferences", e)
             emptyMap()
         }
     }
@@ -424,6 +459,7 @@ class PreferencesRepository(context: Context) {
             cachedContacts = null
             cachedActionPreferences = null
             cachedCustomActionPreferences = null
+            cachedSearchActionPreferences = null
             cachedSettings = null
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error clearing cache", e)
@@ -459,4 +495,4 @@ class PreferencesRepository(context: Context) {
             false
         }
     }
-} 
+}

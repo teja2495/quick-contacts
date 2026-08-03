@@ -943,6 +943,7 @@ fun ContactActionsDialog(
 fun ContactActionsGridDialog(
     contact: Contact,
     availableActions: Set<String>,
+    title: String? = null,
     onActionSelected: (String, String) -> Unit,
     onDismiss: () -> Unit,
     onAddToQuickList: ((Contact) -> Unit)? = null,
@@ -1044,6 +1045,14 @@ fun ContactActionsGridDialog(
                 ) {
                     var imageLoadFailed by remember { mutableStateOf(false) }
                     val context = LocalContext.current
+                    if (title != null) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
