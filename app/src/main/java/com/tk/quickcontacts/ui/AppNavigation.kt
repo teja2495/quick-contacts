@@ -17,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
@@ -33,6 +34,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
@@ -57,6 +61,9 @@ private sealed class NavDestination(val depth: Int) {
 @Composable
 fun AppNavigation(viewModel: ContactsViewModel) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val horizontalSwipeThreshold = with(LocalDensity.current) { 72.dp.toPx() }
 
     var isSearching by remember { mutableStateOf(false) }
     var isSettingsScreenOpen by remember { mutableStateOf(false) }
@@ -307,6 +314,18 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
     val focusRequester = remember { FocusRequester() }
 
+    fun openSearch() {
+        isSearching = true
+        viewModel.updateSearchQuery("")
+    }
+
+    fun closeSearch() {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        viewModel.updateSearchQuery("")
+        isSearching = false
+    }
+
     val currentDestination = when {
         !hasContactsPermission || isRequestingPermissions -> NavDestination.Permission
         !hasContinuedFromPermissionScreen -> NavDestination.Permission
@@ -320,10 +339,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     BackHandler(enabled = isSearching || isSettingsScreenOpen || isPermissionsScreenFromSettingsOpen || actionEditorContact != null) {
         when {
             actionEditorContact != null -> actionEditorContact = null
-            isSearching -> {
-                viewModel.updateSearchQuery("")
-                isSearching = false
-            }
+            isSearching -> closeSearch()
             isPermissionsScreenFromSettingsOpen -> isPermissionsScreenFromSettingsOpen = false
             isSettingsScreenOpen -> isSettingsScreenOpen = false
         }
@@ -381,6 +397,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
     LaunchedEffect(isSearching) {
         if (isSearching) {
             focusRequester.requestFocus()
+            keyboardController?.show()
             viewModel.refreshAllContactsFromPhone(context)
         }
     }
@@ -471,10 +488,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                             onClick = {
                                 when {
                                     actionEditorContact != null -> actionEditorContact = null
-                                    isSearching -> {
-                                        viewModel.updateSearchQuery("")
-                                        isSearching = false
-                                    }
+                                    isSearching -> closeSearch()
                                     isPermissionsScreenFromSettingsOpen -> isPermissionsScreenFromSettingsOpen = false
                                     isSettingsScreenOpen -> isSettingsScreenOpen = false
                                 }
@@ -648,7 +662,25 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                     )
 
                     NavDestination.Search -> run {
-                        Column(modifier = Modifier.fillMaxSize()) {
+                        var horizontalDragAmount by remember { mutableFloatStateOf(0f) }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(horizontalSwipeThreshold) {
+                                    detectHorizontalDragGestures(
+                                        onDragStart = { horizontalDragAmount = 0f },
+                                        onHorizontalDrag = { _, dragAmount ->
+                                            horizontalDragAmount += dragAmount
+                                        },
+                                        onDragEnd = {
+                                            if (horizontalDragAmount >= horizontalSwipeThreshold) {
+                                                closeSearch()
+                                            }
+                                        },
+                                        onDragCancel = { horizontalDragAmount = 0f }
+                                    )
+                                }
+                        ) {
                             SearchResultsContent(
                                 viewModel = viewModel,
                                 searchQuery = searchQuery,
@@ -687,7 +719,26 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         }
                     }
 
-                    NavDestination.Home -> Column(modifier = Modifier.fillMaxSize()) {
+                    NavDestination.Home -> {
+                        var horizontalDragAmount by remember { mutableFloatStateOf(0f) }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(horizontalSwipeThreshold) {
+                                    detectHorizontalDragGestures(
+                                        onDragStart = { horizontalDragAmount = 0f },
+                                        onHorizontalDrag = { _, dragAmount ->
+                                            horizontalDragAmount += dragAmount
+                                        },
+                                        onDragEnd = {
+                                            if (horizontalDragAmount <= -horizontalSwipeThreshold) {
+                                                openSearch()
+                                            }
+                                        },
+                                        onDragCancel = { horizontalDragAmount = 0f }
+                                    )
+                                }
+                        ) {
                         Column(modifier = Modifier.weight(1f)) {
                             if (isRecentCallsVisible && hasCallLogPermission) {
                                 RecentCallsSection(
@@ -870,14 +921,14 @@ fun AppNavigation(viewModel: ContactsViewModel) {
 
                         FakeSearchBar(
                             onClick = {
-                                isSearching = true
-                                viewModel.updateSearchQuery("")
+                                openSearch()
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 16.dp)
                                 .imePadding()
                         )
+                        }
                     }
                 }
             }
