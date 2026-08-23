@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Sms
@@ -42,7 +43,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -102,6 +105,7 @@ fun SettingsScreen(
     val isRecentCallsVisible by viewModel.isRecentCallsVisible.collectAsState()
     val isWhatsAppRecentCallsEnabled by viewModel.isWhatsAppRecentCallsEnabled.collectAsState()
     val isDirectDialEnabled by viewModel.isDirectDialEnabled.collectAsState()
+    val isDynamicColorEnabled by viewModel.isDynamicColorEnabled.collectAsState()
     val defaultMessagingApp by viewModel.defaultMessagingApp.collectAsState()
     val availableMessagingApps by viewModel.availableMessagingApps.collectAsState()
 
@@ -292,6 +296,20 @@ fun SettingsScreen(
                             }
                         }
                     )
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 14.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        SettingToggleRow(
+                            icon = Icons.Rounded.Palette,
+                            title = stringResource(R.string.settings_dynamic_color_title),
+                            description = stringResource(R.string.settings_dynamic_color_description),
+                            checked = isDynamicColorEnabled,
+                            enabled = true,
+                            onCheckedChange = { viewModel.setDynamicColorEnabled(it) }
+                        )
+                    }
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 14.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
@@ -625,6 +643,7 @@ private fun MessagingOptionChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val colorScheme = MaterialTheme.colorScheme
     val borderColor = if (selected) colorScheme.primary else colorScheme.outlineVariant
     val backgroundColor = if (selected) colorScheme.primary.copy(alpha = 0.14f) else colorScheme.outlineVariant.copy(alpha = 0.35f)
@@ -636,7 +655,10 @@ private fun MessagingOptionChip(
             .border(MessagingBorderWidth, borderColor, RoundedCornerShape(16.dp))
             .selectable(
                 selected = selected,
-                onClick = onClick,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick()
+                },
                 role = Role.RadioButton
             )
             .padding(vertical = MessagingChipPaddingV, horizontal = MessagingChipPaddingH),
@@ -801,6 +823,7 @@ private fun SettingToggleRow(
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -829,7 +852,10 @@ private fun SettingToggleRow(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onCheckedChange(it)
+            },
             enabled = enabled,
             colors = settingsSwitchColors()
         )

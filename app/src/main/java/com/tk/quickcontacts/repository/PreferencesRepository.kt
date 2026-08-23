@@ -25,6 +25,7 @@ class PreferencesRepository(context: Context) {
     private var cachedCustomActionPreferences: Map<String, CustomActions>? = null
     private var cachedSearchActionPreferences: Map<String, CustomActions>? = null
     private var cachedSettings: Pair<Boolean, MessagingApp>? = null
+    private var cachedDynamicColorEnabled: Boolean? = null
 
     // Contact management with validation
     fun saveContacts(contacts: List<Contact>) {
@@ -274,6 +275,18 @@ class PreferencesRepository(context: Context) {
         }
     }
 
+    fun saveDynamicColorEnabled(isEnabled: Boolean) {
+        sharedPreferences.edit().putBoolean("dynamic_color_enabled", isEnabled).apply()
+        cachedDynamicColorEnabled = isEnabled
+    }
+
+    fun loadDynamicColorEnabled(): Boolean {
+        cachedDynamicColorEnabled?.let { return it }
+        return sharedPreferences.getBoolean("dynamic_color_enabled", false).also {
+            cachedDynamicColorEnabled = it
+        }
+    }
+
     fun isFirstTimeLaunch(): Boolean {
         return try {
             if (firstRunPreferences.contains("is_first_launch")) {
@@ -468,6 +481,7 @@ class PreferencesRepository(context: Context) {
             cachedCustomActionPreferences = null
             cachedSearchActionPreferences = null
             cachedSettings = null
+            cachedDynamicColorEnabled = null
         } catch (e: Exception) {
             android.util.Log.e("PreferencesRepository", "Error clearing cache", e)
         }
