@@ -424,6 +424,7 @@ private fun QuickContactActionButton(
     Box(
         modifier = Modifier
             .size(if (showLabel) 74.dp else 48.dp)
+            .clip(CircleShape)
             .combinedClickable(
                 onClick = onTap,
                 onLongClick = onLongPress
@@ -691,6 +692,7 @@ fun RecentCallItem(
     
     Column(
         modifier = modifier
+            .clip(MaterialTheme.shapes.medium)
             .clickable { onContactClick(contact) }
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
