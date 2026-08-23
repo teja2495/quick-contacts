@@ -108,7 +108,8 @@
     <string name="contact_add_to_quick_contacts">Add %s to quick contacts</string>
     <string name="contact_more_available_options">More Available Options</string>
     <string name="contact_no_options_available">No methods available</string>
-    
+    <string name="contact_copied_to_clipboard">Copied to clipboard</string>
+
     <!-- Content Descriptions -->
     <string name="cd_search">Search</string>
     <string name="cd_settings">Settings</string>

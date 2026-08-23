@@ -185,6 +185,55 @@ object ContactActionAvailability {
         return action.removePrefix(EMAIL_ACTION_PREFIX).trim().ifBlank { null }
     }
 
+    fun getFriendlyActionLabel(action: String): String {
+        getEmailFromAction(action)?.let { return it }
+        getThirdPartyAppActionLabel(action)?.let { return sanitizeLabel(it) }
+        return action
+    }
+
+    fun isMainThirdPartyAction(action: String): Boolean {
+        if (!isThirdPartyAppAction(action)) return false
+        val label = getFriendlyActionLabel(action).lowercase()
+        if (label.contains("invite") || label.contains("out") || label.contains("setting")) return false
+        
+        return label.contains("message") ||
+            label.contains("call") ||
+            label.contains("chat") ||
+            label.contains("video") ||
+            label.contains("voice") ||
+            label.contains("audio") ||
+            label.contains("sms") ||
+            label.contains("msg") ||
+            label.contains("free") ||
+            label.contains("talk") ||
+            label.contains("messenger") ||
+            label.contains("skype") ||
+            label.contains("viber") ||
+            label.contains("imo") ||
+            label.contains("truecaller") ||
+            label.contains("send") ||
+            label.length < 15
+    }
+
+    private fun sanitizeLabel(label: String): String {
+        val trimmed = label.trim()
+        val suffixRegexes = listOf(
+            Regex("""\s*\(([^)]*)\)\s*$"""),
+            Regex("""\s*\[([^]]*)]\s*$""")
+        )
+        for (regex in suffixRegexes) {
+            val match = regex.find(trimmed) ?: continue
+            val suffix = match.groupValues.getOrNull(1)?.trim().orEmpty()
+            val looksLikePhone = suffix.any { it.isDigit() } ||
+                suffix.contains("+") ||
+                suffix.contains("-")
+            if (looksLikePhone) {
+                return trimmed.removeRange(match.range).trim()
+            }
+        }
+        return trimmed
+    }
+
     fun isThirdPartyAppAction(action: String): Boolean = action.startsWith(APP_ACTION_PREFIX)
 
     fun getThirdPartyAppActionLabel(action: String): String? {
