@@ -210,6 +210,8 @@ fun ContactItem(
                 Box(
                     modifier = Modifier
                         .padding(end = 12.dp)
+                        .size(48.dp)
+                        .clip(CircleShape)
                         .clickable { onContactImageClick(contact) }
                 ) {
                     if (contact.photoUri != null && !imageLoadFailed) {
