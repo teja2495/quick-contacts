@@ -193,6 +193,24 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_appearance_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        SettingsAppearanceCard(
+                            isDynamicColorEnabled = isDynamicColorEnabled,
+                            onDynamicColorToggle = { viewModel.setDynamicColorEnabled(it) }
+                        )
+                    }
+                }
+            }
+
             if (!BuildConfig.DISABLE_RECENT_CALLS) item {
                 DefaultMessagingAppCard(
                     selectedApp = defaultMessagingApp,
@@ -296,20 +314,6 @@ fun SettingsScreen(
                             }
                         }
                     )
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 14.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        SettingToggleRow(
-                            icon = Icons.Rounded.Palette,
-                            title = stringResource(R.string.settings_dynamic_color_title),
-                            description = stringResource(R.string.settings_dynamic_color_description),
-                            checked = isDynamicColorEnabled,
-                            enabled = true,
-                            onCheckedChange = { viewModel.setDynamicColorEnabled(it) }
-                        )
-                    }
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 14.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
@@ -574,6 +578,34 @@ private fun SettingsVersionDisplay(
                 } catch (_: Exception) {}
             }
         )
+    }
+}
+
+@Composable
+private fun SettingsAppearanceCard(
+    isDynamicColorEnabled: Boolean,
+    onDynamicColorToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MessagingCardPadding),
+            verticalArrangement = Arrangement.spacedBy(MessagingOptionSpacing)
+        ) {
+            SettingToggleRow(
+                icon = Icons.Rounded.Palette,
+                title = stringResource(R.string.settings_dynamic_color_title),
+                description = stringResource(R.string.settings_dynamic_color_description),
+                checked = isDynamicColorEnabled,
+                enabled = true,
+                onCheckedChange = onDynamicColorToggle
+            )
+        }
     }
 }
 
