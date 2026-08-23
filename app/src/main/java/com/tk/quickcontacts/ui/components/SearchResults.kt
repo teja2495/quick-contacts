@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
@@ -427,6 +428,7 @@ fun SearchResultItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(MaterialTheme.shapes.large)
             .combinedClickable(
                 onClick = {
                     showContactActionsDialog = true
@@ -448,45 +450,46 @@ fun SearchResultItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .combinedClickable(
-                        onClick = {
-                            if (contact.phoneNumbers.size > 1) {
-                                dialogAction = "add"
-                                showPhoneNumberDialog = true
-                            } else {
-                                if (isSelected) {
-                                    onRemoveContact(contact)
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            onClick = {
+                                if (contact.phoneNumbers.size > 1) {
+                                    dialogAction = "add"
+                                    showPhoneNumberDialog = true
                                 } else {
-                                    onAddContact(contact)
+                                    if (isSelected) {
+                                        onRemoveContact(contact)
+                                    } else {
+                                        onAddContact(contact)
+                                    }
                                 }
                             }
-                        }
-                    )
-            ) {
-                if (contact.photoUri != null && !imageLoadFailed) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            model = ImageRequest.Builder(context)
-                                .data(contact.photoUri)
-                                .crossfade(true)
-                                .size(48, 48)
-                                .memoryCacheKey("contact_${contact.id}")
-                                .build(),
+                        )
+                ) {
+                    if (contact.photoUri != null && !imageLoadFailed) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                model = ImageRequest.Builder(context)
+                                    .data(contact.photoUri)
+                                    .crossfade(true)
+                                    .size(48, 48)
+                                    .memoryCacheKey("contact_${contact.id}")
+                                    .build(),
                             onError = { imageLoadFailed = true }
                         ),
                         contentDescription = "Contact photo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
@@ -499,19 +502,21 @@ fun SearchResultItem(
                         )
                     }
                 }
-                if (isSelected && contact.phoneNumbers.size <= 1) {
-                    Icon(
-                        imageVector = Icons.Default.Done,
-                        contentDescription = "In quick list",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = 2.dp, y = 2.dp)
-                            .size(20.dp)
-                            .background(Color(0xFF4CAF50), CircleShape)
-                    )
-                }
             }
+            if (isSelected && contact.phoneNumbers.size <= 1) {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = "In quick list",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 2.dp, y = 2.dp)
+                        .size(20.dp)
+                        .background(Color(0xFF4CAF50), CircleShape)
+                        .padding(2.dp)
+                )
+            }
+        }
             
             Spacer(modifier = Modifier.width(16.dp))
             
@@ -543,6 +548,7 @@ fun SearchResultItem(
                 if (callAction != QuickContactAction.NONE) Box(
                     modifier = Modifier
                         .size(48.dp)
+                        .clip(CircleShape)
                         .combinedClickable(
                             onClick = { runButtonAction(callAction) },
                             onLongClick = {
@@ -562,6 +568,7 @@ fun SearchResultItem(
                     Box(
                         modifier = Modifier
                             .size(48.dp)
+                            .clip(CircleShape)
                             .combinedClickable(
                                 onClick = { runButtonAction(messagingAction) },
                                 onLongClick = {
