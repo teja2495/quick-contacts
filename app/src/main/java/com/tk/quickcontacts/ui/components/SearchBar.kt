@@ -34,6 +34,7 @@ import com.tk.quickcontacts.services.MessagingService
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 private enum class OpenAppItem { Phone, Sms, WhatsApp, Telegram, Signal, GoogleMeet }
 
@@ -144,6 +145,7 @@ fun FakeSearchBar(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(24.dp)
+                    .clip(CircleShape)
                     .clickable { showMenu = true }
             )
         }
@@ -256,6 +258,7 @@ private fun OpenAppCard(
     Card(
         modifier = modifier
             .height(80.dp)
+            .clip(shape)
             .clickable(onClick = onClick),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -267,43 +270,49 @@ private fun OpenAppCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            when (item) {
-                OpenAppItem.Phone -> Icon(
-                    imageVector = Icons.Default.Phone,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-                OpenAppItem.Sms -> Icon(
-                    imageVector = Icons.Rounded.Sms,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp).size(24.dp)
-                )
-                OpenAppItem.WhatsApp -> Icon(
-                    painter = painterResource(R.drawable.whatsapp_icon),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(28.dp)
-                )
-                OpenAppItem.Telegram -> Icon(
-                    painter = painterResource(R.drawable.telegram_icon),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(24.dp)
-                )
-                OpenAppItem.Signal -> Icon(
-                    painter = painterResource(R.drawable.signal_icon),
-                    contentDescription = null,
-                    tint = Color(0xFF3A76F0),
-                    modifier = Modifier.size(24.dp)
-                )
-                OpenAppItem.GoogleMeet -> Icon(
-                    painter = painterResource(R.drawable.google_meet_icon),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(24.dp)
-                )
+            Box(
+                modifier = Modifier.size(28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val iconSize = 26.dp
+                when (item) {
+                    OpenAppItem.Phone -> Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(iconSize)
+                    )
+                    OpenAppItem.Sms -> Icon(
+                        imageVector = Icons.Rounded.Sms,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(iconSize)
+                    )
+                    OpenAppItem.WhatsApp -> Icon(
+                        painter = painterResource(R.drawable.whatsapp_icon),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(iconSize)
+                    )
+                    OpenAppItem.Telegram -> Icon(
+                        painter = painterResource(R.drawable.telegram_icon),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(iconSize)
+                    )
+                    OpenAppItem.Signal -> Icon(
+                        painter = painterResource(R.drawable.signal_icon),
+                        contentDescription = null,
+                        tint = Color(0xFF3A76F0),
+                        modifier = Modifier.size(iconSize)
+                    )
+                    OpenAppItem.GoogleMeet -> Icon(
+                        painter = painterResource(R.drawable.google_meet_icon),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(iconSize)
+                    )
+                }
             }
             Text(
                 text = when (item) {

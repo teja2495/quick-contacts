@@ -137,6 +137,9 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     private val _isDirectDialEnabled = MutableStateFlow(true)
     val isDirectDialEnabled: StateFlow<Boolean> = _isDirectDialEnabled.asStateFlow()
+
+    private val _isDynamicColorEnabled = MutableStateFlow(false)
+    val isDynamicColorEnabled: StateFlow<Boolean> = _isDynamicColorEnabled.asStateFlow()
     
     // Call activity data for quick list contacts
     private val _callActivityMap = MutableStateFlow<Map<String, Contact>>(emptyMap())
@@ -602,6 +605,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         _defaultMessagingApp.value = defaultMessagingApp
         _isDirectDialEnabled.value = preferencesRepository.loadDirectDialEnabled()
         _isWhatsAppRecentCallsEnabled.value = preferencesRepository.loadWhatsAppRecentCallsEnabled()
+        _isDynamicColorEnabled.value = preferencesRepository.loadDynamicColorEnabled()
     }
 
     private fun saveSettings() {
@@ -676,6 +680,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun setMessagingApp(app: MessagingApp) {
         _defaultMessagingApp.value = app
         saveSettings()
+    }
+
+    fun setDynamicColorEnabled(isEnabled: Boolean) {
+        _isDynamicColorEnabled.value = isEnabled
+        preferencesRepository.saveDynamicColorEnabled(isEnabled)
     }
     
     fun toggleDirectDial() {

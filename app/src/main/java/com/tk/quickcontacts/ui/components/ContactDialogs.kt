@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -42,11 +43,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -63,6 +68,8 @@ import com.tk.quickcontacts.utils.ContactActionAvailability
 import com.tk.quickcontacts.utils.ContactUtils
 import com.tk.quickcontacts.utils.PhoneNumberUtils
 import kotlinx.coroutines.Dispatchers
+import android.widget.Toast
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
@@ -133,57 +140,7 @@ private fun isEmailAction(action: String): Boolean = ContactActionAvailability.i
 private fun isThirdPartyAppAction(action: String): Boolean = ContactActionAvailability.isThirdPartyAppAction(action)
 
 private fun popupActionLabel(action: String): String {
-    ContactActionAvailability.getEmailFromAction(action)?.let { return it }
-    ContactActionAvailability.getThirdPartyAppActionLabel(action)?.let { return sanitizeAdditionalOptionLabel(it) }
-    return action
-}
-
-private fun sanitizeAdditionalOptionLabel(label: String): String {
-    val trimmed = label.trim()
-    val suffixRegexes = listOf(
-        Regex("""\s*\(([^)]*)\)\s*$"""),
-        Regex("""\s*\[([^]]*)]\s*$""")
-    )
-    for (regex in suffixRegexes) {
-        val match = regex.find(trimmed) ?: continue
-        val suffix = match.groupValues.getOrNull(1)?.trim().orEmpty()
-        val looksLikePhone = suffix.any { it.isDigit() } ||
-            suffix.contains("+") ||
-            suffix.contains("-")
-        if (looksLikePhone) {
-            return trimmed.removeRange(match.range).trim()
-        }
-    }
-    return trimmed
-}
-
-@Composable
-private fun ThirdPartyActionIcon(action: String, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val packageName = remember(action, context) {
-        ContactActionAvailability.resolveThirdPartyAppPackageName(context, action)
-    }
-    val appIcon = remember(packageName, context) {
-        packageName?.let { pkg ->
-            runCatching { context.packageManager.getApplicationIcon(pkg) }.getOrNull()
-        }
-    }
-
-    if (appIcon != null) {
-        Icon(
-            painter = rememberAsyncImagePainter(model = appIcon),
-            contentDescription = stringResource(R.string.action_open_app),
-            tint = Color.Unspecified,
-            modifier = modifier
-        )
-    } else {
-        Icon(
-            imageVector = Icons.Default.Apps,
-            contentDescription = stringResource(R.string.action_open_app),
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = modifier
-        )
-    }
+    return ContactActionAvailability.getFriendlyActionLabel(action)
 }
 
 @Composable
@@ -573,6 +530,7 @@ fun ActionToggleDialog(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContactActionsDialog(
     contact: Contact,
@@ -589,6 +547,8 @@ fun ContactActionsDialog(
     getLastShownPhoneNumber: (String) -> String? = { null },
     setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
+    val haptic = LocalHapticFeedback.current
+    val clipboardManager = LocalClipboardManager.current
     val isUnknownContact = contact.id.startsWith("search_number_") || contact.id.startsWith("call_history_")
     var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -717,7 +677,18 @@ fun ContactActionsDialog(
                                             style = MaterialTheme.typography.titleMedium,
                                             color = Color.White,
                                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .combinedClickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null,
+                                                    onClick = { },
+                                                    onLongClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        clipboardManager.setText(AnnotatedString(phoneNumber))
+                                                        Toast.makeText(context, context.getString(R.string.contact_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
                                         )
                                         if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
                                             IconButton(
@@ -939,6 +910,7 @@ fun ContactActionsDialog(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContactActionsGridDialog(
     contact: Contact,
@@ -953,6 +925,8 @@ fun ContactActionsGridDialog(
     getLastShownPhoneNumber: (String) -> String? = { null },
     setLastShownPhoneNumber: (String, String) -> Unit = { _, _ -> }
 ) {
+    val haptic = LocalHapticFeedback.current
+    val clipboardManager = LocalClipboardManager.current
     val isUnknownContact = contact.id.startsWith("search_number_") || contact.id.startsWith("call_history_")
     val config = LocalConfiguration.current
     val maxSheetHeight = (config.screenHeightDp * 0.85f).dp
@@ -1143,7 +1117,18 @@ fun ContactActionsGridDialog(
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { },
+                                        onLongClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            clipboardManager.setText(AnnotatedString(selectedPhoneNumber))
+                                            Toast.makeText(context, context.getString(R.string.contact_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                             )
                             if (hasMultipleNumbers && selectedPhoneIndex < phoneNumbers.size - 1) {
                                 IconButton(
@@ -1176,15 +1161,21 @@ fun ContactActionsGridDialog(
                             .padding(top = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        val implementedActions = remember(contactFilteredActions) {
-                            QuickContactAction.executableOptionsFiltered(contactFilteredActions)
-                        }
-                        val allAvailableActions = remember(contactFilteredActions) {
-                            orderedExecutableActions(contactFilteredActions)
-                        }
-                        val remainingAvailableActions = remember(implementedActions, allAvailableActions) {
-                            val implementedSet = implementedActions.toSet()
-                            allAvailableActions.filterNot { it in implementedSet }
+                        val (implementedActions, remainingAvailableActions) = remember(contactFilteredActions) {
+                            val implemented = QuickContactAction.executableOptionsFiltered(contactFilteredActions)
+                            val all = orderedExecutableActions(contactFilteredActions)
+
+                            val implementedSet = implemented.toSet()
+                            val remaining = all.filterNot { it in implementedSet }
+
+                            val additionalPrimary = remaining.filter { action ->
+                                ContactActionAvailability.isMainThirdPartyAction(action)
+                            }
+
+                            val finalPrimary = (implemented + additionalPrimary).distinct()
+                            val finalSecondary = remaining.filterNot { it in additionalPrimary.toSet() }
+
+                            finalPrimary to finalSecondary
                         }
 
                         if (isUnknownContact && onAddToContacts != null) {

@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.DoNotDisturb
-import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.Icon
@@ -20,14 +21,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.tk.quickcontacts.R
+import com.tk.quickcontacts.utils.ContactActionAvailability
 
 private val ActionButtonWidth = 90.dp
 private val ActionButtonHeight = 80.dp
@@ -56,22 +62,27 @@ private fun actionTint(action: String): Color {
     }
 }
 
-private fun actionButtonLabel(action: String): String = when (action) {
-    QuickContactAction.CALL -> "Call"
-    QuickContactAction.MESSAGE -> "Message"
-    QuickContactAction.GOOGLE_MEET -> "Meet"
-    QuickContactAction.WHATSAPP_CHAT,
-    QuickContactAction.TELEGRAM_CHAT,
-    QuickContactAction.SIGNAL_CHAT -> "Chat"
-    QuickContactAction.WHATSAPP_VOICE_CALL,
-    QuickContactAction.TELEGRAM_VOICE_CALL,
-    QuickContactAction.SIGNAL_VOICE_CALL -> "Voice Call"
-    QuickContactAction.WHATSAPP_VIDEO_CALL,
-    QuickContactAction.TELEGRAM_VIDEO_CALL,
-    QuickContactAction.SIGNAL_VIDEO_CALL -> "Video Call"
-    QuickContactAction.ALL_OPTIONS -> "All Options"
-    QuickContactAction.NONE -> "None"
-    else -> action
+private fun actionButtonLabel(action: String): String {
+    if (ContactActionAvailability.isThirdPartyAppAction(action)) {
+        return ContactActionAvailability.getFriendlyActionLabel(action)
+    }
+    return when (action) {
+        QuickContactAction.CALL -> "Call"
+        QuickContactAction.MESSAGE -> "Message"
+        QuickContactAction.GOOGLE_MEET -> "Meet"
+        QuickContactAction.WHATSAPP_CHAT,
+        QuickContactAction.TELEGRAM_CHAT,
+        QuickContactAction.SIGNAL_CHAT -> "Chat"
+        QuickContactAction.WHATSAPP_VOICE_CALL,
+        QuickContactAction.TELEGRAM_VOICE_CALL,
+        QuickContactAction.SIGNAL_VOICE_CALL -> "Voice Call"
+        QuickContactAction.WHATSAPP_VIDEO_CALL,
+        QuickContactAction.TELEGRAM_VIDEO_CALL,
+        QuickContactAction.SIGNAL_VIDEO_CALL -> "Video Call"
+        QuickContactAction.ALL_OPTIONS -> "All Options"
+        QuickContactAction.NONE -> "None"
+        else -> action
+    }
 }
 
 @Composable
@@ -122,6 +133,10 @@ private fun ContactActionButtonIcon(
     action: String,
     tint: Color
 ) {
+    if (ContactActionAvailability.isThirdPartyAppAction(action)) {
+        ThirdPartyActionIcon(action = action, modifier = Modifier.size(LargeIconSize))
+        return
+    }
     when (action) {
         QuickContactAction.CALL -> Icon(
             imageVector = Icons.Default.Phone,
@@ -212,6 +227,35 @@ private fun ContactActionButtonIcon(
             contentDescription = null,
             tint = tint,
             modifier = Modifier.size(LargeIconSize)
+        )
+    }
+}
+
+@Composable
+fun ThirdPartyActionIcon(action: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val packageName = remember(action, context) {
+        ContactActionAvailability.resolveThirdPartyAppPackageName(context, action)
+    }
+    val appIcon = remember(packageName, context) {
+        packageName?.let { pkg ->
+            runCatching { context.packageManager.getApplicationIcon(pkg) }.getOrNull()
+        }
+    }
+
+    if (appIcon != null) {
+        Icon(
+            painter = rememberAsyncImagePainter(model = appIcon),
+            contentDescription = stringResource(R.string.action_open_app),
+            tint = Color.Unspecified,
+            modifier = modifier
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Default.Apps,
+            contentDescription = stringResource(R.string.action_open_app),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = modifier
         )
     }
 }

@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
 import com.tk.quickcontacts.ui.AppNavigation
 import com.tk.quickcontacts.ui.theme.QuickContactsTheme
@@ -29,7 +31,8 @@ class MainActivity : ComponentActivity() {
         
         enableEdgeToEdge()
         setContent {
-            QuickContactsTheme {
+            val isDynamicColorEnabled by viewModel.isDynamicColorEnabled.collectAsState()
+            QuickContactsTheme(dynamicColor = isDynamicColorEnabled) {
                 AppNavigation(viewModel)
             }
         }

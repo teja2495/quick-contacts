@@ -75,6 +75,7 @@
     
     <!-- Settings -->
     <string name="settings_messaging_app_description">You can change this for individual contacts in quick list by tapping on the edit button</string>
+    <string name="settings_appearance_title">Appearance</string>
     <string name="settings_messaging_card_title">Default Messaging App</string>
     <string name="settings_messaging_app_not_installed">%s is not installed on your device</string>
     <string name="settings_recent_calls_description">Display recent calls at the top of the main screen for quick access</string>
@@ -85,7 +86,9 @@
     <string name="settings_refresh_contacts_toast">Contacts refreshed</string>
     <string name="settings_permissions_title">Permissions</string>
     <string name="settings_permissions_desc">Manage app permissions</string>
-    
+    <string name="settings_dynamic_color_title">Dynamic Color</string>
+    <string name="settings_dynamic_color_description">Use your device\'s wallpaper colors for the app theme</string>
+
     <!-- Messaging Apps -->
     <string name="messaging_app_sms">Messages</string>
     <string name="messaging_app_whatsapp">WhatsApp</string>
@@ -108,7 +111,8 @@
     <string name="contact_add_to_quick_contacts">Add %s to quick contacts</string>
     <string name="contact_more_available_options">More Available Options</string>
     <string name="contact_no_options_available">No methods available</string>
-    
+    <string name="contact_copied_to_clipboard">Copied to clipboard</string>
+
     <!-- Content Descriptions -->
     <string name="cd_search">Search</string>
     <string name="cd_settings">Settings</string>
