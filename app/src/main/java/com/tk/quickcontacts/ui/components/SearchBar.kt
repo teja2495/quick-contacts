@@ -1,6 +1,22 @@
 package com.tk.quickcontacts.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import com.tk.quickcontacts.ui.theme.ExpressiveMotion
+import kotlin.math.abs
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -75,9 +91,9 @@ fun SearchBar(
         singleLine = true,
         shape = RoundedCornerShape(28.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             focusedBorderColor = Color.Transparent,
             unfocusedBorderColor = Color.Transparent,
             disabledBorderColor = Color.Transparent
@@ -85,160 +101,120 @@ fun SearchBar(
     )
 }
 
+/**
+ * Home-screen search pill. Tapping it opens search; a horizontal swipe in either
+ * direction flips it to a row of app shortcuts, and another swipe flips it back.
+ */
 @Composable
 fun FakeSearchBar(
     onClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var showMenu by remember { mutableStateOf(false) }
     val messagingService = remember { MessagingService() }
     val phoneService = remember { com.tk.quickcontacts.services.PhoneService() }
     val availableMessagingApps = remember {
-        mutableStateOf(messagingService.checkAvailableMessagingApps(context.packageManager))
+        messagingService.checkAvailableMessagingApps(context.packageManager)
     }
     val isGoogleMeetInstalled = remember {
-        context.packageManager.getLaunchIntentForPackage("com.google.android.apps.tachyon") != null
+        context.packageManager.getLaunchIntentForPackage(GOOGLE_MEET_PACKAGE) != null
     }
-    
-    Card(
-        modifier = modifier.clickable(
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() }
-        ) { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        ),
-        shape = RoundedCornerShape(28.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                Text(
-                    text = stringResource(R.string.search_placeholder),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            // Apps menu
-            Icon(
-                imageVector = Icons.Default.Apps,
-                contentDescription = stringResource(R.string.cd_more_options),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { showMenu = true }
-            )
+    val appItems = remember(availableMessagingApps, isGoogleMeetInstalled) {
+        buildList {
+            add(OpenAppItem.Phone)
+            add(OpenAppItem.Sms)
+            if (availableMessagingApps.contains(MessagingApp.WHATSAPP)) add(OpenAppItem.WhatsApp)
+            if (availableMessagingApps.contains(MessagingApp.TELEGRAM)) add(OpenAppItem.Telegram)
+            if (availableMessagingApps.contains(MessagingApp.SIGNAL)) add(OpenAppItem.Signal)
+            if (isGoogleMeetInstalled) add(OpenAppItem.GoogleMeet)
         }
     }
-    
-    if (showMenu) {
-        Dialog(
-            onDismissRequest = { showMenu = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp)
-                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { showMenu = false }
-            ) {
-                Card(
+
+    var showApps by rememberSaveable { mutableStateOf(false) }
+    // -1 when the last swipe went left, +1 when it went right; drives slide direction.
+    var swipeDirection by remember { mutableIntStateOf(-1) }
+    val swipeThreshold = with(LocalDensity.current) { 40.dp.toPx() }
+
+    Surface(
+        modifier = modifier
+            .height(64.dp)
+            .pointerInput(swipeThreshold) {
+                var dragTotal = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { dragTotal = 0f },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        dragTotal += dragAmount
+                    },
+                    onDragEnd = {
+                        if (abs(dragTotal) >= swipeThreshold) {
+                            swipeDirection = if (dragTotal < 0) -1 else 1
+                            showApps = !showApps
+                        }
+                    }
+                )
+            },
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        AnimatedContent(
+            targetState = showApps,
+            transitionSpec = {
+                val direction = swipeDirection
+                (slideInHorizontally(ExpressiveMotion.defaultSpatialNoBounce()) { width -> -direction * width } +
+                    fadeIn(ExpressiveMotion.defaultEffects())) togetherWith
+                    (slideOutHorizontally(ExpressiveMotion.defaultSpatialNoBounce()) { width -> direction * width } +
+                        fadeOut(ExpressiveMotion.fastEffects())) using
+                    SizeTransform(clip = true)
+            },
+            label = "search_bar_face"
+        ) { appsVisible ->
+            if (appsVisible) {
+                Row(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(bottom = 160.dp)
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { },
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = stringResource(R.string.menu_open_app),
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                            )
-                            IconButton(onClick = { showMenu = false }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.cd_close)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        val appItems = buildList {
-                            add(OpenAppItem.Phone)
-                            add(OpenAppItem.Sms)
-                            if (isGoogleMeetInstalled) add(OpenAppItem.GoogleMeet)
-                            if (availableMessagingApps.value.contains(MessagingApp.WHATSAPP)) add(OpenAppItem.WhatsApp)
-                            if (availableMessagingApps.value.contains(MessagingApp.TELEGRAM)) add(OpenAppItem.Telegram)
-                            if (availableMessagingApps.value.contains(MessagingApp.SIGNAL)) add(OpenAppItem.Signal)
-                        }
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            for (row in appItems.chunked(3)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    for (item in row) {
-                                        OpenAppCard(
-                                            item = item,
-                                            onClick = {
-                                                when (item) {
-                                                    OpenAppItem.Phone -> phoneService.openPhoneApp(context)
-                                                    OpenAppItem.Sms -> messagingService.openSmsAppDirectly(context)
-                                                    OpenAppItem.WhatsApp -> {
-                                                        val intent = context.packageManager.getLaunchIntentForPackage("com.whatsapp")
-                                                        intent?.let { it.flags = Intent.FLAG_ACTIVITY_NEW_TASK; context.startActivity(it) }
-                                                    }
-                                                    OpenAppItem.Telegram -> {
-                                                        val intent = context.packageManager.getLaunchIntentForPackage("org.telegram.messenger")
-                                                        intent?.let { it.flags = Intent.FLAG_ACTIVITY_NEW_TASK; context.startActivity(it) }
-                                                    }
-                                                    OpenAppItem.Signal -> {
-                                                        val intent = context.packageManager.getLaunchIntentForPackage("org.thoughtcrime.securesms")
-                                                        intent?.let { it.flags = Intent.FLAG_ACTIVITY_NEW_TASK; context.startActivity(it) }
-                                                    }
-                                                    OpenAppItem.GoogleMeet -> {
-                                                        val intent = context.packageManager.getLaunchIntentForPackage("com.google.android.apps.tachyon")
-                                                        intent?.let { it.flags = Intent.FLAG_ACTIVITY_NEW_TASK; context.startActivity(it) }
-                                                    }
-                                                }
-                                                showMenu = false
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                    appItems.forEach { item ->
+                        OpenAppButton(
+                            item = item,
+                            onClick = { openApp(context, item, phoneService, messagingService) }
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { onClick() }
+                        .padding(start = 20.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = stringResource(R.string.cd_search),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = stringResource(R.string.search_placeholder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = stringResource(R.string.cd_settings),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -246,79 +222,88 @@ fun FakeSearchBar(
     }
 }
 
-@Composable
-private fun OpenAppCard(
+private const val GOOGLE_MEET_PACKAGE = "com.google.android.apps.tachyon"
+
+private fun openApp(
+    context: Context,
     item: OpenAppItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    phoneService: com.tk.quickcontacts.services.PhoneService,
+    messagingService: MessagingService
 ) {
-    val shape = RoundedCornerShape(12.dp)
-    Card(
-        modifier = modifier
-            .height(80.dp)
+    fun launch(packageName: String) {
+        context.packageManager.getLaunchIntentForPackage(packageName)?.let {
+            it.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(it)
+        }
+    }
+    when (item) {
+        OpenAppItem.Phone -> phoneService.openPhoneApp(context)
+        OpenAppItem.Sms -> messagingService.openSmsAppDirectly(context)
+        OpenAppItem.WhatsApp -> launch("com.whatsapp")
+        OpenAppItem.Telegram -> launch("org.telegram.messenger")
+        OpenAppItem.Signal -> launch("org.thoughtcrime.securesms")
+        OpenAppItem.GoogleMeet -> launch(GOOGLE_MEET_PACKAGE)
+    }
+}
+
+@Composable
+private fun OpenAppButton(
+    item: OpenAppItem,
+    onClick: () -> Unit
+) {
+    val label = when (item) {
+        OpenAppItem.Phone -> stringResource(R.string.menu_phone_default)
+        OpenAppItem.Sms -> stringResource(R.string.menu_sms_default)
+        OpenAppItem.WhatsApp -> stringResource(R.string.menu_whatsapp)
+        OpenAppItem.Telegram -> stringResource(R.string.menu_telegram)
+        OpenAppItem.Signal -> stringResource(R.string.messaging_app_signal)
+        OpenAppItem.GoogleMeet -> stringResource(R.string.menu_google_meet)
+    }
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .clickable(onClick = onClick),
-        shape = shape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
+        contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            when (item) {
-                OpenAppItem.Phone -> Icon(
-                    imageVector = Icons.Default.Phone,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-                OpenAppItem.Sms -> Icon(
-                    imageVector = Icons.Rounded.Sms,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp).size(24.dp)
-                )
-                OpenAppItem.WhatsApp -> Icon(
-                    painter = painterResource(R.drawable.whatsapp_icon),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(28.dp)
-                )
-                OpenAppItem.Telegram -> Icon(
-                    painter = painterResource(R.drawable.telegram_icon),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(24.dp)
-                )
-                OpenAppItem.Signal -> Icon(
-                    painter = painterResource(R.drawable.signal_icon),
-                    contentDescription = null,
-                    tint = Color(0xFF3A76F0),
-                    modifier = Modifier.size(24.dp)
-                )
-                OpenAppItem.GoogleMeet -> Icon(
-                    painter = painterResource(R.drawable.google_meet_icon),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = when (item) {
-                    OpenAppItem.Phone -> stringResource(R.string.menu_phone_default)
-                    OpenAppItem.Sms -> stringResource(R.string.menu_sms_default)
-                    OpenAppItem.WhatsApp -> stringResource(R.string.menu_whatsapp)
-                    OpenAppItem.Telegram -> stringResource(R.string.menu_telegram)
-                    OpenAppItem.Signal -> stringResource(R.string.messaging_app_signal)
-                    OpenAppItem.GoogleMeet -> stringResource(R.string.menu_google_meet)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 2
+        when (item) {
+            OpenAppItem.Phone -> Icon(
+                imageVector = Icons.Default.Phone,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            OpenAppItem.Sms -> Icon(
+                imageVector = Icons.Rounded.Sms,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
+            OpenAppItem.WhatsApp -> Icon(
+                painter = painterResource(R.drawable.whatsapp_icon),
+                contentDescription = label,
+                tint = Color(0xFF25D366),
+                modifier = Modifier.size(24.dp)
+            )
+            OpenAppItem.Telegram -> Icon(
+                painter = painterResource(R.drawable.telegram_icon),
+                contentDescription = label,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(22.dp)
+            )
+            OpenAppItem.Signal -> Icon(
+                painter = painterResource(R.drawable.signal_icon),
+                contentDescription = label,
+                tint = Color(0xFF3A76F0),
+                modifier = Modifier.size(22.dp)
+            )
+            OpenAppItem.GoogleMeet -> Icon(
+                painter = painterResource(R.drawable.google_meet_icon),
+                contentDescription = label,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(22.dp)
             )
         }
     }
-} 
+}

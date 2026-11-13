@@ -1,14 +1,17 @@
 package com.tk.quickcontacts.ui.components
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.tk.quickcontacts.ui.theme.SegmentedList
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.zIndex
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import android.content.Context
 import com.tk.quickcontacts.Contact
 import com.tk.quickcontacts.models.CustomActions
@@ -38,69 +41,50 @@ fun ContactList(
     onEditContactName: (Contact, String) -> Unit = { _, _ -> },
     callActivityMap: Map<String, Contact> = emptyMap()
 ) {
-    val reorderState = rememberReorderableLazyListState(onMove = { from, to ->
+    // Local copy so the dragged order updates in the same frame; the change is
+    // persisted through onMove and replaced when the source list changes.
+    var orderedContacts by remember(contacts) { mutableStateOf(contacts) }
+    val lazyListState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        orderedContacts = orderedContacts.toMutableList().apply {
+            add(to.index, removeAt(from.index))
+        }
         onMove(from.index, to.index)
-    })
-    
-    val contactItems = remember(contacts, customActionPreferences, editMode, defaultMessagingApp, availableMessagingApps, availableActions, selectedContacts) {
-        contacts.map { contact ->
+    }
+
+    val contactItems = remember(orderedContacts, customActionPreferences) {
+        orderedContacts.map { contact ->
             contact to customActionPreferences[contact.id]
         }
     }
 
     LazyColumn(
-        state = reorderState.listState,
-        modifier = modifier.then(
-            if (editMode) {
-                Modifier.reorderable(reorderState)
-            } else {
-                Modifier
-            }
-        ),
-        contentPadding = PaddingValues(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        state = lazyListState,
+        modifier = modifier,
+        contentPadding = PaddingValues(top = 2.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(SegmentedList.Gap)
     ) {
-        items(
+        itemsIndexed(
             items = contactItems,
-            key = { (contact, _) -> contact.id }
-        ) { (contact, customActions) ->
+            key = { _, (contact, _) -> contact.id }
+        ) { index, (contact, customActions) ->
+            val itemShape = SegmentedList.shape(index, contactItems.size)
             val callActivity = callActivityMap[contact.id]
-            if (editMode) {
-                ReorderableItem(reorderState, key = contact.id) { isDragging ->
-                    ContactItem(
-                        contact = contact,
-                        onContactClick = onContactClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        editMode = editMode,
-                        onDeleteContact = onDeleteContact,
-                        onWhatsAppClick = onWhatsAppClick,
-                        onContactImageClick = onContactImageClick,
-                        reorderState = reorderState,
-                        onLongClick = onLongClick,
-                        onOpenActionEditor = onOpenActionEditor,
-                        customActions = customActions,
-                        defaultMessagingApp = defaultMessagingApp,
-                        availableMessagingApps = availableMessagingApps,
-                        availableActions = availableActions,
-                        selectedContacts = selectedContacts,
-                        onExecuteAction = onExecuteAction,
-                        onUpdateContactNumber = onUpdateContactNumber,
-                        hasSeenCallWarning = hasSeenCallWarning,
-                        onMarkCallWarningSeen = onMarkCallWarningSeen,
-                        onEditContactName = onEditContactName,
-                        callActivity = callActivity
-                    )
-                }
-            } else {
+            // Always wrap in ReorderableItem (enabled only in edit mode) so toggling edit
+            // mode keeps the same composition and ContactItem can animate between states.
+            ReorderableItem(reorderState, key = contact.id, enabled = editMode) { isDragging ->
                 ContactItem(
                     contact = contact,
                     onContactClick = onContactClick,
-                    modifier = Modifier.fillMaxWidth(),
                     editMode = editMode,
                     onDeleteContact = onDeleteContact,
                     onWhatsAppClick = onWhatsAppClick,
                     onContactImageClick = onContactImageClick,
-                    reorderState = null,
+                    dragHandleModifier = Modifier.draggableHandle(enabled = editMode),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .zIndex(if (isDragging) 1f else 0f),
+                    isDragging = isDragging,
                     onLongClick = onLongClick,
                     onOpenActionEditor = onOpenActionEditor,
                     customActions = customActions,
@@ -113,7 +97,8 @@ fun ContactList(
                     hasSeenCallWarning = hasSeenCallWarning,
                     onMarkCallWarningSeen = onMarkCallWarningSeen,
                     onEditContactName = onEditContactName,
-                    callActivity = callActivity
+                    callActivity = callActivity,
+                    shape = itemShape
                 )
             }
         }

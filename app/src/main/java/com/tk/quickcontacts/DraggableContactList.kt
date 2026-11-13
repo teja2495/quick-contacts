@@ -36,11 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorder
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
@@ -230,7 +225,6 @@ fun ContactItem(
     onDeleteContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
-    reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
     onLongClick: (Contact) -> Unit = {},
     onOpenActionEditor: (Contact) -> Unit = {},
     customActions: CustomActions? = null,
@@ -253,7 +247,6 @@ fun ContactItem(
         onDeleteContact = onDeleteContact,
         onWhatsAppClick = onWhatsAppClick,
         onContactImageClick = onContactImageClick,
-        reorderState = reorderState,
         onLongClick = onLongClick,
         onOpenActionEditor = onOpenActionEditor,
         customActions = customActions,

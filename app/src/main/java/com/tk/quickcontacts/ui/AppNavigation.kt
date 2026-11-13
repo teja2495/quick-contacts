@@ -11,12 +11,23 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import com.tk.quickcontacts.ui.theme.ExpressiveMotion
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.*
@@ -27,6 +38,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -353,16 +365,18 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         editMode = false
     }
 
-    LaunchedEffect(hasCallLogPermission, isRecentCallsVisible, isRecentCallsExpanded) {
+    LaunchedEffect(hasCallLogPermission, isRecentCallsVisible) {
         if (isRecentCallsVisible && hasCallLogPermission) {
             viewModel.loadRecentCalls(context)
-            if (isRecentCallsExpanded) {
-                viewModel.loadAllRecentCalls(context)
-            }
+            // Prefetch the full list so expanding never waits on (or swaps in) data mid-animation.
+            viewModel.loadAllRecentCalls(context)
         }
     }
 
-    LaunchedEffect(selectedContacts, hasCallLogPermission) {
+    val quickListKey = remember(selectedContacts) {
+        selectedContacts.mapTo(HashSet()) { "${it.id}|${it.phoneNumber}" }
+    }
+    LaunchedEffect(quickListKey, hasCallLogPermission) {
         if (selectedContacts.isNotEmpty() && hasCallLogPermission) {
             viewModel.loadCallActivityForQuickList(context)
         }
@@ -454,11 +468,11 @@ fun AppNavigation(viewModel: ContactsViewModel) {
         refreshPermissionStates()
     }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            refreshPermissionStates()
-        }
+    // Permissions can only change while we're backgrounded (system settings) or via the
+    // launchers above, so re-check on resume instead of polling every second.
+    LifecycleResumeEffect(Unit) {
+        refreshPermissionStates()
+        onPauseOrDispose { }
     }
 
     Scaffold(
@@ -477,7 +491,10 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 isSettingsScreenOpen -> stringResource(R.string.title_settings)
                                 else -> stringResource(R.string.title_quick_contacts)
                             },
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }
@@ -501,20 +518,6 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         }
                     }
                 },
-                actions = {
-                    if (currentDestination != NavDestination.Permission && !isSettingsScreenOpen && !isSearching && actionEditorContact == null && hasContactsPermission) {
-                        IconButton(
-                            onClick = { isSettingsScreenOpen = true },
-                            modifier = Modifier.padding(end = 24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.cd_settings),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
             )
         }
     ) { innerPadding ->
@@ -534,11 +537,11 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         val goingBack = targetState.depth < initialState.depth
                         val slideIn = slideInHorizontally(
                             initialOffsetX = { if (goingBack) -it else it },
-                            animationSpec = tween(300)
+                            animationSpec = ExpressiveMotion.defaultSpatialNoBounce()
                         )
                         val slideOut = slideOutHorizontally(
                             targetOffsetX = { if (goingBack) it else -it },
-                            animationSpec = tween(300)
+                            animationSpec = ExpressiveMotion.defaultSpatialNoBounce()
                         )
                         slideIn togetherWith slideOut
                     }
@@ -742,7 +745,8 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                         Column(modifier = Modifier.weight(1f)) {
                             if (isRecentCallsVisible && hasCallLogPermission) {
                                 RecentCallsSection(
-                                    recentCalls = if (isRecentCallsExpanded) allRecentCalls else recentCalls,
+                                    recentCalls = recentCalls,
+                                    expandedRecentCalls = allRecentCalls,
                                     onContactClick = { contact ->
                                         viewModel.makePhoneCall(context, contact.phoneNumber)
                                     },
@@ -757,9 +761,6 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         isRecentCallsExpanded = expanded
                                         if (expanded) {
                                             editMode = false
-                                            viewModel.loadAllRecentCalls(context)
-                                        } else {
-                                            viewModel.loadRecentCalls(context)
                                         }
                                     },
                                     defaultMessagingApp = defaultMessagingApp,
@@ -785,39 +786,79 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                 )
                             }
 
+                            AnimatedVisibility(
+                                visible = !isRecentCallsExpanded || !isRecentCallsVisible,
+                                enter = fadeIn(ExpressiveMotion.defaultEffects()) +
+                                    expandVertically(ExpressiveMotion.defaultSpatialNoBounce(), expandFrom = Alignment.Top),
+                                exit = fadeOut(ExpressiveMotion.fastEffects()) +
+                                    shrinkVertically(ExpressiveMotion.defaultSpatialNoBounce(), shrinkTowards = Alignment.Top),
+                                label = "quick_list_visibility"
+                            ) {
+                            Column {
                             if (selectedContacts.isEmpty()) {
-                                if (!isRecentCallsExpanded || !isRecentCallsVisible) {
-                                    EmptyContactsScreen()
-                                }
+                                EmptyContactsScreen()
                             } else {
-                                if (!isRecentCallsExpanded || !isRecentCallsVisible) {
                                     Column {
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                                                .padding(start = 24.dp, end = 20.dp, top = 12.dp, bottom = 8.dp),
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
                                                 text = stringResource(R.string.title_quick_list),
-                                                style = MaterialTheme.typography.titleMedium,
+                                                style = MaterialTheme.typography.titleSmall,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = MaterialTheme.colorScheme.primary
                                             )
 
-                                            Text(
-                                                text = if (editMode) stringResource(R.string.action_done) else stringResource(R.string.action_edit),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier
-                                                    .clickable { editMode = !editMode }
-                                                    .padding(end = 12.dp)
+                                            val buttonContainer by animateColorAsState(
+                                                targetValue = if (editMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                                animationSpec = ExpressiveMotion.defaultEffects(),
+                                                label = "edit_button_container"
                                             )
+                                            val buttonContent by animateColorAsState(
+                                                targetValue = if (editMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                                                animationSpec = ExpressiveMotion.defaultEffects(),
+                                                label = "edit_button_content"
+                                            )
+                                            Button(
+                                                onClick = { editMode = !editMode },
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = buttonContainer,
+                                                    contentColor = buttonContent
+                                                ),
+                                                modifier = Modifier.height(32.dp)
+                                            ) {
+                                                AnimatedContent(
+                                                    targetState = editMode,
+                                                    transitionSpec = {
+                                                        (fadeIn(ExpressiveMotion.defaultEffects()) +
+                                                            slideInVertically(ExpressiveMotion.fastSpatial()) { it / 2 }) togetherWith
+                                                            (fadeOut(ExpressiveMotion.fastEffects()) +
+                                                                slideOutVertically(ExpressiveMotion.fastSpatial()) { -it / 2 }) using
+                                                            SizeTransform(clip = false) { _, _ -> ExpressiveMotion.defaultSpatialNoBounce() }
+                                                    },
+                                                    label = "edit_button_label"
+                                                ) { editing ->
+                                                    Text(
+                                                        text = if (editing) stringResource(R.string.action_done) else stringResource(R.string.action_edit),
+                                                        style = MaterialTheme.typography.labelLarge
+                                                    )
+                                                }
+                                            }
                                         }
 
-                                        if (editMode) {
+                                        AnimatedVisibility(
+                                            visible = editMode,
+                                            enter = fadeIn(ExpressiveMotion.defaultEffects()) +
+                                                expandVertically(ExpressiveMotion.defaultSpatialNoBounce(), expandFrom = Alignment.Top),
+                                            exit = fadeOut(ExpressiveMotion.fastEffects()) +
+                                                shrinkVertically(ExpressiveMotion.defaultSpatialNoBounce(), shrinkTowards = Alignment.Top),
+                                            label = "edit_hint"
+                                        ) {
                                             Text(
                                                 text = stringResource(R.string.edit_hint),
                                                 style = MaterialTheme.typography.bodySmall,
@@ -834,7 +875,8 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                                 colors = CardDefaults.cardColors(
                                                     containerColor = MaterialTheme.colorScheme.primaryContainer
                                                 ),
-                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                                shape = MaterialTheme.shapes.extraLarge,
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                                             ) {
                                                 Row(
                                                     modifier = Modifier
@@ -915,7 +957,8 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                                         },
                                         callActivityMap = callActivityMap
                                     )
-                                }
+                            }
+                            }
                             }
                         }
 
@@ -923,6 +966,7 @@ fun AppNavigation(viewModel: ContactsViewModel) {
                             onClick = {
                                 openSearch()
                             },
+                            onSettingsClick = { isSettingsScreenOpen = true },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 16.dp)

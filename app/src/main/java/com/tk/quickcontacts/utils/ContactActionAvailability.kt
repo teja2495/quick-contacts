@@ -96,6 +96,22 @@ object ContactActionAvailability {
         return result
     }
 
+    /**
+     * Cheap single-mimetype check (one query when the contact id is known), used by
+     * search results instead of resolving every available action.
+     */
+    fun hasContactAction(
+        context: Context,
+        contactId: Long?,
+        phoneNumbers: List<String>,
+        action: String
+    ): Boolean {
+        val mimeType = CONTACT_ACTIONS_BY_MIMETYPE.firstOrNull { it.first == action }?.second
+            ?: return false
+        if (contactId != null) return hasContactDataRow(context, contactId, mimeType)
+        return phoneNumbers.any { hasContactDataRow(context, it, mimeType) }
+    }
+
     private fun hasContactDataRow(context: Context, phoneNumber: String, mimeType: String): Boolean {
         val cleanNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber) ?: return false
         val contactId = resolveContactId(context, cleanNumber) ?: return false

@@ -24,14 +24,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tk.quickcontacts.R
 
 private val ActionButtonWidth = 90.dp
-private val ActionButtonHeight = 80.dp
-private val ActionButtonShape = RoundedCornerShape(12.dp)
+private val ActionButtonHeight = 84.dp
+private val ActionButtonShape = RoundedCornerShape(20.dp)
 private val LargeIconSize = 24.dp
 
 @Composable
@@ -79,20 +81,16 @@ fun ContactActionButton(
     action: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    useFullWidth: Boolean = false
+    useFullWidth: Boolean = false,
+    shape: Shape = ActionButtonShape
 ) {
     val tint = actionTint(action)
     Surface(
         modifier = modifier
             .then(if (useFullWidth) Modifier.fillMaxWidth() else Modifier.width(ActionButtonWidth))
             .height(ActionButtonHeight)
-            .clip(ActionButtonShape)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                shape = ActionButtonShape
-            ),
-        shape = ActionButtonShape,
+            .clip(shape),
+        shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         onClick = onClick
     ) {
@@ -107,11 +105,10 @@ fun ContactActionButton(
             ContactActionButtonIcon(action = action, tint = tint)
             Text(
                 text = actionButtonLabel(action),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
-                lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 0.9f
+                maxLines = 2
             )
         }
     }
@@ -328,4 +325,34 @@ fun QuickContactActionIcon(
             )
         }
     }
+}
+
+/**
+ * Shape for a tile in a grid of action tiles: only the four outer corners of the
+ * whole grid are fully rounded, so the tiles read as one grouped surface.
+ */
+fun actionGridTileShape(
+    index: Int,
+    count: Int,
+    columns: Int,
+    outer: Dp = 24.dp,
+    inner: Dp = 6.dp
+): Shape {
+    val row = index / columns
+    val col = index % columns
+    val lastRow = (count - 1) / columns
+    val lastColInRow = if (row == lastRow) (count - 1) % columns else columns - 1
+    val lastColInRowAbove = columns - 1
+    val topStart = row == 0 && col == 0
+    val topEnd = row == 0 && col == lastColInRow
+    val bottomStart = row == lastRow && col == 0
+    // The last tile of a short final row has nothing below or beside it on the end side.
+    val bottomEnd = (row == lastRow && col == lastColInRow) ||
+        (row == lastRow - 1 && col == lastColInRowAbove && (count - 1) % columns < col)
+    return RoundedCornerShape(
+        topStart = if (topStart) outer else inner,
+        topEnd = if (topEnd) outer else inner,
+        bottomStart = if (bottomStart) outer else inner,
+        bottomEnd = if (bottomEnd) outer else inner,
+    )
 }

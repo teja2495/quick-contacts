@@ -1,5 +1,7 @@
 package com.tk.quickcontacts.ui.components
 
+import com.tk.quickcontacts.ui.theme.ExpressiveMotion
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,10 +31,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorder
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.draw.shadow
 import androidx.compose.animation.core.tween
 import android.content.Context
 import com.tk.quickcontacts.Contact
@@ -53,7 +66,7 @@ fun ContactItem(
     onDeleteContact: (Contact) -> Unit,
     onWhatsAppClick: (Contact) -> Unit = {},
     onContactImageClick: (Contact) -> Unit = {},
-    reorderState: org.burnoutcrew.reorderable.ReorderableLazyListState? = null,
+    dragHandleModifier: Modifier = Modifier,
     onLongClick: (Contact) -> Unit = {},
     onOpenActionEditor: (Contact) -> Unit = {},
     customActions: CustomActions? = null,
@@ -67,7 +80,9 @@ fun ContactItem(
     onMarkCallWarningSeen: (() -> Unit)? = null,
     onEditContactName: (Contact, String) -> Unit,
     callActivity: Contact? = null, // New parameter for call activity data
-    showButtonActionLabels: Boolean = false
+    showButtonActionLabels: Boolean = false,
+    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
+    isDragging: Boolean = false
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
@@ -154,11 +169,40 @@ fun ContactItem(
         )
     }
     
+    val dragElevation by animateDpAsState(
+        targetValue = if (isDragging) 8.dp else 0.dp,
+        animationSpec = ExpressiveMotion.fastSpatial(),
+        label = "drag_elevation"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            isDragging -> MaterialTheme.colorScheme.surfaceContainerHighest
+            editMode -> MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> MaterialTheme.colorScheme.surfaceContainer
+        },
+        animationSpec = ExpressiveMotion.defaultEffects(),
+        label = "contact_container"
+    )
+    val nameColor by animateColorAsState(
+        targetValue = if (editMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        animationSpec = ExpressiveMotion.defaultEffects(),
+        label = "contact_name_color"
+    )
+    val horizontalEnter = fadeIn(ExpressiveMotion.defaultEffects()) +
+        expandHorizontally(ExpressiveMotion.defaultSpatialNoBounce(), expandFrom = Alignment.Start)
+    val horizontalExit = fadeOut(ExpressiveMotion.fastEffects()) +
+        shrinkHorizontally(ExpressiveMotion.defaultSpatialNoBounce(), shrinkTowards = Alignment.Start)
+    val verticalEnter = fadeIn(ExpressiveMotion.defaultEffects()) +
+        expandVertically(ExpressiveMotion.defaultSpatialNoBounce(), expandFrom = Alignment.Top)
+    val verticalExit = fadeOut(ExpressiveMotion.fastEffects()) +
+        shrinkVertically(ExpressiveMotion.defaultSpatialNoBounce(), shrinkTowards = Alignment.Top)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(MaterialTheme.shapes.large)
+            .padding(horizontal = 16.dp)
+            .shadow(dragElevation, shape, clip = false)
+            .clip(shape)
             .then(
                 if (editMode) {
                     Modifier.clickable { onOpenActionEditor(contact) }
@@ -174,103 +218,55 @@ fun ContactItem(
                     )
                 }
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = containerColor
         ),
-        shape = MaterialTheme.shapes.large
+        shape = shape
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(animationSpec = tween(300))
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (editMode) {
-                // Reorder handle icon - draggable handle for reordering
+            // Drag handle slides in from the start edge in edit mode.
+            AnimatedVisibility(visible = editMode, enter = horizontalEnter, exit = horizontalExit) {
                 Icon(
-                    imageVector = Icons.Default.Menu,
+                    imageVector = Icons.Default.DragIndicator,
                     contentDescription = "Drag to reorder",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
-                        .padding(end = 16.dp)
-                        .then(
-                            if (reorderState != null) {
-                                Modifier.detectReorderAfterLongPress(reorderState)
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .padding(end = 12.dp)
+                        .then(dragHandleModifier)
+                        .size(28.dp)
                 )
             }
 
-            // Contact Photo (hidden in edit mode) - clickable to open in contacts app
-            if (!editMode) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 12.dp)
-                        .clickable { onContactImageClick(contact) }
-                ) {
-                    if (contact.photoUri != null && !imageLoadFailed) {
-                        Image(
-                            painter = rememberAsyncImagePainter(
-                                model = ImageRequest.Builder(context)
-                                    .data(contact.photoUri)
-                                    .crossfade(true)
-                                    .size(48, 48) // Optimize size for better performance
-                                    .memoryCacheKey("contact_${contact.id}")
-                                    .build(),
-                                onError = { imageLoadFailed = true }
-                            ),
-                            contentDescription = "Contact photo",
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        // Default avatar
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
+            // Contact photo collapses away in edit mode.
+            AnimatedVisibility(visible = !editMode, enter = horizontalEnter, exit = horizontalExit) {
+                ContactAvatar(
+                    contact = contact,
+                    size = 48.dp,
+                    modifier = Modifier.padding(end = 14.dp),
+                    onClick = { onContactImageClick(contact) }
+                )
             }
 
             // Contact Info
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (editMode) {
-                        Text(
-                            text = contact.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { showEditNameDialog = true }
-                        )
-                    } else {
-                        Text(
-                            text = contact.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                Text(
+                    text = contact.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = nameColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable(enabled = editMode) { showEditNameDialog = true }
+                )
                 
-                if (!editMode && BuildConfig.DISABLE_RECENT_CALLS) {
+                AnimatedVisibility(visible = !editMode, enter = verticalEnter, exit = verticalExit) {
+                Column {
+                if (BuildConfig.DISABLE_RECENT_CALLS) {
                     cardTapActionLabel?.let { actionLabel ->
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
@@ -280,7 +276,7 @@ fun ContactItem(
                             fontSize = 11.sp
                         )
                     }
-                } else if (!editMode && callActivity?.callType != null && callActivity.callTimestamp != null) {
+                } else if (callActivity?.callType != null && callActivity.callTimestamp != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -303,13 +299,7 @@ fun ContactItem(
                                     else -> Icons.Default.Call
                                 },
                                 contentDescription = callActivity.callType.replaceFirstChar { it.uppercase() },
-                                tint = when (callActivity.callType) {
-                                    "missed" -> Color(0xFFE57373)
-                                    "rejected" -> Color(0xFFE57373)
-                                    "incoming" -> Color(0xFF81C784)
-                                    "outgoing" -> Color(0xFF64B5F6)
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
+                                tint = callTypeColor(callActivity.callType),
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -321,9 +311,12 @@ fun ContactItem(
                         )
                     }
                 }
-                
-                // Show phone number in edit mode
-                if (editMode) {
+                }
+                }
+
+                // Phone numbers expand in under the name in edit mode.
+                AnimatedVisibility(visible = editMode, enter = verticalEnter, exit = verticalExit) {
+                Column {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = PhoneNumberUtils.formatPhoneNumber(contact.phoneNumber),
@@ -345,14 +338,27 @@ fun ContactItem(
                         }
                     }
                 }
+                }
             }
 
-            if (editMode) {
+            AnimatedContent(
+                targetState = editMode,
+                transitionSpec = {
+                    (fadeIn(ExpressiveMotion.defaultEffects()) +
+                        scaleIn(ExpressiveMotion.fastSpatial(), initialScale = 0.6f)) togetherWith
+                        (fadeOut(ExpressiveMotion.fastEffects()) +
+                            scaleOut(ExpressiveMotion.fastSpatial(), targetScale = 0.6f)) using
+                        SizeTransform(clip = false) { _, _ -> ExpressiveMotion.defaultSpatialNoBounce() }
+                },
+                contentAlignment = Alignment.CenterEnd,
+                label = "contact_trailing"
+            ) { isEditing ->
+            if (isEditing) {
                 IconButton(onClick = { onDeleteContact(contact) }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Contact",
-                        tint = Color(0xFFE57373)
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             } else {
@@ -379,6 +385,7 @@ fun ContactItem(
                         )
                     }
                 }
+            }
             }
         }
     }
@@ -424,6 +431,8 @@ private fun QuickContactActionButton(
     Box(
         modifier = Modifier
             .size(if (showLabel) 74.dp else 48.dp)
+            .clip(if (showLabel) MaterialTheme.shapes.large else CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .combinedClickable(
                 onClick = onTap,
                 onLongClick = onLongPress
@@ -454,7 +463,7 @@ private fun QuickContactActionButton(
             QuickContactActionIcon(
                 action = action,
                 contentDescription = "$action for $contactName",
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -541,7 +550,6 @@ fun RecentCallVerticalItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
             .combinedClickable(
                 onClick = { 
                     showContactActionsDialog = true
@@ -550,46 +558,15 @@ fun RecentCallVerticalItem(
                     showContactActionsDialog = true
                 }
             )
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Contact Photo - clickable to open in contacts app
-        if (contact.photoUri != null && !imageLoadFailed) {
-            Image(
-                painter = rememberAsyncImagePainter(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(contact.photoUri)
-                        .crossfade(true)
-                        .build(),
-                    onError = { imageLoadFailed = true }
-                ),
-                contentDescription = "Contact photo",
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable { onContactImageClick(contact) },
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            // Default avatar - clickable to open in contacts app
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable { onContactImageClick(contact) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        
+        ContactAvatar(
+            contact = contact,
+            size = 40.dp,
+            onClick = { onContactImageClick(contact) }
+        )
+
         Spacer(modifier = Modifier.width(12.dp))
         
         // Contact Name and Call Type
@@ -600,8 +577,10 @@ fun RecentCallVerticalItem(
         ) {
             Text(
                 text = contact.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
             // Display call type icon and timestamp if available
@@ -619,13 +598,7 @@ fun RecentCallVerticalItem(
                             else -> Icons.Default.Call
                         },
                         contentDescription = contact.callType.replaceFirstChar { it.uppercase() },
-                        tint = when (contact.callType) {
-                            "missed" -> Color(0xFFE57373) // Subtle red
-                            "rejected" -> Color(0xFFE57373) // Subtle red (same as missed)
-                            "incoming" -> Color(0xFF81C784) // Subtle green
-                            "outgoing" -> Color(0xFF64B5F6) // Subtle blue
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        tint = callTypeColor(contact.callType),
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
@@ -637,13 +610,8 @@ fun RecentCallVerticalItem(
                             }
                         } ?: contact.callType.replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.bodySmall,
-                        color = when (contact.callType) {
-                            "missed" -> MaterialTheme.colorScheme.error
-                            "rejected" -> MaterialTheme.colorScheme.secondary
-                            "incoming" -> MaterialTheme.colorScheme.secondary
-                            "outgoing" -> MaterialTheme.colorScheme.secondary
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color = if (contact.callType == "missed") MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Normal
                     )
                 }
@@ -659,7 +627,10 @@ fun RecentCallVerticalItem(
                     if (contact.callSource == "whatsapp") onWhatsAppClick(contact) else onContactClick(contact)
                 }
             },
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(48.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+            )
         ) {
             if (contact.callSource == "whatsapp") {
                 Icon(
@@ -673,7 +644,7 @@ fun RecentCallVerticalItem(
                     imageVector = Icons.Default.Call,
                     contentDescription = "Call ${contact.name}",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

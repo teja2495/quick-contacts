@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -37,6 +38,9 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.*
+import androidx.compose.ui.text.style.TextOverflow
+import com.tk.quickcontacts.ui.theme.SegmentedList
+import com.tk.quickcontacts.ui.theme.ExtraLargeIncreasedShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1034,17 +1038,14 @@ fun ContactActionsGridDialog(
                     .wrapContentHeight()
                     .padding(start = DialogScreenPadding, end = DialogScreenPadding, top = DialogScreenPadding, bottom = DialogBottomPadding)
                     .align(Alignment.BottomCenter),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp
+                shape = ExtraLargeIncreasedShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Column(
                     modifier = Modifier
                         .padding(24.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    var imageLoadFailed by remember { mutableStateOf(false) }
-                    val context = LocalContext.current
                     if (title != null) {
                         Text(
                             text = title,
@@ -1055,58 +1056,27 @@ fun ContactActionsGridDialog(
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        ContactAvatar(
+                            contact = if (isUnknownContact) contact.copy(name = "Unknown") else contact,
+                            size = 52.dp
+                        )
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            text = if (isUnknownContact) "Unknown" else contact.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (contact.photoUri != null && !imageLoadFailed) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(
-                                            model = ImageRequest.Builder(context)
-                                                .data(contact.photoUri)
-                                                .crossfade(true)
-                                                .size(80, 80)
-                                                .build(),
-                                            onError = { imageLoadFailed = true }
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.primary),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = if (isUnknownContact) "U" else contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = if (isUnknownContact) "Unknown" else contact.name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
+                        )
+                        FilledTonalIconButton(
+                            onClick = requestDismiss,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                             )
-                        }
-                        IconButton(onClick = requestDismiss) {
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(R.string.cd_close)
@@ -1140,7 +1110,7 @@ fun ContactActionsGridDialog(
                             }
                             Text(
                                 text = PhoneNumberUtils.formatPhoneNumberForDisplay(selectedPhoneNumber),
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 modifier = Modifier.weight(1f)
@@ -1174,7 +1144,7 @@ fun ContactActionsGridDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         val implementedActions = remember(contactFilteredActions) {
                             QuickContactAction.executableOptionsFiltered(contactFilteredActions)
@@ -1192,10 +1162,16 @@ fun ContactActionsGridDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp)
+                                    .clip(RoundedCornerShape(28.dp))
                                     .clickable {
                                         onAddToContacts(selectedPhoneNumber)
                                         requestDismiss()
-                                    }
+                                    },
+                                shape = RoundedCornerShape(28.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1207,28 +1183,27 @@ fun ContactActionsGridDialog(
                                     Icon(
                                         imageVector = Icons.Default.PersonAdd,
                                         contentDescription = "Add to Contacts",
-                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(
                                         text = "Add to Contacts",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                             }
                         }
                         Column(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(SegmentedList.Gap)
                         ) {
-                            for (rowActions in implementedActions.chunked(3)) {
+                            implementedActions.chunked(3).forEachIndexed { rowIndex, rowActions ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(SegmentedList.Gap)
                                 ) {
-                                    for (action in rowActions) {
+                                    rowActions.forEachIndexed { colIndex, action ->
                                         ContactActionButton(
                                             action = action,
                                             onClick = {
@@ -1236,62 +1211,66 @@ fun ContactActionsGridDialog(
                                                 requestDismiss()
                                             },
                                             modifier = Modifier.weight(1f),
-                                            useFullWidth = true
+                                            useFullWidth = true,
+                                            shape = actionGridTileShape(
+                                                index = rowIndex * 3 + colIndex,
+                                                count = implementedActions.size,
+                                                columns = 3
+                                            )
                                         )
+                                    }
+                                    repeat(3 - rowActions.size) {
+                                        Spacer(modifier = Modifier.weight(1f))
                                     }
                                 }
                             }
                         }
                         if (remainingAvailableActions.isNotEmpty()) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth()
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(SegmentedList.Gap)
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    remainingAvailableActions.forEachIndexed { index, action ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    onActionSelected(action, selectedPhoneNumber)
-                                                    requestDismiss()
-                                                }
-                                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            if (isEmailAction(action)) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Email,
-                                                    contentDescription = stringResource(R.string.action_email),
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            } else if (isThirdPartyAppAction(action)) {
-                                                ThirdPartyActionIcon(
-                                                    action = action,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            } else {
-                                                QuickContactActionIcon(
-                                                    action = action,
-                                                    contentDescription = action,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
+                                remainingAvailableActions.forEachIndexed { index, action ->
+                                    val rowShape = SegmentedList.shape(index, remainingAvailableActions.size)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(rowShape)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                            .clickable {
+                                                onActionSelected(action, selectedPhoneNumber)
+                                                requestDismiss()
                                             }
-                                            Text(
-                                                text = popupActionLabel(action),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        if (isEmailAction(action)) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Email,
+                                                contentDescription = stringResource(R.string.action_email),
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        } else if (isThirdPartyAppAction(action)) {
+                                            ThirdPartyActionIcon(
+                                                action = action,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        } else {
+                                            QuickContactActionIcon(
+                                                action = action,
+                                                contentDescription = action,
+                                                modifier = Modifier.size(22.dp)
                                             )
                                         }
-                                        if (index < remainingAvailableActions.lastIndex) {
-                                            HorizontalDivider(
-                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                                                thickness = 1.dp
-                                            )
-                                        }
+                                        Text(
+                                            text = popupActionLabel(action),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }
@@ -1307,10 +1286,16 @@ fun ContactActionsGridDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp)
+                                    .clip(RoundedCornerShape(28.dp))
                                     .clickable {
                                         onAddToQuickList(contact.copy(phoneNumber = selectedPhoneNumber))
                                         requestDismiss()
-                                    }
+                                    },
+                                shape = RoundedCornerShape(28.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1322,14 +1307,13 @@ fun ContactActionsGridDialog(
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = stringResource(R.string.contact_add_to_quick_list),
-                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(
                                         text = stringResource(R.string.contact_add_to_quick_list),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                             }
@@ -1339,10 +1323,16 @@ fun ContactActionsGridDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp)
+                                    .clip(RoundedCornerShape(28.dp))
                                     .clickable {
                                         onRemoveFromQuickList(contact.copy(phoneNumber = selectedPhoneNumber))
                                         requestDismiss()
-                                    }
+                                    },
+                                shape = RoundedCornerShape(28.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1354,14 +1344,13 @@ fun ContactActionsGridDialog(
                                     Icon(
                                         imageVector = Icons.Default.Remove,
                                         contentDescription = stringResource(R.string.contact_remove_from_quick_list_button),
-                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(
                                         text = stringResource(R.string.contact_remove_from_quick_list_button),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                             }

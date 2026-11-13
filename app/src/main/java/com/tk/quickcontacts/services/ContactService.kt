@@ -85,7 +85,8 @@ class ContactService {
     private val phoneProjection = arrayOf(
         ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-        ContactsContract.CommonDataKinds.Phone.NUMBER
+        ContactsContract.CommonDataKinds.Phone.NUMBER,
+        ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
     )
 
     private val callLogProjection = arrayOf(
@@ -203,6 +204,7 @@ class ContactService {
             val idColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
             val nameColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             val numberColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val photoColumn = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
 
             if (idColumn >= 0 && nameColumn >= 0 && numberColumn >= 0) {
                 while (it.moveToNext()) {
@@ -214,8 +216,10 @@ class ContactService {
                         id = id,
                         name = name,
                         number = number,
-                        photoUri = if (id.isNullOrBlank()) null else photoUriByContactId.getOrPut(id) {
-                            ContactUtils.getContactPhotoUri(context, id)
+                        // Only contacts that actually have a photo get a URI, so the UI never
+                        // starts (and fails) an image load for photo-less contacts.
+                        photoUri = if (id.isNullOrBlank() || photoColumn < 0) null else photoUriByContactId.getOrPut(id) {
+                            it.getString(photoColumn)
                         }
                     )
                     if (row != null) {

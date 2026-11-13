@@ -1,5 +1,15 @@
 package com.tk.quickcontacts.ui.components
 
+import com.tk.quickcontacts.ui.theme.SegmentedList
+import com.tk.quickcontacts.ui.theme.ExpressiveMotion
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.painter.Painter
+
 import android.content.Intent
 import android.content.ComponentName
 import android.net.Uri
@@ -186,10 +196,11 @@ fun SettingsScreen(
     ) {
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             if (!BuildConfig.DISABLE_RECENT_CALLS) item {
+                SettingsSection(title = stringResource(R.string.settings_messaging_card_title)) {
                 DefaultMessagingAppCard(
                     selectedApp = defaultMessagingApp,
                     onMessagingAppSelected = { app ->
@@ -216,43 +227,44 @@ fun SettingsScreen(
                         }
                     }
                 )
+                }
             }
 
             item {
-                SettingsGroupCard {
-                    SettingToggleRow(
-                        icon = Icons.Rounded.History,
-                        title = "Recent Calls",
-                        description = if (hasCallLogPermission) {
-                            stringResource(R.string.recent_calls_description)
-                        } else {
-                            "Requires call history permission to display recent calls."
-                        },
-                        checked = isRecentCallsVisible && hasCallLogPermission,
-                        enabled = true,
-                        onCheckedChange = { newValue ->
-                            if (newValue && !hasCallLogPermission) {
-                                if (isCallLogPermissionPermanentlyDenied) {
-                                    showPermissionSettingsDialog = true
-                                } else {
-                                    onRequestCallLogPermission?.invoke()
-                                }
-                            } else {
-                                viewModel.toggleRecentCallsVisibility()
-                            }
-                        }
-                    )
-                    if (isRecentCallsVisible && BuildConfig.ENABLE_WHATSAPP_RECENT_CALLS) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 14.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
+                val rows = buildList<@Composable (Shape) -> Unit> {
+                    add { shape ->
                         SettingToggleRow(
                             icon = Icons.Rounded.History,
+                            title = "Recent Calls",
+                            description = if (hasCallLogPermission) {
+                                stringResource(R.string.recent_calls_description)
+                            } else {
+                                "Requires call history permission to display recent calls."
+                            },
+                            checked = isRecentCallsVisible && hasCallLogPermission,
+                            enabled = true,
+                            shape = shape,
+                            onCheckedChange = { newValue ->
+                                if (newValue && !hasCallLogPermission) {
+                                    if (isCallLogPermissionPermanentlyDenied) {
+                                        showPermissionSettingsDialog = true
+                                    } else {
+                                        onRequestCallLogPermission?.invoke()
+                                    }
+                                } else {
+                                    viewModel.toggleRecentCallsVisibility()
+                                }
+                            }
+                        )
+                    }
+                    if (isRecentCallsVisible && BuildConfig.ENABLE_WHATSAPP_RECENT_CALLS) add { shape ->
+                        SettingToggleRow(
+                            painter = painterResource(R.drawable.whatsapp_icon),
                             title = "WhatsApp Calls",
                             description = "Add WhatsApp calls to Recent Calls.",
                             checked = isWhatsAppRecentCallsEnabled,
                             enabled = true,
+                            shape = shape,
                             onCheckedChange = { isEnabled ->
                                 if (isEnabled) {
                                     if (hasWhatsAppNotificationAccess(context)) {
@@ -266,58 +278,71 @@ fun SettingsScreen(
                             }
                         )
                     }
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 14.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    SettingToggleRow(
-                        icon = Icons.Rounded.Phone,
-                        title = "Direct Dial",
-                        description = if (hasCallPermission) {
-                            "Calls are made immediately without opening the dialer."
-                        } else {
-                            "Requires phone permission to make calls directly."
-                        },
-                        checked = isDirectDialEnabled && hasCallPermission,
-                        enabled = true,
-                        onCheckedChange = { newValue ->
-                            if (newValue && !hasCallPermission) {
-                                if (isCallPermissionPermanentlyDenied) {
-                                    showCallPermissionSettingsDialog = true
-                                } else {
-                                    onRequestCallPermission?.invoke()
-                                }
+                    add { shape ->
+                        SettingToggleRow(
+                            icon = Icons.Rounded.Phone,
+                            title = "Direct Dial",
+                            description = if (hasCallPermission) {
+                                "Calls are made immediately without opening the dialer."
                             } else {
-                                viewModel.toggleDirectDial()
+                                "Requires phone permission to make calls directly."
+                            },
+                            checked = isDirectDialEnabled && hasCallPermission,
+                            enabled = true,
+                            shape = shape,
+                            onCheckedChange = { newValue ->
+                                if (newValue && !hasCallPermission) {
+                                    if (isCallPermissionPermanentlyDenied) {
+                                        showCallPermissionSettingsDialog = true
+                                    } else {
+                                        onRequestCallPermission?.invoke()
+                                    }
+                                } else {
+                                    viewModel.toggleDirectDial()
+                                }
                             }
-                        }
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 14.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    SettingClickRow(
-                        icon = Icons.Rounded.Refresh,
-                        title = stringResource(R.string.settings_refresh_contacts),
-                        description = stringResource(R.string.settings_refresh_contacts_description),
-                        onClick = {
-                            viewModel.refreshContacts(context)
-                            Toast.makeText(context, context.getString(R.string.settings_refresh_contacts_toast), Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                        )
+                    }
+                    add { shape ->
+                        SettingClickRow(
+                            icon = Icons.Rounded.Refresh,
+                            title = stringResource(R.string.settings_refresh_contacts),
+                            description = stringResource(R.string.settings_refresh_contacts_description),
+                            shape = shape,
+                            onClick = {
+                                viewModel.refreshContacts(context)
+                                Toast.makeText(context, context.getString(R.string.settings_refresh_contacts_toast), Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+                SettingsSection(title = "General") {
+                    rows.forEachIndexed { index, row -> row(SegmentedList.shape(index, rows.size)) }
                 }
             }
 
             item {
-                SettingsSupportDevelopmentCard(
-                    onOpenPermissions = onOpenPermissions,
-                    onSendFeedback = { sendFeedbackEmail() },
-                    onOpenGitHub = {
+                val links = listOf(
+                    Triple(stringResource(R.string.settings_permissions_title), stringResource(R.string.settings_permissions_desc), Icons.Rounded.AdminPanelSettings to onOpenPermissions),
+                    Triple(stringResource(R.string.settings_feedback_send_title), stringResource(R.string.settings_feedback_send_desc), Icons.Rounded.Email to { sendFeedbackEmail() }),
+                    Triple(stringResource(R.string.settings_feedback_github_title), stringResource(R.string.settings_feedback_github_desc), Icons.Rounded.Code to {
                         try {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/teja2495/quick-contacts")))
                         } catch (_: Exception) {}
-                    }
+                    })
                 )
+                SettingsSection(title = "Support") {
+                    links.forEachIndexed { index, (title, description, iconAndAction) ->
+                        SettingClickRow(
+                            icon = iconAndAction.first,
+                            title = title,
+                            description = description,
+                            shape = SegmentedList.shape(index, links.size),
+                            showChevron = true,
+                            onClick = iconAndAction.second
+                        )
+                    }
+                }
             }
 
             item {
@@ -421,84 +446,37 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-    ) {
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 8.dp, bottom = 10.dp)
+        )
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SegmentedList.Gap),
             content = content
         )
     }
 }
 
 @Composable
-private fun SettingsSupportDevelopmentCard(
-    onOpenPermissions: () -> Unit,
-    onSendFeedback: () -> Unit,
-    onOpenGitHub: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+private fun SettingIconBadge(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.secondaryContainer),
+        contentAlignment = Alignment.Center
     ) {
-        Column {
-            listOf(
-                Triple(stringResource(R.string.settings_permissions_title), stringResource(R.string.settings_permissions_desc), Icons.Rounded.AdminPanelSettings to onOpenPermissions),
-                Triple(stringResource(R.string.settings_feedback_send_title), stringResource(R.string.settings_feedback_send_desc), Icons.Rounded.Email to onSendFeedback),
-                Triple(stringResource(R.string.settings_feedback_github_title), stringResource(R.string.settings_feedback_github_desc), Icons.Rounded.Code to onOpenGitHub)
-            ).forEachIndexed { index, (title, description, iconAndAction) ->
-                if (index > 0) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = iconAndAction.second)
-                        .padding(contentPadding),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = iconAndAction.first,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Icon(
-                        imageVector = Icons.Rounded.ChevronRight,
-                        contentDescription = stringResource(R.string.cd_navigate_forward),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-            }
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSecondaryContainer) {
+            content()
         }
     }
 }
@@ -570,84 +548,90 @@ private fun DefaultMessagingAppCard(
         Pair(MessagingApp.TELEGRAM, R.string.messaging_app_telegram),
         Pair(MessagingApp.SIGNAL, R.string.messaging_app_signal)
     )
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(SegmentedList.Gap)
     ) {
-    Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(MessagingCardPadding),
-            verticalArrangement = Arrangement.spacedBy(MessagingOptionSpacing)
-        ) {
-            Text(
-                text = stringResource(R.string.settings_messaging_card_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+        options.forEachIndexed { index, (app, labelRes) ->
+            MessagingOptionChip(
+                app = app,
+                labelRes = labelRes,
+                selected = selectedApp == app,
+                isFirst = index == 0,
+                isLast = index == options.lastIndex,
+                onClick = { onMessagingAppSelected(app) },
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Column(
-                modifier = Modifier.fillMaxWidth().selectableGroup(),
-                verticalArrangement = Arrangement.spacedBy(MessagingOptionSpacing)
-            ) {
-                options.chunked(2).forEach { rowOptions ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(MessagingOptionSpacing),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        rowOptions.forEach { (app, labelRes) ->
-                            MessagingOptionChip(
-                                app = app,
-                                labelRes = labelRes,
-                                selected = selectedApp == app,
-                                onClick = { onMessagingAppSelected(app) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        repeat(2 - rowOptions.size) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
         }
     }
 }
 
+/**
+ * One segment of a connected button group: the selected segment morphs to a fully
+ * rounded shape and fills with the primary container colour.
+ */
 @Composable
 private fun MessagingOptionChip(
     app: MessagingApp,
     labelRes: Int,
     selected: Boolean,
+    isFirst: Boolean,
+    isLast: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val borderColor = if (selected) colorScheme.primary else colorScheme.outlineVariant
-    val backgroundColor = if (selected) colorScheme.primary.copy(alpha = 0.14f) else colorScheme.outlineVariant.copy(alpha = 0.35f)
+    val outer = SegmentedList.OuterCorner
+    val inner = SegmentedList.InnerCorner
+    val startCorner by animateDpAsState(
+        targetValue = if (selected || isFirst) outer else inner,
+        animationSpec = ExpressiveMotion.fastSpatial(),
+        label = "messaging_start_corner"
+    )
+    val endCorner by animateDpAsState(
+        targetValue = if (selected || isLast) outer else inner,
+        animationSpec = ExpressiveMotion.fastSpatial(),
+        label = "messaging_end_corner"
+    )
+    val container by animateColorAsState(
+        targetValue = if (selected) colorScheme.primaryContainer else colorScheme.surfaceContainer,
+        animationSpec = ExpressiveMotion.defaultEffects(),
+        label = "messaging_container"
+    )
+    val content by animateColorAsState(
+        targetValue = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
+        animationSpec = ExpressiveMotion.defaultEffects(),
+        label = "messaging_content"
+    )
+    val shape = RoundedCornerShape(
+        topStart = startCorner,
+        bottomStart = startCorner,
+        topEnd = endCorner,
+        bottomEnd = endCorner
+    )
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
-            .border(MessagingBorderWidth, borderColor, RoundedCornerShape(16.dp))
+            .height(88.dp)
+            .clip(shape)
+            .background(container)
             .selectable(
                 selected = selected,
                 onClick = onClick,
                 role = Role.RadioButton
             )
-            .padding(vertical = MessagingChipPaddingV, horizontal = MessagingChipPaddingH),
+            .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
     ) {
-        MessagingOptionIcon(app = app)
+        MessagingOptionIcon(app = app, tint = content)
         Text(
             text = stringResource(labelRes),
-            style = MaterialTheme.typography.labelSmall,
-            color = colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = content,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -655,8 +639,7 @@ private fun MessagingOptionChip(
 }
 
 @Composable
-private fun MessagingOptionIcon(app: MessagingApp) {
-    val tint = MaterialTheme.colorScheme.primary
+private fun MessagingOptionIcon(app: MessagingApp, tint: Color) {
     when (app) {
         MessagingApp.SMS -> Icon(
             imageVector = Icons.Rounded.Sms,
@@ -686,67 +669,39 @@ private fun MessagingOptionIcon(app: MessagingApp) {
 }
 
 @Composable
-private fun MessagingAppOptionRow(
-    label: String,
-    subtitle: String?,
-    iconRes: Int,
-    iconSize: Dp,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
+private fun SettingRowContainer(
+    shape: Shape,
+    onClick: () -> Unit,
+    role: Role? = null,
+    content: @Composable RowScope.() -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    val textColor = if (enabled) colorScheme.onSurface else colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            enabled = enabled,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = colorScheme.primary,
-                unselectedColor = colorScheme.onSurfaceVariant,
-                disabledSelectedColor = colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                disabledUnselectedColor = colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-            )
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(role = role, onClick = onClick)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun SettingText(title: String, description: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.width(4.dp))
-        Box(
-            modifier = Modifier.width(28.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
-                tint = if (enabled) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.size(iconSize)
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = textColor
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -755,38 +710,20 @@ private fun SettingClickRow(
     icon: ImageVector,
     title: String,
     description: String,
+    shape: Shape,
+    showChevron: Boolean = false,
     onClick: () -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onClick
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp)
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant
+    SettingRowContainer(shape = shape, onClick = onClick) {
+        SettingIconBadge {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(22.dp))
+        }
+        SettingText(title = title, description = description, modifier = Modifier.weight(1f))
+        if (showChevron) {
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = stringResource(R.string.cd_navigate_forward),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -794,44 +731,41 @@ private fun SettingClickRow(
 
 @Composable
 private fun SettingToggleRow(
-    icon: ImageVector,
     title: String,
     description: String,
     checked: Boolean,
     enabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    shape: Shape,
+    onCheckedChange: (Boolean) -> Unit,
+    icon: ImageVector? = null,
+    painter: Painter? = null
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    SettingRowContainer(
+        shape = shape,
+        onClick = { if (enabled) onCheckedChange(!checked) },
+        role = Role.Switch
     ) {
-        val colorScheme = MaterialTheme.colorScheme
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (enabled) colorScheme.onSurfaceVariant else colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(24.dp)
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (enabled) colorScheme.onSurface else colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant
-            )
+        SettingIconBadge {
+            when {
+                icon != null -> Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(22.dp))
+                painter != null -> Icon(painter = painter, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
         }
+        SettingText(title = title, description = description, modifier = Modifier.weight(1f))
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             enabled = enabled,
-            colors = settingsSwitchColors()
+            colors = settingsSwitchColors(),
+            thumbContent = if (checked) {
+                {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
+            } else null
         )
     }
 }
@@ -840,6 +774,7 @@ private fun SettingToggleRow(
 private fun settingsSwitchColors() = SwitchDefaults.colors(
     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
     checkedTrackColor = MaterialTheme.colorScheme.primary,
+    checkedIconColor = MaterialTheme.colorScheme.primary,
     checkedBorderColor = Color.Transparent,
     uncheckedThumbColor = MaterialTheme.colorScheme.outline,
     uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,

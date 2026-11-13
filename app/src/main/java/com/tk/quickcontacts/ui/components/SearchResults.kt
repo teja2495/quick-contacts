@@ -7,7 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.style.TextOverflow
+import com.tk.quickcontacts.ui.theme.SegmentedList
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -58,7 +63,7 @@ fun SearchResultsContent(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    val messagingActionCache = remember(defaultMessagingApp) { mutableMapOf<String, String>() }
+    val messagingActionCache = remember(defaultMessagingApp) { java.util.concurrent.ConcurrentHashMap<String, String>() }
     val searchActionPreferences by viewModel.searchActionPreferences.collectAsState()
 
     LazyColumn(
@@ -205,10 +210,12 @@ fun SearchResultsContent(
             
             // Search results (they're already sorted by priority in ContactService, 
             // with reverseLayout=true, most relevant will be closest to search bar)
-            items(
+            itemsIndexed(
                 items = searchResults,
-                key = { contact -> contact.id }
-            ) { contact ->
+                key = { _, contact -> contact.id }
+            ) { index, contact ->
+                // reverseLayout puts index 0 at the bottom, so flip it for the group shape.
+                val itemShape = SegmentedList.shape(searchResults.lastIndex - index, searchResults.size)
                 val phoneNumbers = contact.phoneNumbers.ifEmpty { listOf(contact.phoneNumber) }
                 val configuredPhoneNumber = viewModel.getLastShownPhoneNumber(contact.id)
                     ?.takeIf { rememberedNumber ->
@@ -242,7 +249,10 @@ fun SearchResultsContent(
                     },
                     selectedContacts = selectedContacts,
                     defaultMessagingApp = defaultMessagingApp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = if (index == searchResults.lastIndex) 0.dp else SegmentedList.Gap),
+                    shape = itemShape,
                     availableMessagingApps = availableMessagingApps,
                     availableActions = availableActions,
                     onExecuteAction = onExecuteAction,
@@ -256,27 +266,22 @@ fun SearchResultsContent(
                     onReplaceAction = { contactId, phoneNumber, slot, action ->
                         viewModel.setSearchAction(contactId, phoneNumber, slot, action)
                     },
+                    cachedMessagingAction = { candidate ->
+                        messagingActionCache[messagingCacheKey(candidate, defaultMessagingApp)]
+                    },
                     resolveMessagingAction = { candidate ->
-                        val numbersKey = candidate.phoneNumbers
-                            .ifEmpty { listOf(candidate.phoneNumber) }
-                            .joinToString("|") { PhoneNumberUtils.normalizePhoneNumber(it) }
-                        val cacheKey = "${candidate.id}|${defaultMessagingApp.name}|$numbersKey"
-                        messagingActionCache[cacheKey] ?: run {
+                        val cacheKey = messagingCacheKey(candidate, defaultMessagingApp)
+                        messagingActionCache[cacheKey] ?: withContext(Dispatchers.IO) {
                             val defaultMessagingAction = resolveQuickContactActions(null, defaultMessagingApp).secondButtonTapAction
                             val resolvedAction = if (!defaultMessagingApp.requiresContactAccountCheck()) {
                                 defaultMessagingAction
                             } else {
-                                val allNumbers = candidate.phoneNumbers
-                                    .ifEmpty { listOf(candidate.phoneNumber) }
-                                    .distinctBy { PhoneNumberUtils.normalizePhoneNumber(it) }
-                                val appAction = defaultMessagingApp.toChatAction()
-                                val hasAccountOnDefaultApp = allNumbers.any { number ->
-                                    ContactActionAvailability.getContactAvailableActions(
-                                        context = context,
-                                        contactId = candidate.id.toLongOrNull(),
-                                        phoneNumber = number
-                                    ).contains(appAction)
-                                }
+                                val hasAccountOnDefaultApp = ContactActionAvailability.hasContactAction(
+                                    context = context,
+                                    contactId = candidate.id.toLongOrNull(),
+                                    phoneNumbers = candidate.phoneNumbers.ifEmpty { listOf(candidate.phoneNumber) },
+                                    action = defaultMessagingApp.toChatAction()
+                                )
                                 if (hasAccountOnDefaultApp) defaultMessagingAction else QuickContactAction.MESSAGE
                             }
                             messagingActionCache[cacheKey] = resolvedAction
@@ -311,14 +316,15 @@ fun SearchResultItem(
     configuredPhoneNumber: String = contact.phoneNumber,
     customActions: CustomActions? = null,
     onReplaceAction: (String, String, QuickContactActionSlot, String) -> Unit = { _, _, _, _ -> },
-    resolveMessagingAction: (Contact) -> String
+    shape: Shape = MaterialTheme.shapes.large,
+    cachedMessagingAction: (Contact) -> String? = { null },
+    resolveMessagingAction: suspend (Contact) -> String
 ) {
     val isSelected = selectedContacts.any { it.id == contact.id }
     var showPhoneNumberDialog by remember { mutableStateOf(false) }
     var showContactActionsDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<String?>(null) }
     var actionSlotToReplace by remember { mutableStateOf<QuickContactActionSlot?>(null) }
-    var imageLoadFailed by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val resolvedActions = remember(
         contact.id,
@@ -329,10 +335,20 @@ fun SearchResultItem(
         resolveQuickContactActions(customActions, defaultMessagingApp)
     }
     val callAction = resolvedActions.firstButtonTapAction
+    // Account lookups hit the contacts provider, so resolve them off the main thread and
+    // show the default app's action (or the cached answer) until they finish.
+    val autoMessagingAction by produceState(
+        initialValue = cachedMessagingAction(contact) ?: resolvedActions.secondButtonTapAction,
+        contact.id,
+        contact.phoneNumbers,
+        defaultMessagingApp
+    ) {
+        value = resolveMessagingAction(contact)
+    }
     val messagingAction = if (customActions?.secondButtonTapAction != null) {
         resolvedActions.secondButtonTapAction
     } else {
-        resolveMessagingAction(contact)
+        autoMessagingAction
     }
 
     fun runButtonAction(action: String) {
@@ -423,164 +439,140 @@ fun SearchResultItem(
         )
     }
     
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .padding(horizontal = 16.dp)
+            .clip(shape)
             .combinedClickable(
-                onClick = {
-                    showContactActionsDialog = true
-                },
-                onLongClick = {
-                    showContactActionsDialog = true
-                }
+                onClick = { showContactActionsDialog = true },
+                onLongClick = { showContactActionsDialog = true }
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.large
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .combinedClickable(
-                        onClick = {
-                            if (contact.phoneNumbers.size > 1) {
-                                dialogAction = "add"
-                                showPhoneNumberDialog = true
-                            } else {
-                                if (isSelected) {
-                                    onRemoveContact(contact)
-                                } else {
-                                    onAddContact(contact)
-                                }
-                            }
+            Box {
+                ContactAvatar(
+                    contact = contact,
+                    size = 48.dp,
+                    onClick = {
+                        if (contact.phoneNumbers.size > 1) {
+                            dialogAction = "add"
+                            showPhoneNumberDialog = true
+                        } else if (isSelected) {
+                            onRemoveContact(contact)
+                        } else {
+                            onAddContact(contact)
                         }
-                    )
-            ) {
-                if (contact.photoUri != null && !imageLoadFailed) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            model = ImageRequest.Builder(context)
-                                .data(contact.photoUri)
-                                .crossfade(true)
-                                .size(48, 48)
-                                .memoryCacheKey("contact_${contact.id}")
-                                .build(),
-                            onError = { imageLoadFailed = true }
-                        ),
-                        contentDescription = "Contact photo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
+                    }
+                )
+                if (isSelected && contact.phoneNumbers.size <= 1) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 3.dp, y = 3.dp)
+                            .size(22.dp)
+                            .background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
+                            .padding(2.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = contact.name.firstOrNull()?.let { if (!it.isLetter()) "#" else it.toString().uppercase() } ?: "?",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                        Icon(
+                            imageVector = Icons.Default.Done,
+                            contentDescription = "In quick list",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
-                if (isSelected && contact.phoneNumbers.size <= 1) {
-                    Icon(
-                        imageVector = Icons.Default.Done,
-                        contentDescription = "In quick list",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = 2.dp, y = 2.dp)
-                            .size(20.dp)
-                            .background(Color(0xFF4CAF50), CircleShape)
-                    )
-                }
             }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            // Contact Info
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 8.dp)
-            ) {
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = contact.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                
                 Text(
                     text = if (contact.phoneNumbers.size > 1) "${contact.phoneNumbers.size} numbers"
                         else PhoneNumberUtils.formatPhoneNumber(contact.phoneNumber),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
-            
+
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (callAction != QuickContactAction.NONE) Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .combinedClickable(
-                            onClick = { runButtonAction(callAction) },
-                            onLongClick = {
-                                actionSlotToReplace = QuickContactActionSlot.FIRST_BUTTON_TAP
-                                showContactActionsDialog = true
-                            }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    QuickContactActionIcon(
+                if (callAction != QuickContactAction.NONE) {
+                    SearchActionButton(
                         action = callAction,
                         contentDescription = "$callAction ${contact.name}",
-                        modifier = Modifier.size(28.dp)
+                        onClick = { runButtonAction(callAction) },
+                        onLongClick = {
+                            actionSlotToReplace = QuickContactActionSlot.FIRST_BUTTON_TAP
+                            showContactActionsDialog = true
+                        }
                     )
                 }
                 if (messagingAction != QuickContactAction.NONE) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .combinedClickable(
-                                onClick = { runButtonAction(messagingAction) },
-                                onLongClick = {
-                                    actionSlotToReplace = QuickContactActionSlot.SECOND_BUTTON_TAP
-                                    showContactActionsDialog = true
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        QuickContactActionIcon(
-                            action = messagingAction,
-                            contentDescription = "$messagingAction ${contact.name}",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    SearchActionButton(
+                        action = messagingAction,
+                        contentDescription = "$messagingAction ${contact.name}",
+                        onClick = { runButtonAction(messagingAction) },
+                        onLongClick = {
+                            actionSlotToReplace = QuickContactActionSlot.SECOND_BUTTON_TAP
+                            showContactActionsDialog = true
+                        }
+                    )
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SearchActionButton(
+    action: String,
+    contentDescription: String,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        contentAlignment = Alignment.Center
+    ) {
+        QuickContactActionIcon(
+            action = action,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+private fun messagingCacheKey(contact: Contact, app: MessagingApp): String {
+    val numbersKey = contact.phoneNumbers
+        .ifEmpty { listOf(contact.phoneNumber) }
+        .joinToString("|") { PhoneNumberUtils.normalizePhoneNumber(it) }
+    return "${contact.id}|${app.name}|$numbersKey"
 }
 
 private fun MessagingApp.requiresContactAccountCheck(): Boolean {

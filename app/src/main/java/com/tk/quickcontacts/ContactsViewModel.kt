@@ -168,7 +168,7 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     // Search debouncing
     private var searchJob: Job? = null
-    private val searchDebounceDelay = 300L // 300ms debounce
+    private val searchDebounceDelay = 120L // in-memory index, keep typing responsive
     private var latestSearchRequestId = 0L
 
     private var loadRecentCallsJob: Job? = null
